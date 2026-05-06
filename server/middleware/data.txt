@@ -1,0 +1,6 @@
+{
+    "success": true,
+    "message": "Ready to send OTP. Please use Firebase client SDK to send verification code.",
+    "phoneNumber": "+919137139042",
+    "userId": "6874a0a923d1e9c88d727304"
+}

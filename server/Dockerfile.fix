@@ -1,0 +1,22 @@
+FROM node:20-alpine
+
+WORKDIR /app
+
+# Create a node_modules directory with proper permissions
+RUN mkdir -p /app/node_modules && chown -R node:node /app
+
+# Switch to the node user for better security
+USER node
+
+# Copy package files
+COPY --chown=node:node package*.json ./
+
+# Install dependencies
+RUN npm install
+
+# Copy application code
+COPY --chown=node:node . .
+
+EXPOSE 5000
+
+CMD ["npm", "start"]
