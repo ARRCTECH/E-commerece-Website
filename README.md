@@ -1,3 +1,4 @@
+<<<<<<< HEAD
 # KsauniBliss - Simple CI/CD Setup
 
 ## 🚀 Simple Deployment
@@ -47,3 +48,6 @@ curl http://localhost:5000/api/health  # Test backend
 ```
 
 That's it! Simple and clean. 🎉
+=======
+# E-commerece-Website
+>>>>>>> dc4e41629bcd741685d66cc9f87dba33bdef7abe
