@@ -351,11 +351,22 @@ const createProduct = async (req, res) => {
     }
     // ========== 🆕 ID GENERATION CODE END ==========
 
+
+    // Handle images
     const images = [];
-    if (req.files && req.files.length) {
-      for (const file of req.files) {
+    if (req.files && req.files.images && req.files.images.length) {
+      for (const file of req.files.images) {
         const result = await uploadToCloudinary(file.buffer, "products");
         images.push({ url: result.secure_url, alt: name });
+      }
+    }
+
+    // Handle multiple videos
+    const videos = [];
+    if (req.files && req.files.video && req.files.video.length > 0) {
+      for (const file of req.files.video) {
+        const result = await uploadToCloudinary(file.buffer, "products", { resource_type: "video" });
+        videos.push({ url: result.secure_url, alt: name });
       }
     }
 
@@ -366,6 +377,7 @@ const createProduct = async (req, res) => {
       price: Number(price),
       originalPrice: originalPrice ? Number(originalPrice) : undefined,
       images,
+      videos,
       category,
       subcategory: subcategory ? subcategory.trim() : "",
       sizes: sizesWithIds,                       // 🆕 बदलले (पूर्वी: sizes)
@@ -435,11 +447,11 @@ const updateProduct = async (req, res) => {
     const isNameActuallyChanged = newName && currentName !== newName;
 
 
-    // Handle file uploads
-    if (req.files && req.files.length > 0) {
-      const newImages = [];
 
-      for (const file of req.files) {
+    // Handle image uploads (update)
+    if (req.files && req.files.images && req.files.images.length > 0) {
+      const newImages = [];
+      for (const file of req.files.images) {
         try {
           const result = await uploadToCloudinary(file.buffer, "products");
           newImages.push({
@@ -450,10 +462,27 @@ const updateProduct = async (req, res) => {
           console.error("❌ Image upload failed:", uploadError);
         }
       }
-
       if (newImages.length > 0) {
         updateData.images = [...existingProduct.images, ...newImages];
       }
+    }
+
+    // Handle multiple video uploads (update)
+    if (req.files && req.files.video && req.files.video.length > 0) {
+      const newVideos = [];
+      for (const file of req.files.video) {
+        try {
+          const result = await uploadToCloudinary(file.buffer, "products", { resource_type: "video" });
+          newVideos.push({
+            url: result.secure_url,
+            alt: updateData.name || existingProduct.name
+          });
+        } catch (uploadError) {
+          console.error("❌ Video upload failed:", uploadError);
+        }
+      }
+      // Append new videos to existing ones
+      updateData.videos = [...(existingProduct.videos || []), ...newVideos];
     }
 
     // Handle existing images reordering

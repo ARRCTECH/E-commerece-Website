@@ -43,13 +43,30 @@ router.get("/:id", getProduct);
 // GET single product by slug
 router.get("/slug/:slug", getProductBySlug);
 
+const upload = require("../middleware/upload");
+
 // POST create product (Admin only)
 // TODO: add auth and admin middleware when integrating
-router.post("/", createProduct);
+// Accept multiple images (field: images) and optional multiple videos (field: video)
+router.post(
+  "/",
+  upload.fields([
+    { name: "images", maxCount: 10 },
+    { name: "video", maxCount: 5 }, // allow up to 5 videos
+  ]),
+  createProduct
+);
 
 // PUT update product (Admin only)
 // TODO: add auth and admin middleware when integrating
-router.put("/:id", updateProduct);
+router.put(
+  "/:id",
+  upload.fields([
+    { name: "images", maxCount: 10 },
+    { name: "video", maxCount: 5 }, // allow up to 5 videos
+  ]),
+  updateProduct
+);
 
 // DELETE product (Admin only)
 // TODO: add auth and admin middleware when integrating

@@ -5,9 +5,9 @@ import { motion } from "framer-motion";
 import { ChevronLeft, ChevronRight } from "lucide-react";
 import { useEffect, useRef, useState } from "react";
 import { Link } from "react-router-dom";
-
 import { fetchTrendingProducts } from "../store/slices/productSlice";
 import LoadingSpinner from "./LoadingSpinner";
+import { getProductMedia } from "../utils/productMediaHelper";
 
 export default function TopPicksShowcase() {
   const dispatch = useDispatch();
@@ -174,13 +174,27 @@ export default function TopPicksShowcase() {
                     <div className="pt-1 px-1 flex flex-col h-auto border-t">
                       <div className="relative aspect-[3/4] overflow-hidden rounded-xl bg-gray-100">
                         <Link to={`/product/${product.slug}`}>
-                          <img
-                            src={`${product.images?.[0]?.url || "/placeholder.svg"}?t=${new Date(
-                              product.updatedAt
-                            ).getTime()}`}
-                            alt={product.name}
-                            className="object-cover w-full h-full"
-                          />
+                          {getProductMedia(product).type === 'image' ? (
+                            <img
+                              src={`${getProductMedia(product).url}?t=${new Date(
+                                product.updatedAt
+                              ).getTime()}`}
+                              alt={product.name}
+                              className="object-cover w-full h-full"
+                            />
+                          ) : (
+                            <video
+                              src={`${getProductMedia(product).url}?t=${new Date(
+                                product.updatedAt
+                              ).getTime()}`}
+                              alt={product.name}
+                              className="object-cover w-full h-full"
+                              controls={false}
+                              muted
+                              autoPlay
+                              loop
+                            />
+                          )}
                         </Link>
                         {categoryName && (
                           <div
