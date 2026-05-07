@@ -3,6 +3,7 @@ import { memo } from "react";
 import { motion } from "framer-motion";
 import { Heart, Star, ArrowDown } from "lucide-react";
 import { Link } from "react-router-dom";
+import { getProductMedia } from "../utils/productMediaHelper";
 
 const ProductCard = ({ product, wishlistItems, user, onAddToCart, onWishlist }) => {
   const inWishlist = wishlistItems.some((item) => item._id === product._id);
@@ -11,6 +12,8 @@ const ProductCard = ({ product, wishlistItems, user, onAddToCart, onWishlist }) 
     ? Math.round(((product.originalPrice - product.price) / product.originalPrice) * 100)
     : 0;
 
+  const media = getProductMedia(product);
+
   return (
     <motion.div
       initial={{ opacity: 0, y: 20 }}
@@ -18,15 +21,26 @@ const ProductCard = ({ product, wishlistItems, user, onAddToCart, onWishlist }) 
       className="pb-1.5 overflow-hidden transition-all duration-300 bg-white border border-gray-200 rounded-xl shadow-sm hover:shadow-md"
     >
       <div className="relative">
-        {/* Image Container - Removed fixed aspect ratio */}
+        {/* Image/Video Container */}
         <Link to={`/product/${product.slug}`}>
-          <div className="relative w-full h-64 sm:h-40 md:h-80"> {/* Adjust height as needed */}
-            <img
-              src={product.images?.[0]?.url || "/placeholder.svg"}
-              alt={product.name}
-              className="object-cover w-full h-full rounded-t-xl" /* Changed to cover and rounded-top only */
-              loading="lazy"
-            />
+          <div className="relative w-full h-64 sm:h-40 md:h-80 bg-gray-100 overflow-hidden">
+            {media.type === 'image' ? (
+              <img
+                src={media.url}
+                alt={media.alt}
+                className="object-cover w-full h-full rounded-t-xl"
+                loading="lazy"
+              />
+            ) : (
+              <video
+                src={media.url}
+                alt={media.alt}
+                className="object-cover w-full h-full rounded-t-xl"
+                controls={false}
+                muted
+                loop
+              />
+            )}
           </div>
         </Link>
         

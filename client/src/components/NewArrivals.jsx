@@ -104,6 +104,7 @@ import { Link } from "react-router-dom";
 import { useEffect, useState } from "react";
 import { useDispatch, useSelector } from "react-redux";
 import { fetchNewArrivals } from "../store/slices/productSlice";
+import { getProductMedia } from "../utils/productMediaHelper";
 
 export default function NewArrivals() {
   const dispatch = useDispatch();
@@ -165,12 +166,24 @@ export default function NewArrivals() {
                 >
                   {/* Product Image */}
                   <Link to={`/product/${product.slug}`}>
-                    <div className="w-full aspect-[3.5/3.8] bg-gray-100">
-                      <img
-                        src={product.images?.[0]?.url || "/placeholder.svg"}
-                        alt={product.name}
-                        className="w-full h-full object-cover"
-                      />
+                    <div className="w-full aspect-[3.5/3.8] bg-gray-100 overflow-hidden">
+                      {getProductMedia(product).type === 'image' ? (
+                        <img
+                          src={getProductMedia(product).url}
+                          alt={product.name}
+                          className="w-full h-full object-cover"
+                        />
+                      ) : (
+                        <video
+                          src={getProductMedia(product).url}
+                          alt={product.name}
+                          className="w-full h-full object-cover"
+                          controls={false}
+                          muted
+                          autoPlay
+                          loop
+                        />
+                      )}
                     </div>
                   </Link>
                   

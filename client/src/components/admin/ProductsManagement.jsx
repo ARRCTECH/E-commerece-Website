@@ -93,6 +93,23 @@ const ProductsManagement = () => {
     }
   }
 
+  const handleDelete = async (productId) => {
+    if (!window.confirm("Are you sure you want to delete this product?")) {
+      return
+    }
+    try {
+      setLoading(true)
+      await adminAPI.deleteProduct(productId)
+      toast.success("Product deleted successfully")
+      fetchProducts()
+    } catch (error) {
+      console.error("Error deleting product:", error)
+      toast.error(error.response?.data?.message || "Failed to delete product")
+    } finally {
+      setLoading(false)
+    }
+  }
+
   const handleSubmit = async (e) => {
     e.preventDefault()
     try {
@@ -206,15 +223,16 @@ const ProductsManagement = () => {
     }
 
     // Load existing videos if any
-    if (product.video && product.video.url) {
-      setVideos([{
+    if (product.videos && product.videos.length > 0) {
+      const existingVideos = product.videos.map((vid, index) => ({
         file: null,
-        name: "existing-video",
-        preview: product.video.url,
-        sizeMB: 0,
-        isExisting: true,
-        videoId: product.video._id || product.video.id,
-      }])
+        name: `existing-video-${index}`,
+        preview: vid.url, // Use the existing video URL as preview
+        sizeMB: 0, // Size unknown for existing videos
+        isExisting: true, // Flag to identify existing videos
+        videoId: vid._id || vid.id, // Store video ID for potential deletion
+      }))
+      setVideos(existingVideos)
     } else {
       setVideos([])
     }
