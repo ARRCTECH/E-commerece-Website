@@ -3,6 +3,7 @@
 import { useState, useEffect } from "react"
 import { useDispatch } from "react-redux"
 import { Plus, Search, Edit, Trash2, ArrowUp, ArrowDown, Star } from "lucide-react"
+import toast from "react-hot-toast"
 import adminAPI from "../../store/api/adminApi"
 import { fetchCategories as fetchCategoriesAction } from "../../store/slices/categorySlice"
 
@@ -46,6 +47,18 @@ const ProductsManagement = () => {
   })
 
   const [images, setImages] = useState([])
+  const [videos, setVideos] = useState([])
+  // Video file handler
+  const handleVideoChange = (e) => {
+    const files = Array.from(e.target.files)
+    const wrapped = files.map((file) => ({
+      file,
+      name: file.name,
+      sizeMB: (file.size / 1024 / 1024).toFixed(2),
+      preview: URL.createObjectURL(file),
+    }))
+    setVideos((prev) => [...prev, ...wrapped])
+  }
 
   useEffect(() => {
     fetchProducts()
@@ -102,57 +115,34 @@ const ProductsManagement = () => {
       })
 
       const newImages = images.filter((img) => !img.isExisting && img.file)
-      const existingImageIds = images
-        .filter((img) => img.isExisting)
-        .map((img) => img.imageId)
-        .filter(Boolean)
+      const videosToUpload = videos.filter((vid) => !vid.isExisting && vid.file)
 
-      // Append new images
+      // Append images
       newImages.forEach((img) => {
         formDataToSend.append("images", img.file)
       })
 
-      // Send existing image IDs to preserve them
-      if (existingImageIds.length > 0) {
-        formDataToSend.append("existingImages", JSON.stringify(existingImageIds))
-      }
+      // Append videos (if any)
+      videosToUpload.forEach((vid) => {
+        formDataToSend.append("video", vid.file)
+      })
 
-      // Send complete image order (both existing and new)
-      const imageOrder = images.map((img, index) => ({
-        type: img.isExisting ? "existing" : "new",
-        id: img.isExisting ? img.imageId : img.name,
-        order: index,
-      }))
-      formDataToSend.append("imageOrder", JSON.stringify(imageOrder))
-
+      // Submit to API
       if (editingProduct) {
         await adminAPI.updateProduct(editingProduct._id, formDataToSend)
+        toast.success("Product updated successfully")
       } else {
         await adminAPI.createProduct(formDataToSend)
+        toast.success("Product created successfully")
       }
-
       setShowModal(false)
       resetForm()
       fetchProducts()
-      fetchCategories()
-      dispatch(fetchCategoriesAction())
     } catch (error) {
-      console.error("Error saving product:", error)
+      console.error("Error submitting product:", error)
+      toast.error(error.response?.data?.message || "Failed to save product")
     } finally {
       setLoading(false)
-    }
-  }
-
-  const handleDelete = async (productId) => {
-    if (window.confirm("Are you sure you want to delete this product?")) {
-      try {
-        await adminAPI.deleteProduct(productId)
-        fetchProducts()
-        fetchCategories()
-        dispatch(fetchCategoriesAction())
-      } catch (error) {
-        console.error("Error deleting product:", error)
-      }
     }
   }
 
@@ -176,6 +166,7 @@ const ProductsManagement = () => {
       dimensions: { length: "", width: "", height: "" },
     })
     setImages([])
+    setVideos([])
     setEditingProduct(null)
   }
 
@@ -212,6 +203,20 @@ const ProductsManagement = () => {
       setImages(existingImages)
     } else {
       setImages([])
+    }
+
+    // Load existing videos if any
+    if (product.video && product.video.url) {
+      setVideos([{
+        file: null,
+        name: "existing-video",
+        preview: product.video.url,
+        sizeMB: 0,
+        isExisting: true,
+        videoId: product.video._id || product.video.id,
+      }])
+    } else {
+      setVideos([])
     }
 
     setShowModal(true)
@@ -734,6 +739,61 @@ const ProductsManagement = () => {
                               </button>
                             </div>
                             <div className="mt-1 text-xs text-gray-500">#{index + 1}</div>
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+                  )}
+                </div>
+
+                {/* Product Videos Section */}
+                <div>
+                  <label className="block mb-1 text-sm font-medium text-gray-700">Product Videos (Optional)</label>
+                  <input
+                    type="file"
+                    multiple
+                    accept="video/*"
+                    onChange={handleVideoChange}
+                    className="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500"
+                  />
+                  <p className="mt-1 text-sm text-gray-500">Select videos for the product (optional)</p>
+                  {videos.length > 0 && (
+                    <div className="mt-4">
+                      <div className="mb-2 text-sm font-medium text-gray-700">Selected Videos</div>
+                      <div className="flex items-stretch overflow-x-auto gap-3 p-2 -m-2">
+                        {videos.map((vid, index) => (
+                          <div
+                            key={vid.name + index}
+                            className="flex flex-col items-center justify-between p-2 border rounded-md min-w-[110px] max-w-[110px] bg-white"
+                          >
+                            <video
+                              src={vid.preview}
+                              controls
+                              className="w-full h-full object-cover"
+                              style={{ width: 96, height: 96 }}
+                            />
+                            <div className="mt-1 text-xs text-gray-600 font-medium">
+                              {vid.sizeMB} MB
+                            </div>
+                            <button
+                              type="button"
+                              onClick={() => {
+                                setVideos((prev) => {
+                                  const next = [...prev]
+                                  const [removed] = next.splice(index, 1)
+                                  try {
+                                    if (removed?.preview) URL.revokeObjectURL(removed.preview)
+                                  } catch {
+                                    // Ignore error when revoking object URL
+                                  }
+                                  return next
+                                })
+                              }}
+                              className="mt-2 inline-flex items-center justify-center px-2 h-7 rounded border text-red-600 hover:bg-red-50"
+                              title="Remove"
+                            >
+                              <Trash2 className="w-4 h-4" />
+                            </button>
                           </div>
                         ))}
                       </div>

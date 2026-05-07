@@ -58,8 +58,24 @@ router.put("/orders/:orderId/status", adminAuth, updateOrderStatus);
 // Product Management (Admin only)
 router.get("/products", adminAuth, getProducts);
 router.get("/products/:id", adminAuth, getProduct);
-router.post("/products", adminAuth, upload.array("images", 10), createProduct);
-router.put("/products/:id", adminAuth, upload.array("images", 10), updateProduct);
+router.post(
+  "/products",
+  adminAuth,
+  upload.fields([
+    { name: "images", maxCount: 10 },
+    { name: "video", maxCount: 5 },
+  ]),
+  createProduct
+);
+router.put(
+  "/products/:id",
+  adminAuth,
+  upload.fields([
+    { name: "images", maxCount: 10 },
+    { name: "video", maxCount: 5 },
+  ]),
+  updateProduct
+);
 router.delete("/products/:id", adminAuth, deleteProduct);
 
 // Category Management (Admin only)
