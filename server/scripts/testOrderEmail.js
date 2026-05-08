@@ -49,13 +49,13 @@ async function testOrderConfirmationEmail() {
   try {
     // Test sending order confirmation email
     await sendEmail({
-      to: process.env.FALLBACK_TEST_EMAIL || 'ksaunibliss@gmail.com', // Fallback to admin email
+      to: process.env.FALLBACK_TEST_EMAIL || 'Factory Sale@gmail.com', // Fallback to admin email
       template: 'orderConfirmation',
       data: mockEmailData
     });
 
     console.log('✅ Order confirmation email test sent successfully!');
-    console.log('📧 Email sent to:', process.env.FALLBACK_TEST_EMAIL || 'ksaunibliss@gmail.com');
+    console.log('📧 Email sent to:', process.env.FALLBACK_TEST_EMAIL || 'Factory Sale@gmail.com');
     console.log('📦 Test Order Number:', mockEmailData.orderNumber);
     
   } catch (error) {
@@ -75,7 +75,7 @@ async function testAllEmailTemplates() {
   // Test Welcome Email
   try {
     await sendEmail({
-      to: process.env.FALLBACK_TEST_EMAIL || 'ksaunibliss@gmail.com',
+      to: process.env.FALLBACK_TEST_EMAIL || 'Factory Sale@gmail.com',
       template: 'welcome',
       data: {
         name: 'Test User',
@@ -90,11 +90,11 @@ async function testAllEmailTemplates() {
   // Test Password Reset Email
   try {
     await sendEmail({
-      to: process.env.FALLBACK_TEST_EMAIL || 'ksaunibliss@gmail.com',
+      to: process.env.FALLBACK_TEST_EMAIL || 'Factory Sale@gmail.com',
       template: 'passwordReset',
       data: {
         name: 'Test User',
-        resetLink: 'https://ksaunibliss.com/reset-password?token=test-token'
+        resetLink: 'https://Factory Sale.com/reset-password?token=test-token'
       }
     });
     console.log('✅ Password reset email template test passed');

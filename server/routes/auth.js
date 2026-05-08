@@ -12,6 +12,7 @@ const {
   // Phone OTP functions using Firebase
   sendPhoneOTP,
   verifyPhoneOTP,
+  googleSignIn, // Add this import
 } = require("../controllers/authController")
 const { firebaseAuth, authorize } = require("../middleware/firebaseAuth")
 const { protect } = require("../middleware/auth")
@@ -134,6 +135,10 @@ const handleValidationErrors = (req, res, next) => {
   next()
 }
 
+// ============= GOOGLE SIGN-IN ROUTE =============
+// Make sure this is placed BEFORE your other routes
+router.post("/google", googleSignIn) // Fixed: removed authController. and using imported function
+
 // Public routes - Email Authentication
 router.post("/register/email", authLimiter, validateEmailRegistration, handleValidationErrors, registerWithEmail)
 router.post("/login/email", authLimiter, validateEmailLogin, handleValidationErrors, loginWithEmail)
@@ -152,10 +157,11 @@ router.get("/health", (req, res) => {
     success: true,
     message: "Auth service is running",
     timestamp: new Date().toISOString(),
-    supportedMethods: ["email", "phone"],
+    supportedMethods: ["email", "phone", "google"], // Added google to supported methods
     features: {
       emailAuth: true,
       phoneOTP: true,
+      googleAuth: true, // Added google auth feature
       firebaseAuth: true,
       passwordReset: true,
       profileManagement: true,
@@ -240,6 +246,7 @@ router.get("/admin/stats", authorize("admin"), async (req, res) => {
     const verifiedUsers = await User.countDocuments({ role: { $ne: "admin" }, isVerified: true })
     const emailUsers = await User.countDocuments({ role: { $ne: "admin" }, authMethod: "email" })
     const phoneUsers = await User.countDocuments({ role: { $ne: "admin" }, authMethod: "phone" })
+    const googleUsers = await User.countDocuments({ role: { $ne: "admin" }, authMethod: "google" }) // Added google users count
     const newUsersThisMonth = await User.countDocuments({
       role: { $ne: "admin" },
       createdAt: { $gte: new Date(new Date().getFullYear(), new Date().getMonth(), 1) },
@@ -252,6 +259,7 @@ router.get("/admin/stats", authorize("admin"), async (req, res) => {
         verifiedUsers,
         emailUsers,
         phoneUsers,
+        googleUsers, // Added google users
         newUsersThisMonth,
         unverifiedUsers: totalUsers - verifiedUsers,
       },

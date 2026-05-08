@@ -51,7 +51,7 @@ const BewkoofStylePreloader = ({ onComplete }) => {
                 ease: "easeInOut",
               }}
             >
-            KSAUNIBLISS
+            Factory Sale
             </motion.h1>
           </motion.div>
           {/* Animated Circles */}

@@ -237,9 +237,9 @@ const OrderTracking = ({ orderId }) => {
           If you have any questions about your order, feel free to contact us.
         </p>
         <div className="flex flex-col gap-4 text-sm sm:flex-row">
-          <a href="mailto:order@ksaunibliss.com" className="flex items-center text-pink-600 hover:text-pink-700">
+          <a href="mailto:order@Factory Sale.com" className="flex items-center text-pink-600 hover:text-pink-700">
             <Mail className="w-4 h-4 mr-2" />
-            order@ksaunibliss.com
+            order@Factory Sale.com
           </a>
           <a href="tel:+911234567890" className="flex items-center text-pink-600 hover:text-pink-700">
             <Phone className="w-4 h-4 mr-2" />

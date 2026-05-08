@@ -183,10 +183,10 @@ const Navbar = () => {
               {/* Logo - Adjusted for better display */}
               <div onClick={() => navigate("/")} className="flex items-center cursor-pointer">
                 <div className="hidden md:block">
-                  <img src="/KsauniLogo.png" alt="company logo" className="object-cover w-auto h-10" />
+                  <img src="" alt="Factory Sale" className="object-cover w-auto h-10" />
                 </div>
                 <div className="md:hidden">
-                  <img src="/KsauniLogo.png" alt="company logo" className="object-cover w-25 h-10" />
+                  <img src="" alt="Factory Sale" className="object-cover w-25 h-10" />
                 </div>
               </div>
             </div>
