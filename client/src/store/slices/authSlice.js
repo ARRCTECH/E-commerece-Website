@@ -69,6 +69,7 @@ api.interceptors.response.use(
       // Clear local storage
       localStorage.removeItem("user");
       localStorage.removeItem("authToken");
+      localStorage.removeItem("tokenExpiry");
       // Redirect to login if not already there
       if (window.location.pathname !== "/login" && window.location.pathname !== "/register") {
         window.location.href = "/login";
@@ -1008,7 +1009,7 @@ const authSlice = createSlice({
   },
 });
 // Export actions
-export const { clearError, clearSuccess, setUser, setToken, setFirebaseUser, logout, clearPhoneAuthState } =
+export const { clearError, clearSuccess, setUser, setToken, setFirebaseUser, logout, clearPhoneAuthState , extraReducers } =
   authSlice.actions;
 // Export reducer
 export default authSlice.reducer;

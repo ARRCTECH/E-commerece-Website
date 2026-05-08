@@ -170,6 +170,7 @@ router.put("/profile", validateProfileUpdate, handleValidationErrors, updateProf
 router.post("/upload-avatar", upload.single("avatar"), uploadAvatar)
 router.post("/logout", logout)
 router.delete("/account", deleteAccount)
+router.get("/profile/:id", getProfile)
 
 // Admin only routes
 router.get("/admin/users", authorize("admin"), async (req, res) => {

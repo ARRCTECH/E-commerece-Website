@@ -12,6 +12,7 @@ import {
   QuestionMarkCircleIcon,
   SparklesIcon, // Replaced ShirtIcon with SparklesIcon as ShirtIcon doesn't exist in Heroicons
 } from "@heroicons/react/24/outline";
+import { UserPlus } from "lucide-react";
 const AdminSidebar = ({ sidebarOpen, setSidebarOpen, userRole }) => {
   const location = useLocation();
   const navigation = [
@@ -22,7 +23,8 @@ const AdminSidebar = ({ sidebarOpen, setSidebarOpen, userRole }) => {
     { name: "Banners", href: "/admin/banners", icon: PhotoIcon },
     { name: "Innovations", href: "/admin/innovations", icon: LightBulbIcon },
     { name: "Kasuni T-Shirt Style", href: "/admin/ksaunitshirtstyle", icon: SparklesIcon },
-    { name: "Feedback", href: "/admin/cancellation", icon: QuestionMarkCircleIcon } 
+    { name: "Feedback", href: "/admin/cancellation", icon: QuestionMarkCircleIcon } ,
+    { name: "Referral", href: "/admin/referral", icon: UserPlus },
   ];
   // Admin-only navigation items
   const adminOnlyNavigation = [

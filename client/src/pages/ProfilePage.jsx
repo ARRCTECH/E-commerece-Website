@@ -20,7 +20,7 @@ import {
   Edit2,
   Trash2,
 } from "lucide-react";
-import { updateProfile, changePassword, uploadAvatar } from "../store/slices/authSlice";
+import { updateProfile, changePassword, uploadAvatar,getProfile  }from "../store/slices/authSlice";
 import { fetchUserOrders } from "../store/slices/orderSlice";
 import { fetchWishlist } from "../store/slices/wishlistSlice";
 import toast from "react-hot-toast";
@@ -32,9 +32,10 @@ const ProfilePage = () => {
   const { user, isLoading } = useSelector((state) => state.auth);
   const { orders = [] } = useSelector((state) => state.orders);
   const { items: wishlistItems = [] } = useSelector((state) => state.wishlist);
-
   // Tab state
   const [activeTab, setActiveTab] = useState("profile");
+   
+
 
   // Profile edit mode
   const [isEditing, setIsEditing] = useState(false);
@@ -45,8 +46,10 @@ const ProfilePage = () => {
     dateOfBirth: "",
     gender: "",
     addresses: [],
+    myreferralCode: "",
+    referredBy:"",
+    expireReferralDate:""
   });
-
   // Password change
   const [showPasswordForm, setShowPasswordForm] = useState(false);
   const [passwordData, setPasswordData] = useState({
@@ -54,7 +57,6 @@ const ProfilePage = () => {
     newPassword: "",
     confirmPassword: "",
   });
-
   // Address management
   const [showAddressForm, setShowAddressForm] = useState(false);
   const [editingAddress, setEditingAddress] = useState(null);
@@ -69,7 +71,6 @@ const ProfilePage = () => {
     pincode: "",
     isDefault: false,
   });
-
   // Prefill profile data when user loads
   useEffect(() => {
     if (user) {
@@ -80,16 +81,19 @@ const ProfilePage = () => {
         dateOfBirth: user.dateOfBirth ? format(new Date(user.dateOfBirth), "yyyy-MM-dd") : "",
         gender: user.gender || "",
         addresses: user.addresses || [],
+        myreferralCode: user.myreferralCode || "",
+        referredBy: user.referredBy || null,
+        expireReferralDate: user.expireReferralDate || null,
       });
     }
   }, [user]);
-
+  console.log(profileData)
   // Fetch orders & wishlist on mount
   useEffect(() => {
     dispatch(fetchUserOrders({ limit: 5 }));
     dispatch(fetchWishlist());
+    dispatch(getProfile());
   }, [dispatch]);
-
   // ----- Profile Update -----
   const handleProfileUpdate = async (e) => {
     e.preventDefault();
@@ -101,7 +105,6 @@ const ProfilePage = () => {
       toast.error(error.message || "Update failed");
     }
   };
-
   // ----- Avatar Upload -----
   const handleAvatarUpload = async (e) => {
     const file = e.target.files[0];
@@ -119,7 +122,6 @@ const ProfilePage = () => {
       toast.error(error.message);
     }
   };
-
   // ----- Password Change -----
   const handlePasswordChange = async (e) => {
     e.preventDefault();
@@ -145,7 +147,6 @@ const ProfilePage = () => {
       toast.error(error.message);
     }
   };
-
   // ----- Address Helpers -----
   const resetAddressForm = () => {
     setNewAddress({
@@ -162,7 +163,6 @@ const ProfilePage = () => {
     setEditingAddress(null);
     setShowAddressForm(false);
   };
-
   const handleAddOrUpdateAddress = async (e) => {
     e.preventDefault();
     try {
@@ -191,7 +191,6 @@ const ProfilePage = () => {
       toast.error(error.message);
     }
   };
-
   const handleDeleteAddress = async (addressId) => {
     if (!window.confirm("Are you sure you want to delete this address?")) return;
     try {
@@ -203,14 +202,13 @@ const ProfilePage = () => {
       toast.error(error.message);
     }
   };
-
   const startEditAddress = (address) => {
     setEditingAddress(address);
     setNewAddress({ ...address });
     setShowAddressForm(true);
   };
-
-  const referralLink = `https://yourdomain.com/register?ref=${user?.referralCode || ""}`;
+  const url=import.meta.env.FRONTEND_URL || "http://localhost:3000";  
+  const referralLink = `${url}/register?ref=${user?.myreferralCode}`;
   const shareText = "Join now using my referral link and get exciting rewards! 🚀";
   const shareUrls = {
     whatsapp: `https://wa.me/?text=${encodeURIComponent(`${shareText} ${referralLink}`)}`,
@@ -222,7 +220,6 @@ const ProfilePage = () => {
     linkedin: `https://www.linkedin.com/sharing/share-offsite/?url=${encodeURIComponent(referralLink)}`,
     telegram: `https://t.me/share/url?url=${encodeURIComponent(referralLink)}&text=${encodeURIComponent(shareText)}`,
   };
-
   const copyToClipboard = () => {
     navigator.clipboard.writeText(referralLink);
     toast.success("Link copied to clipboard!");
@@ -750,7 +747,7 @@ const ProfilePage = () => {
 
                           <p className="mt-3 text-sm text-gray-500">
                             Referral Code:
-                            <span className="ml-2 font-semibold text-black">{user?.referralCode || "N/A"}</span>
+                            <span className="ml-2 font-semibold text-black">{user?.myreferralCode || "N/A"}</span>
                           </p>
 
                           {/* Social Share Buttons - using MessageCircle for WhatsApp */}
