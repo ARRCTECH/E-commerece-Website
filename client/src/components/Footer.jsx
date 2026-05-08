@@ -23,13 +23,13 @@ const Footer = () => {
         {/* ================= Company Info ================= */}
         <div className="text-center lg:text-left space-y-3">
           <img
-            src="/logo.webp"
+            src="/logo1.png"
             alt="Ksauni Bliss Logo"
             className="w-28 h-auto mx-auto lg:mx-0"
           />
 
           <p className="text-xs sm:text-sm leading-relaxed max-w-md mx-auto lg:mx-0 text-gray-300">
-            Ksauni Bliss is your one-stop destination for trendy and affordable
+            Factory Sale  is your one-stop destination for trendy and affordable
             fashion. Discover the latest styles and express your unique
             personality with us.
           </p>
@@ -37,7 +37,7 @@ const Footer = () => {
           {/* Social Icons */}
           <div className="flex justify-center lg:justify-start space-x-4 mt-4">
             <a
-              href="https://facebook.com"
+              href="https://www.facebook.com/people/Factory-sale/61568941858515/?mibextid=ZbWKwL"
               target="_blank"
               rel="noreferrer"
               className="hover:text-red-400 transition"
@@ -46,7 +46,7 @@ const Footer = () => {
             </a>
 
             <a
-              href="https://instagram.com"
+              href="https://www.instagram.com/factorysaleusa?utm_source=qr&igsh=Nm9uNnFjdjhqNnBm"
               target="_blank"
               rel="noreferrer"
               className="hover:text-red-400 transition"
@@ -55,7 +55,7 @@ const Footer = () => {
             </a>
 
             <a
-              href="https://youtube.com/@ksaunibliss?si=wDSr5h_upC5gfIWC"
+              href="https://www.youtube.com/@factorysale-r5n"
               target="_blank"
               rel="noreferrer"
               className="hover:text-red-400 transition"
@@ -151,18 +151,18 @@ const Footer = () => {
 
             <ul className="space-y-3 text-xs sm:text-sm text-gray-300">
               <li className="flex justify-center sm:justify-start items-center space-x-2">
-                <MapPin className="w-4 h-4 text-red-400" />
-                <span>Delhi, India</span>
+                <MapPin className="w-8 h-8 text-red-400" />
+                <span>SHOP NO 1 OM SAI GANESH KRIPA CHAWL NEAR CHIRAG HOTEL,NEAR BASANT BAHAR ROAD ULHASNAGR 421095</span>
               </li>
 
               <li className="flex justify-center sm:justify-start items-center space-x-2">
                 <Phone className="w-4 h-4 text-red-400" />
-                <span>9211891719</span>
+                <span>8369517095</span>
               </li>
 
               <li className="flex justify-center sm:justify-start items-center space-x-2">
                 <Mail className="w-4 h-4 text-red-400" />
-                <span>support@ksaunibliss.com</span>
+                <span>factorysaleusadata@gmail.com</span>
               </li>
             </ul>
           </div>
@@ -170,7 +170,7 @@ const Footer = () => {
 
         {/* ================= Bottom Bar ================= */}
         <div className="border-t border-gray-700 pt-5 text-center text-xs sm:text-sm text-gray-400">
-          © {new Date().getFullYear()} Ksauni Bliss. All rights reserved.
+          © {new Date().getFullYear()} Factory Sale . All rights reserved.
         </div>
       </div>
     </footer>
