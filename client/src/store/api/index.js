@@ -11,3 +11,4 @@ export { default as couponAPI } from './couponAPI';
 export { default as bannerAPI } from './bannerAPI';
 export { default as categoryAPI } from './categoryAPI';
 export { default as digitalMarketerAPI } from './digitalMarketerAPI';
+export { default as bulkProductAPI } from './bulkProductAPI';

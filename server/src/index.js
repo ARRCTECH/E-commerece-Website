@@ -157,7 +157,8 @@ app.use("/api/popup-setting", require("../routes/popupSetting"))
 app.use("/api/ksauni-tshirts",require("../routes/ksaunitshirtstyle"))
 app.use( "/api/reason" ,require("../routes/reasonRoutes"));
 app.use('/api/catalog', require("../routes/productCatalog"));
-
+app.use("/api/partial-cod", require("../routes/partialCodRoutes"));
+// app.use("/api/orders", require("../routes/order"));
 // app.use("/api/topten", require("../routes/topten"))
 app.use((err, req, res, next) => {
   console.error("❌ Server Error:", err)
