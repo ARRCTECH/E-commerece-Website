@@ -184,7 +184,7 @@ const ProductListingPage = () => {
     <div className="min-h-screen bg-gray-50">
       <div className="container max-w-full px-2 py-8 mx-auto sm:max-w-screen-sm md:max-w-screen-md lg:max-w-screen-lg xl:max-w-screen-xl">
         <FreeShippingNotice />
-        <CategoryBanner />
+        {/* <CategoryBanner /> */}
         <div className="flex flex-col mb-8 md:flex-row md:items-center md:justify-between">
           <div className="flex items-center mt-4 space-x-4 md:mt-0">
             <div className="flex bg-white border rounded-lg">

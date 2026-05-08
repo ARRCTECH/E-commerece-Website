@@ -1,11 +1,11 @@
 const User = require("../models/User")
 const Product = require("../models/Product")
 
-// Get user's cart
+// Get user's cart - Updated for Bulk Products
 exports.getCart = async (req, res) => {
   try {
     const userId = req.user?.userId
-    // If no userId, return empty cart for guest
+    
     if (!userId) {
       return res.status(200).json({
         success: true,
@@ -23,7 +23,7 @@ exports.getCart = async (req, res) => {
 
     const user = await User.findById(userId).populate({
       path: "cart.product",
-      select: "name price slug originalPrice images stock sizes colors isActive category",
+      select: "name price slug originalPrice images stock sizes colors isActive category isBulkProduct bulkConfig",
       populate: {
         path: "category",
         select: "name"
@@ -37,17 +37,30 @@ exports.getCart = async (req, res) => {
       })
     }
 
-    // Filter out inactive products and calculate totals
     const activeCartItems = user.cart.filter((item) => item.product && item.product.isActive)
 
-    // Calculate cart summary
     let subtotal = 0
     let totalItems = 0
 
     const cartItems = activeCartItems.map((item) => {
-      const itemTotal = item.product.price * item.quantity
+      let itemTotal = 0
+      let displayPrice = 0
+      let quantity = 0
+      
+      if (item.isBulkProduct) {
+        const pricePerSet = item.pricePerSet || item.product.bulkConfig?.pricePerSet || item.product.price
+        const totalSets = item.totalSets || item.quantity || 1
+        itemTotal = pricePerSet * totalSets
+        displayPrice = pricePerSet
+        quantity = totalSets
+      } else {
+        itemTotal = item.product.price * item.quantity
+        displayPrice = item.product.price
+        quantity = item.quantity
+      }
+      
       subtotal += itemTotal
-      totalItems += item.quantity
+      totalItems += quantity
 
       return {
         _id: item._id,
@@ -55,32 +68,41 @@ exports.getCart = async (req, res) => {
           _id: item.product._id,
           name: item.product.name,
           price: item.product.price,
+          displayPrice: displayPrice,
           originalPrice: item.product.originalPrice,
           images: item.product.images,
           slug: item.product.slug,
           stock: item.product.stock,
           sizes: item.product.sizes,
           colors: item.product.colors,
+          isBulkProduct: item.isBulkProduct || item.product.isBulkProduct,
+          bulkConfig: item.product.bulkConfig,
           category: {
             _id: item.product.category?._id,
             name: item.product.category?.name,
           },
         },
-        quantity: item.quantity,
+        quantity: quantity,
         size: item.size,
         color: item.color,
+        isBulkProduct: item.isBulkProduct || false,
+        selectedColors: item.selectedColors || [],
+        totalSets: item.totalSets || quantity,
+        totalPieces: item.totalPieces || 0,
+        piecesPerSet: item.piecesPerSet || 0,
+        pricePerSet: item.pricePerSet || item.product.bulkConfig?.pricePerSet,
         addedAt: item.addedAt,
         itemTotal,
       }
     })
 
-
-
-    // Update user's cart if we removed inactive items
     if (activeCartItems.length !== user.cart.length) {
       user.cart = activeCartItems
       await user.save()
     }
+
+    const shipping = subtotal > 999 ? 0 : 99
+    const total = subtotal + shipping
 
     res.status(200).json({
       success: true,
@@ -89,8 +111,8 @@ exports.getCart = async (req, res) => {
         summary: {
           totalItems,
           subtotal,
-          shipping: subtotal > 999 ? 0 : 99, // Free shipping above ₹999
-          total: subtotal + (subtotal > 999 ? 0 : 99),
+          shipping,
+          total,
         },
       },
     })
@@ -103,137 +125,263 @@ exports.getCart = async (req, res) => {
   }
 }
 
-// Add item to cart
 exports.addToCart = async (req, res) => {
   try {
+    console.log("========== ADD TO CART STARTED ==========");
+    console.log("Request body:", JSON.stringify(req.body, null, 2));
+    
     const userId = req.user ? req.user.userId : null
-    const { productId, quantity = 1, size, color } = req.body
+    console.log("User ID:", userId);
+    
+    const { 
+      productId, 
+      quantity = 1, 
+      size, 
+      color,
+      isBulkProduct,
+      selectedColors = [],
+      totalPieces = 0,
+      totalSets = 1,
+      piecesPerSet = 0,
+      pricePerSet = 0
+    } = req.body
 
-    // Validate input
+    console.log("Parsed values:",
+      "\n- productId:", productId,
+      "\n- quantity:", quantity,
+      "\n- size:", size,
+      "\n- color:", color,
+      "\n- isBulkProduct:", isBulkProduct,
+      "\n- selectedColors:", selectedColors,
+      "\n- totalPieces:", totalPieces,
+      "\n- totalSets:", totalSets,
+      "\n- piecesPerSet:", piecesPerSet,
+      "\n- pricePerSet:", pricePerSet
+    );
+
     if (!productId) {
+      console.log("❌ ERROR: Product ID missing");
       return res.status(400).json({
         success: false,
         message: "Product ID is required",
       })
     }
 
-    if (quantity < 1 || quantity > 10) {
-      return res.status(400).json({
-        success: false,
-        message: "Quantity must be between 1 and 10",
-      })
-    }
-
-    // Check if product exists and is active
+    console.log("🔍 Fetching product from database...");
     const product = await Product.findById(productId)
     if (!product || !product.isActive) {
+      console.log("❌ ERROR: Product not found or inactive", productId);
       return res.status(404).json({
         success: false,
         message: "Product not found or unavailable",
       })
     }
+    console.log("✅ Product found:", product.name);
+    console.log("Product isBulkProduct:", product.isBulkProduct);
+    console.log("Product bulkConfig:", product.bulkConfig);
 
-    // Check stock availability
-    if (product.stock < quantity) {
-      return res.status(400).json({
-        success: false,
-        message: `Only ${product.stock} items available in stock`,
-      })
-    }
+    const isBulk = isBulkProduct === true || product.isBulkProduct === true
+    console.log("📦 Is Bulk Product:", isBulk);
 
-    // Validate size if provided
-    if (size && product.sizes.length > 0) {
-      const availableSizes = product.sizes.map((s) => s.size)
-      if (!availableSizes.includes(size)) {
+    // Bulk Product Validation
+    if (isBulk) {
+      console.log("🔍 Validating bulk product...");
+      const minColors = product.bulkConfig?.minColorsToSelect || 1
+      console.log("Min colors required:", minColors);
+      console.log("Selected colors count:", selectedColors.length);
+      
+      if (selectedColors.length < minColors) {
+        console.log("❌ ERROR: Not enough colors selected");
         return res.status(400).json({
           success: false,
-          message: "Selected size is not available",
+          message: `Please select at least ${minColors} color(s)`,
         })
       }
+      
+      const maxColors = product.bulkConfig?.maxColorsToSelect
+      if (maxColors && selectedColors.length > maxColors) {
+        console.log("❌ ERROR: Too many colors selected");
+        return res.status(400).json({
+          success: false,
+          message: `Maximum ${maxColors} colors can be selected`,
+        })
+      }
+      console.log("✅ Bulk validation passed");
     }
 
-    // CASE 1: Logged-in user → save in DB
+    // Regular Product Validation
+    if (!isBulk) {
+      console.log("🔍 Validating regular product...");
+      if (quantity < 1 || quantity > 10) {
+        console.log("❌ ERROR: Invalid quantity", quantity);
+        return res.status(400).json({
+          success: false,
+          message: "Quantity must be between 1 and 10",
+        })
+      }
+      
+      if (product.stock < quantity) {
+        console.log("❌ ERROR: Insufficient stock. Stock:", product.stock, "Requested:", quantity);
+        return res.status(400).json({
+          success: false,
+          message: `Only ${product.stock} items available in stock`,
+        })
+      }
+      
+      if (size && product.sizes?.length > 0) {
+        const availableSizes = product.sizes.map((s) => s.size)
+        if (!availableSizes.includes(size)) {
+          console.log("❌ ERROR: Size not available. Size:", size, "Available:", availableSizes);
+          return res.status(400).json({
+            success: false,
+            message: "Selected size is not available",
+          })
+        }
+      }
+      console.log("✅ Regular validation passed");
+    }
+
+    // LOGGED-IN USER
     if (userId) {
+      console.log("👤 Logged-in user flow");
       const user = await User.findById(userId)
       if (!user) {
+        console.log("❌ ERROR: User not found");
         return res.status(404).json({
           success: false,
           message: "User not found",
         })
       }
+      console.log("✅ User found:", user.email);
+      console.log("Current cart items count:", user.cart.length);
 
-      // Check if same product with same size/color already exists in cart
-      const existingItemIndex = user.cart.findIndex(
-        (item) =>
-          item.product.toString() === productId &&
-          item.size === size &&
-          item.color === color,
-      )
+      let existingItemIndex = -1
+      
+      if (isBulk) {
+        console.log("🔍 Searching for existing bulk item with same colors...");
+        existingItemIndex = user.cart.findIndex(
+          (item) =>
+            item.product.toString() === productId &&
+            item.isBulkProduct === true &&
+            JSON.stringify(item.selectedColors?.sort()) === JSON.stringify([...selectedColors].sort())
+        )
+        console.log("Existing item index:", existingItemIndex);
+      } else {
+        console.log("🔍 Searching for existing regular item...");
+        existingItemIndex = user.cart.findIndex(
+          (item) =>
+            item.product.toString() === productId &&
+            item.size === size &&
+            item.color === color &&
+            item.isBulkProduct !== true
+        )
+        console.log("Existing item index:", existingItemIndex);
+      }
 
       if (existingItemIndex > -1) {
-        // Update quantity
-        const newQuantity = user.cart[existingItemIndex].quantity + quantity
-
-        if (newQuantity > 10) {
-          return res.status(400).json({
-            success: false,
-            message: "Maximum 10 items allowed per product",
-          })
+        console.log("📝 Updating existing cart item");
+        if (isBulk) {
+          const newTotalSets = (user.cart[existingItemIndex].totalSets || 1) + (totalSets || 1)
+          console.log("Current totalSets:", user.cart[existingItemIndex].totalSets);
+          console.log("New totalSets:", newTotalSets);
+          
+          if (newTotalSets > 10) {
+            console.log("❌ ERROR: Maximum 10 sets exceeded");
+            return res.status(400).json({
+              success: false,
+              message: "Maximum 10 sets allowed in cart",
+            })
+          }
+          
+          user.cart[existingItemIndex].totalSets = newTotalSets
+          user.cart[existingItemIndex].totalPieces = (piecesPerSet || 0) * newTotalSets
+          user.cart[existingItemIndex].quantity = newTotalSets
+          console.log("✅ Bulk cart item updated");
+        } else {
+          const newQuantity = user.cart[existingItemIndex].quantity + quantity
+          console.log("Current quantity:", user.cart[existingItemIndex].quantity);
+          console.log("New quantity:", newQuantity);
+          
+          if (newQuantity > 10) {
+            console.log("❌ ERROR: Maximum 10 items exceeded");
+            return res.status(400).json({
+              success: false,
+              message: "Maximum 10 items allowed per product",
+            })
+          }
+          if (newQuantity > product.stock) {
+            console.log("❌ ERROR: Insufficient stock");
+            return res.status(400).json({
+              success: false,
+              message: `Only ${product.stock} items available in stock`,
+            })
+          }
+          user.cart[existingItemIndex].quantity = newQuantity
+          console.log("✅ Regular cart item updated");
         }
-
-        if (newQuantity > product.stock) {
-          return res.status(400).json({
-            success: false,
-            message: `Only ${product.stock} items available in stock`,
-          })
-        }
-
-        user.cart[existingItemIndex].quantity = newQuantity
       } else {
-        // Add new item
-        user.cart.push({
-          product: productId,
-          quantity,
-          size,
-          color,
-        })
+        console.log("📝 Adding new item to cart");
+        if (isBulk) {
+          const newCartItem = {
+            product: productId,
+            isBulkProduct: true,
+            selectedColors: selectedColors,
+            totalPieces: totalPieces,
+            totalSets: totalSets || 1,
+            piecesPerSet: piecesPerSet,
+            pricePerSet: pricePerSet || product.bulkConfig?.pricePerSet,
+            quantity: totalSets || 1,
+          }
+          user.cart.push(newCartItem)
+          console.log("✅ New bulk item added:", JSON.stringify(newCartItem, null, 2));
+        } else {
+          const newCartItem = {
+            product: productId,
+            quantity,
+            size,
+            color,
+            isBulkProduct: false,
+          }
+          user.cart.push(newCartItem)
+          console.log("✅ New regular item added:", JSON.stringify(newCartItem, null, 2));
+        }
       }
 
       await user.save()
+      console.log("💾 Cart saved to database");
+      
+      const cartCount = user.cart.reduce((total, item) => total + item.quantity, 0)
+      console.log("📊 New cart count:", cartCount);
 
-      // Populate and return updated cart
-      await user.populate({
-        path: "cart.product",
-        select: "name price originalPrice images stock sizes colors category",
-      })
-
-      const addedItem = user.cart.find(
-        (item) =>
-          item.product._id.toString() === productId &&
-          item.size === size &&
-          item.color === color,
-      )
-
+      console.log("========== ADD TO CART SUCCESS ==========");
       return res.status(200).json({
         success: true,
         message: "Item added to cart successfully",
-        cartItem: {
-          _id: addedItem._id,
-          product: addedItem.product,
-          quantity: addedItem.quantity,
-          size: addedItem.size,
-          color: addedItem.color,
-          addedAt: addedItem.addedAt,
-        },
-        cartCount: user.cart.reduce((total, item) => total + item.quantity, 0),
+        cartCount,
       })
     }
 
-    // CASE 2: Guest user → don’t store in DB, just return item
+    // GUEST USER
+    console.log("👤 Guest user flow");
+    console.log("========== ADD TO CART SUCCESS (GUEST) ==========");
     return res.status(200).json({
       success: true,
       message: "Item added to guest cart successfully",
-      cartItem: {
+      cartItem: isBulk ? {
+        product: {
+          _id: product._id,
+          name: product.name,
+          price: product.bulkConfig?.pricePerSet,
+          images: product.images,
+        },
+        isBulkProduct: true,
+        selectedColors: selectedColors,
+        totalSets: totalSets || 1,
+        totalPieces: totalPieces,
+        piecesPerSet: piecesPerSet,
+        pricePerSet: product.bulkConfig?.pricePerSet,
+        quantity: totalSets || 1,
+      } : {
         product: {
           _id: product._id,
           name: product.name,
@@ -247,96 +395,57 @@ exports.addToCart = async (req, res) => {
         quantity,
         size,
         color,
-        addedAt: new Date(),
+        isBulkProduct: false,
       },
-      cartCount: quantity, // frontend should manage total for guest
+      cartCount: isBulk ? (totalSets || 1) : quantity,
     })
+    
   } catch (error) {
-    console.error("Add to cart error:", error)
+    console.error("❌ ADD TO CART ERROR ❌");
+    console.error("Error message:", error.message);
+    console.error("Error stack:", error.stack);
+    console.error("========== ADD TO CART FAILED ==========");
     res.status(500).json({
       success: false,
       message: "Failed to add item to cart",
+      error: process.env.NODE_ENV === "development" ? error.message : undefined
     })
   }
 }
 
-
-// Update cart item
+// Update cart item - Updated for Bulk Products
 exports.updateCartItem = async (req, res) => {
   try {
     const userId = req.user?.userId
     const { itemId } = req.params
-    const { quantity, size, color } = req.body
+    const { quantity, size, color, totalSets } = req.body
 
-    // For logged-in users
-    if (userId) {
-      if (quantity && (quantity < 1 || quantity > 10)) {
-        return res.status(400).json({
-          success: false,
-          message: "Quantity must be between 1 and 10",
-        })
-      }
-
-      const user = await User.findById(userId).populate("cart.product")
-      if (!user) {
-        return res.status(404).json({
-          success: false,
-          message: "User not found",
-        })
-      }
-
-      const cartItemIndex = user.cart.findIndex(
-        (item) => item._id.toString() === itemId
-      )
-      if (cartItemIndex === -1) {
-        return res.status(404).json({
-          success: false,
-          message: "Cart item not found",
-        })
-      }
-
-      const cartItem = user.cart[cartItemIndex]
-      const product = cartItem.product
-
-      // Stock check
-      if (quantity && quantity > product.stock) {
-        return res.status(400).json({
-          success: false,
-          message: `Only ${product.stock} items available in stock`,
-        })
-      }
-
-      // Size validation
-      if (size && product.sizes.length > 0) {
-        const availableSizes = product.sizes.map((s) => s.size)
-        if (!availableSizes.includes(size)) {
-          return res.status(400).json({
-            success: false,
-            message: "Selected size is not available",
-          })
-        }
-      }
-
-      // Update values
-      if (quantity !== undefined) cartItem.quantity = quantity
-      if (size !== undefined) cartItem.size = size
-      if (color !== undefined) cartItem.color = color
-
-      await user.save()
-
-      return res.status(200).json({
-        success: true,
-        message: "Cart item updated successfully",
-        cartItem,
+    if (!userId) {
+      return res.status(401).json({
+        success: false,
+        message: "Please login to update cart",
       })
     }
 
-    // --------------------
-    // Guest user handling
-    // --------------------
-    let cart = req.session.cart || []
+    if (quantity && (quantity < 1 || quantity > 10)) {
+      return res.status(400).json({
+        success: false,
+        message: "Quantity must be between 1 and 10",
+      })
+    }
 
-    const cartItemIndex = cart.findIndex((item) => item._id === itemId)
+    const user = await User.findById(userId).populate("cart.product")
+    if (!user) {
+      return res.status(404).json({
+        success: false,
+        message: "User not found",
+      })
+    }
+
+    const cartItemIndex = user.cart.findIndex(
+      (item) => item._id.toString() === itemId
+    )
+    
     if (cartItemIndex === -1) {
       return res.status(404).json({
         success: false,
@@ -344,20 +453,55 @@ exports.updateCartItem = async (req, res) => {
       })
     }
 
-    const cartItem = cart[cartItemIndex]
+    const cartItem = user.cart[cartItemIndex]
+    const product = cartItem.product
 
-    if (quantity !== undefined) cartItem.quantity = quantity
-    if (size !== undefined) cartItem.size = size
-    if (color !== undefined) cartItem.color = color
+    if (cartItem.isBulkProduct) {
+      const newTotalSets = totalSets !== undefined ? totalSets : (cartItem.totalSets || 1)
+      
+      if (newTotalSets < 1 || newTotalSets > 10) {
+        return res.status(400).json({
+          success: false,
+          message: "Sets must be between 1 and 10",
+        })
+      }
+      
+      cartItem.totalSets = newTotalSets
+      cartItem.totalPieces = (cartItem.piecesPerSet || 0) * newTotalSets
+      cartItem.quantity = newTotalSets
+    } else {
+      if (quantity !== undefined) {
+        if (quantity > product.stock) {
+          return res.status(400).json({
+            success: false,
+            message: `Only ${product.stock} items available in stock`,
+          })
+        }
+        cartItem.quantity = quantity
+      }
+      
+      if (size !== undefined) {
+        const availableSizes = product.sizes.map((s) => s.size)
+        if (!availableSizes.includes(size)) {
+          return res.status(400).json({
+            success: false,
+            message: "Selected size is not available",
+          })
+        }
+        cartItem.size = size
+      }
+      
+      if (color !== undefined) cartItem.color = color
+    }
 
-    cart[cartItemIndex] = cartItem
-    req.session.cart = cart
+    await user.save()
 
     return res.status(200).json({
       success: true,
-      message: "Cart item updated successfully (guest)",
+      message: "Cart item updated successfully",
       cartItem,
     })
+    
   } catch (error) {
     console.error("Update cart item error:", error)
     res.status(500).json({
@@ -402,23 +546,9 @@ exports.removeFromCart = async (req, res) => {
       })
     }
 
-    // Guest user
-    // let cart = req.session.cart || []
-    // const cartItemIndex = cart.findIndex((item) => item._id === itemId)
-    // if (cartItemIndex === -1) {
-    //   return res.status(404).json({
-    //     success: false,
-    //     message: "Cart item not found",
-    //   })
-    // }
-
-    // cart.splice(cartItemIndex, 1)
-    // req.session.cart = cart
-
     return res.status(200).json({
       success: true,
       message: "Item removed from cart successfully (guest)",
-      // cartCount: cart.reduce((total, item) => total + item.quantity, 0),
     })
   } catch (error) {
     console.error("Remove from cart error:", error)
@@ -451,9 +581,6 @@ exports.clearCart = async (req, res) => {
         message: "Cart cleared successfully",
       })
     }
-
-    // Guest user
-    // req.session.cart = []
 
     return res.status(200).json({
       success: true,

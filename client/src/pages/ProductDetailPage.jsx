@@ -23,14 +23,10 @@ import {
 } from "../store/slices/wishlistSlice"
 import ProductReviews from "../components/ProductReviews"
 import RelatedProducts from "../components/RelatedProducts"
-// import Preloader from "../components/Preloader"
 import toast from "react-hot-toast"
 
 const ProductDetailPage = () => {
-  // const { id } = useParams()
-  const { id, slug } = useParams()
-
-  const [showFullDescription, setShowFullDescription] = useState(false)
+  const { slug } = useParams()
 
   const dispatch = useDispatch()
   const navigate = useNavigate()
@@ -48,184 +44,211 @@ const ProductDetailPage = () => {
   const [thumbsSwiper, setThumbsSwiper] = useState(null)
   const [showBuyNowSizeModal, setShowBuyNowSizeModal] = useState(false)
   const [showAddToCartSizeModal, setShowAddToCartSizeModal] = useState(false)
-  const isInWishlist = wishlistItems.some((item) => item._id === currentProduct?._id)
+  const [showFullDescription, setShowFullDescription] = useState(false)
+  
+  // Bulk product states
+  const [showBulkModal, setShowBulkModal] = useState(false)
+  const [selectedColors, setSelectedColors] = useState([])
+  const [bulkQuantity, setBulkQuantity] = useState(1)
 
-  // Format description to display bullet points on new lines
+  const isInWishlist = wishlistItems.some((item) => item._id === currentProduct?._id)
+  const isBulkProduct = currentProduct?.isBulkProduct === true
+
+  // Bulk calculations
+  const piecesPerSet = isBulkProduct 
+    ? (currentProduct?.sizes?.length || 0) * (currentProduct?.bulkConfig?.piecesPerSize || 1)
+    : 0
+  const totalColors = isBulkProduct ? currentProduct?.colors?.length || 0 : 0
+  const minColors = isBulkProduct ? currentProduct?.bulkConfig?.minColorsToSelect || 1 : 1
+  const maxColors = isBulkProduct ? currentProduct?.bulkConfig?.maxColorsToSelect || totalColors : totalColors
+  
+  const totalSets = selectedColors.length * bulkQuantity
+  const totalPieces = piecesPerSet * totalSets
+  const totalPrice = (currentProduct?.bulkConfig?.pricePerSet || currentProduct?.price) * totalSets
+
   const formatDescription = (description) => {
     if (!description) return "";
-
-    // Replace bullet points with line breaks
     return description
-      .replace(/(•\s*)/g, '\n• ') // Add new line before each bullet
+      .replace(/(•\s*)/g, '\n• ')
       .split('\n')
       .map(line => line.trim())
       .filter(line => line.length > 0)
       .join('\n');
   };
 
-  // useEffect(() => {
-  //   if (id) dispatch(fetchProductById(id))
-  // }, [dispatch, id])
-
   useEffect(() => {
-    console.log("ProductDetailPage useEffect triggered with id:", id, "and slug:", slug)
     if (slug) {
       dispatch(fetchProductBySlug(slug))
-      // console.log("current product",currentProduct);
-
-    } else if (id) {
-      dispatch(fetchProductById(id))
-      // console.log("current product by id",currentProduct);
     }
-  }, [dispatch, id, slug])
+  }, [dispatch, slug])
 
   useEffect(() => {
     setSelectedSize("")
   }, [currentProduct?._id])
 
   useEffect(() => {
-    if (currentProduct) {
-      // Only set default color, not size
+    if (currentProduct && !isBulkProduct) {
       if (currentProduct.colors?.length > 0) setSelectedColor(currentProduct.colors[0].name)
     }
-  }, [currentProduct])
+  }, [currentProduct, isBulkProduct])
+
   const getDiscountPercentage = () => {
+    if (isBulkProduct) {
+      const original = currentProduct?.bulkConfig?.originalPricePerSet
+      const current = currentProduct?.bulkConfig?.pricePerSet
+      if (original && original > current) {
+        return Math.round(((original - current) / original) * 100)
+      }
+      return 0
+    }
     if (currentProduct?.originalPrice && currentProduct.originalPrice > currentProduct.price) {
       return Math.round(((currentProduct.originalPrice - currentProduct.price) / currentProduct.originalPrice) * 100)
     }
     return 0
   }
+
   const getSelectedSizeStock = () => {
     if (!selectedSize || !currentProduct?.sizes) return currentProduct?.stock || 0
     const sizeData = currentProduct.sizes.find((s) => s.size === selectedSize)
     return sizeData?.stock || 0
   }
-  const tagText =
-    (Array.isArray(currentProduct?.tags) && currentProduct.tags[0]) ||
-    (currentProduct?.isTrending && "TRENDING") ||
-    (currentProduct?.isNewArrival && "NEW ARRIVAL") ||
-    (currentProduct?.isFeatured && "FEATURED") ||
-    "DESIGN OF THE WEEK"
-  const fitText =
-    typeof currentProduct?.fits === "string"
-      ? `${currentProduct.fits} FIT`
-      : currentProduct?.fits
-        ? `${String(currentProduct.fits)} FIT`
-        : "REGULAR FIT"
-  const materialText =
-    typeof currentProduct?.material === "string"
-      ? currentProduct.material
-      : currentProduct?.material
-        ? String(currentProduct.material)
-        : "COTTON"
+
+  const handleColorToggle = (colorName) => {
+    if (selectedColors.includes(colorName)) {
+      setSelectedColors(selectedColors.filter(c => c !== colorName))
+    } else {
+      if (selectedColors.length >= maxColors) {
+        toast.error(`Maximum ${maxColors} colors can be selected`)
+        return
+      }
+      setSelectedColors([...selectedColors, colorName])
+    }
+  }
 
   const handleAddToCartClick = () => {
-    console.log("=== ADD TO CART CLICKED ===")
-    console.log("handleAddToCartClick called")
-    console.log("currentProduct:", currentProduct)
-    console.log("selectedSize:", selectedSize)
-    console.log("selectedColor:", selectedColor)
-    console.log("quantity:", quantity)
+    if (isBulkProduct) {
+      setShowBulkModal(true)
+      return
+    }
 
-    // Check if size selection is needed
     if (currentProduct.sizes?.length > 0 && !selectedSize) {
-      console.log("No size selected, showing size selection modal for Add to Cart")
       setShowAddToCartSizeModal(true)
       return false
     }
 
     if (currentProduct.colors?.length && !selectedColor) {
-      console.log("No color selected, showing error")
       toast.error("Please select a color")
       return false
     }
 
-    // Check stock availability
     const sizeStock = getSelectedSizeStock()
     if (quantity > sizeStock) {
       return toast.error(`Only ${sizeStock} items available in stock`)
     }
 
-    // If size is already selected, proceed with adding to cart
     handleAddToCart()
   }
 
   const handleAddToCart = async () => {
-    console.log("handleAddToCart called")
-    const payload = { productId: currentProduct._id, quantity, size: selectedSize, color: selectedColor }
-    console.log("Cart payload:", payload)
+    if (isBulkProduct) {
+      if (selectedColors.length < minColors) {
+        toast.error(`Please select at least ${minColors} color(s)`)
+        return
+      }
 
-    // Optimistic update for better UX
+      const bulkPayload = {
+        productId: currentProduct._id,
+        isBulkProduct: true,
+        selectedColors: selectedColors,
+        totalSets: totalSets,
+        totalPieces: totalPieces,
+        piecesPerSet: piecesPerSet,
+        pricePerSet: currentProduct?.bulkConfig?.pricePerSet || currentProduct?.price,
+        quantity: totalSets
+      }
+
+      dispatch(optimisticAddToCart({ 
+        product: currentProduct,
+        isBulkProduct: true,
+        selectedColors: selectedColors,
+        totalSets: totalSets,
+        totalPieces: totalPieces,
+        piecesPerSet: piecesPerSet,
+        pricePerSet: currentProduct?.bulkConfig?.pricePerSet || currentProduct?.price,
+        quantity: totalSets
+      }))
+
+      toast.success(`${totalPieces} pieces added to cart!`)
+
+      const bag = document.querySelector("#bag")
+      if (bag) bag.style.transform = "scale(1.2)"
+
+      try {
+        await dispatch(addToCart(bulkPayload)).unwrap()
+        setTimeout(() => { if (bag) bag.style.transform = "scale(1)" }, 200)
+        setSelectedColors([])
+        setBulkQuantity(1)
+        setShowBulkModal(false)
+      } catch (err) {
+        toast.error(err?.message || "Failed to add to cart")
+        setTimeout(() => { if (bag) bag.style.transform = "scale(1)" }, 200)
+      }
+      return
+    }
+
+    const payload = { productId: currentProduct._id, quantity, size: selectedSize, color: selectedColor }
     dispatch(optimisticAddToCart({ product: currentProduct, quantity, size: selectedSize, color: selectedColor }))
     toast.success(`${currentProduct.name} added to cart!`)
 
     const bag = document.querySelector("#bag")
-    if (bag) {
-      bag.style.transform = "scale(1.2)"
-      setTimeout(() => (bag.style.transform = "scale(1)"), 200)
-    }
+    if (bag) bag.style.transform = "scale(1.2)"
 
     try {
-      console.log("Dispatching addToCart action...")
       const result = await dispatch(addToCart(payload))
-      console.log("Add to cart result:", result)
-
       if (result.type.endsWith("/fulfilled")) {
-        console.log("Added to cart successfully:", result.payload)
-        return true // Return success for Buy Now flow
+        setTimeout(() => { if (bag) bag.style.transform = "scale(1)" }, 200)
       } else {
-        console.error("Add to cart failed:", result)
         toast.error(result.payload?.message || "Failed to add to cart")
-        return false // Return failure for Buy Now flow
+        setTimeout(() => { if (bag) bag.style.transform = "scale(1)" }, 200)
       }
     } catch (err) {
-      console.error("Add to cart error:", err)
       toast.error(err?.message || "Failed to add to cart")
-      return false // Return failure for Buy Now flow
+      setTimeout(() => { if (bag) bag.style.transform = "scale(1)" }, 200)
     }
   }
 
   const handleBuyNowClick = () => {
-    console.log("=== BUY NOW CLICKED ===")
-    console.log("handleBuyNowClick called")
-    console.log("currentProduct:", currentProduct?._id)
-    console.log("selectedSize:", selectedSize)
-    console.log("selectedColor:", selectedColor)
+    if (isBulkProduct) {
+      setShowBulkModal(true)
+      return
+    }
 
-    // Check if size selection is needed
     if (currentProduct.sizes?.length > 0 && !selectedSize) {
-      console.log("No size selected, showing size selection modal")
       setShowBuyNowSizeModal(true)
       return false
     }
 
     if (currentProduct.colors?.length && !selectedColor) {
-      console.log("No color selected, showing error")
       toast.error("Please select a color")
       return false
     }
 
-    // Check stock availability
     const sizeStock = getSelectedSizeStock()
     if (quantity > sizeStock) {
-      console.log("Not enough stock, showing error")
       return toast.error(`Only ${sizeStock} items available in stock`)
     }
 
-    // If size is already selected, proceed directly to checkout
     handleProceedToCheckout()
   }
 
   const handleProceedToCheckout = () => {
-    console.log("Proceeding to checkout...")
     navigate("/checkout", {
       state: {
         product: currentProduct,
         quantity,
         size: selectedSize,
         color: selectedColor,
-        buyNow: true, // Mark this as a buy now transaction
-        // Include all necessary product data for direct checkout
+        buyNow: true,
         buyNowProduct: {
           product: currentProduct,
           quantity,
@@ -239,12 +262,10 @@ const ProductDetailPage = () => {
         }
       },
     })
-    console.log("Buy Now navigation triggered")
     setShowBuyNowSizeModal(false)
   }
 
   const handleProceedToAddToCart = () => {
-    console.log("Proceeding to add to cart...")
     handleAddToCart()
     setShowAddToCartSizeModal(false)
   }
@@ -252,34 +273,24 @@ const ProductDetailPage = () => {
   const handleWishlistToggle = async () => {
     try {
       if (isInWishlist) {
-        // Optimistically remove from wishlist
         dispatch(optimisticRemoveFromWishlist(currentProduct._id))
         toast.success(`${currentProduct.name} removed from wishlist!`)
         await dispatch(removeFromWishlist(currentProduct._id)).unwrap()
       } else {
-        // Optimistically add to wishlist
         dispatch(optimisticAddToWishlist(currentProduct))
         toast.success(`${currentProduct.name} added to wishlist!`)
         await dispatch(addToWishlist(currentProduct)).unwrap()
       }
-
-      // Animate wishlist icon
       const wish = document.querySelector("#wish")
-      if (wish) {
-        wish.style.transform = "scale(1.2)"
-        setTimeout(() => (wish.style.transform = "scale(1)"), 200)
-      }
+      if (wish) wish.style.transform = "scale(1.2)"
+      setTimeout(() => { if (wish) wish.style.transform = "scale(1)" }, 200)
     } catch (err) {
-      console.error(err)
-
-      // Keep the local state update even if server sync fails for guest users
-      if (err?.response?.status === 401) {
-        return // Don't show error for unauthorized guest users
+      if (err?.response?.status !== 401) {
+        toast.error(err?.message || "Failed to update wishlist")
       }
-
-      toast.error(err?.message || "Failed to update wishlist")
     }
   }
+
   const handleShare = async () => {
     if (navigator.share) {
       try {
@@ -289,7 +300,6 @@ const ProductDetailPage = () => {
           url: window.location.href,
         })
       } catch {
-        // User cancelled sharing
         toast.error("Failed to share product")
       }
     } else {
@@ -301,6 +311,7 @@ const ProductDetailPage = () => {
       }
     }
   }
+
   const handleViewSimilar = () => {
     if (currentProduct?.category?.slug) {
       navigate(`/products?category=${currentProduct.category.slug}`)
@@ -308,102 +319,105 @@ const ProductDetailPage = () => {
       navigate("/products")
     }
   }
-  // if (isLoading) return <Preloader message="Loading product…" />
-  if (error || !currentProduct)
+
+  const tagText =
+    (Array.isArray(currentProduct?.tags) && currentProduct.tags[0]) ||
+    (currentProduct?.isTrending && "TRENDING") ||
+    (currentProduct?.isNewArrival && "NEW ARRIVAL") ||
+    (currentProduct?.isFeatured && "FEATURED") ||
+    "DESIGN OF THE WEEK"
+
+  const fitText = typeof currentProduct?.fits === "string"
+    ? `${currentProduct.fits} FIT`
+    : currentProduct?.fits ? `${String(currentProduct.fits)} FIT` : "REGULAR FIT"
+
+  const materialText = typeof currentProduct?.material === "string"
+    ? currentProduct.material
+    : currentProduct?.material ? String(currentProduct.material) : "COTTON"
+
+  if (error || !currentProduct) {
     return (
       <div className="text-center">
-        {/* <AlertCircle className="w-16 h-16 mx-auto mb-4 text-gray-400" /> */}
-
         {/* <Preloader/> */}
       </div>
     )
+  }
+
+  // Bulk product price display
+  const displayPrice = isBulkProduct 
+    ? (currentProduct?.bulkConfig?.pricePerSet || currentProduct?.price)
+    : currentProduct?.price
+  
+  const displayOriginalPrice = isBulkProduct
+    ? currentProduct?.bulkConfig?.originalPricePerSet
+    : currentProduct?.originalPrice
+
   return (
-    <div className="min-h-screen bg-gray-50 pb-24 sm:pb-0"> {/* Added min-h-screen and pb-24 for mobile */}
+    <div className="min-h-screen bg-gray-50 pb-24 sm:pb-0">
       {/* Desktop Breadcrumb - Hidden on mobile */}
       <div className="hidden sm:block bg-white py-5 shadow-sm">
         <div className="mx-auto px-2 sm:px-6">
           <nav className="flex items-center text-sm text-gray-600 space-x-2 overflow-x-auto whitespace-nowrap">
-            <Link to="/" className="hover:text-primary">
-              Home
-            </Link>
+            <Link to="/" className="hover:text-primary">Home</Link>
             <span>/</span>
-            <Link to="/products" className="hover:text-primary">
-              Products
-            </Link>
+            <Link to="/products" className="hover:text-primary">Products</Link>
             <span>/</span>
             <Link to={`/products/${currentProduct.category?.slug}`} className="hover:text-primary">
               {currentProduct.category?.name}
-
             </Link>
             <span>/</span>
             <span className="text-gray-800 font-medium">{currentProduct.name}</span>
           </nav>
         </div>
       </div>
-      {/* Main Content */}
+      
+      {/* Main Content - Design unchanged */}
       <div className="">
-        {/* <div className="bg-white rounded-xl shadow-md overflow-hidden"> */}
-        <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 p-4 sm:p-4"> {/* Reduced gap on mobile */}
-          {/* Images Section */}
-          <div className="lg:hidden relative -mx-4 rounded-xl"> {/* Changed negative margin */}
-            {/* Mobile Wishlist Button */}
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 p-4 sm:p-4">
+          
+          {/* LEFT COLUMN - IMAGES (No change) */}
+          <div className="lg:hidden relative -mx-4 rounded-xl">
             <button
               onClick={handleWishlistToggle}
               disabled={isAddingToWishlist || isRemovingFromWishlist}
-              className={`absolute top-3 right-3 z-10 p-2 rounded-full bg-white/80 backdrop-blur-sm shadow-md ${isInWishlist
-                ? "text-primary"
-                : "text-gray-600"
-                }`}
-              aria-label={isInWishlist ? "Remove from wishlist" : "Add to wishlist"}
+              className={`absolute top-3 right-3 z-10 p-2 rounded-full bg-white/80 backdrop-blur-sm shadow-md ${isInWishlist ? "text-primary" : "text-gray-600"}`}
             >
               <Heart id="wish" className={`w-5 h-5 ${isInWishlist ? "fill-current" : ""}`} />
             </button>
             
-            <Swiper
-              spaceBetween={0}
-              pagination={{ clickable: true, dynamicBullets: true }}
-              modules={[Pagination]}
-              className="rounded-xl"
-            >
+            <Swiper spaceBetween={0} pagination={{ clickable: true, dynamicBullets: true }} modules={[Pagination]} className="rounded-xl">
               {currentProduct.images.map((img, idx) => (
                 <SwiperSlide key={idx}>
                   <div className="relative">
                     <img
                       src={img.url || "/placeholder.svg"}
                       alt={currentProduct.name}
-                      className="w-full h-auto aspect-square object-cover -mb-8" /* Changed to aspect-square */
+                      className="w-full h-auto aspect-square object-cover -mb-8"
                       loading="lazy"
-                      onClick={() => {
-                        setSelectedImage(idx)
-                        setShowImageModal(true)
-                      }}
+                      onClick={() => { setSelectedImage(idx); setShowImageModal(true) }}
                     />
                   </div>
                 </SwiperSlide>
               ))}
             </Swiper>
             
-            {/* Product info below image on mobile */}
             <div className="px-2">
               <p className="text-lg font-bold text-gray-900">{currentProduct.brand || "Ksauni Bliss"}</p>
               <p className="text-sm text-gray-600 mt-1">{currentProduct.name}</p>
-              
-              {/* Price */}
               <div className="flex items-center gap-2 mt-2">
-                <span className="text-2xl font-bold text-gray-900">₹{currentProduct.price.toLocaleString()}</span>
-                {currentProduct.originalPrice && currentProduct.originalPrice > currentProduct.price && (
-                  <span className="text-lg text-gray-500 line-through">
-                    ₹{currentProduct.originalPrice.toLocaleString()}
-                  </span>
+                <span className="text-2xl font-bold text-gray-900">₹{displayPrice?.toLocaleString()}</span>
+                {displayOriginalPrice && displayOriginalPrice > displayPrice && (
+                  <span className="text-lg text-gray-500 line-through">₹{displayOriginalPrice?.toLocaleString()}</span>
                 )}
                 {getDiscountPercentage() > 0 && (
                   <span className="text-sm font-medium text-green-600">{getDiscountPercentage()}% OFF</span>
                 )}
+                {isBulkProduct && <span className="text-sm text-gray-500">/set</span>}
               </div>
             </div>
           </div>
 
-          {/* Desktop Image Display - UNCHANGED */}
+          {/* DESKTOP IMAGES (No change) */}
           <div className="hidden lg:block">
             <div className="relative bg-gray-50 rounded-xl overflow-hidden group">
               <motion.img
@@ -416,172 +430,184 @@ const ProductDetailPage = () => {
                 transition={{ duration: 0.4 }}
                 loading="lazy"
               />
-              {getSelectedSizeStock() === 0 && (
-                <div className="absolute inset-0 flex items-center justify-center bg-black bg-opacity-30">
-                  <span className="bg-white text-gray-800 px-4 py-2 rounded-full font-medium">Out of Stock</span>
-                </div>
-              )}
             </div>
-            {/* Thumbnails */}
             <div className="grid grid-cols-5 gap-2">
               {currentProduct.images.map((img, idx) => (
                 <button
                   key={idx}
                   onClick={() => setSelectedImage(idx)}
-                  className={`aspect-square bg-gray-100 rounded-md overflow-hidden border-2 transition ${selectedImage === idx ? "border-primary" : "border-transparent hover:border-gray-300"
-                    }`}
+                  className={`aspect-square bg-gray-100 rounded-md overflow-hidden border-2 transition ${selectedImage === idx ? "border-primary" : "border-transparent hover:border-gray-300"}`}
                 >
-                  <img
-                    src={img.url || "/placeholder.svg"}
-                    alt={`${currentProduct.name} ${idx + 1}`}
-                    className="w-full h-full max-w-full object-cover"
-                    loading="lazy"
-                  />
+                  <img src={img.url || "/placeholder.svg"} alt={`${currentProduct.name} ${idx + 1}`} className="w-full h-full max-w-full object-cover" loading="lazy" />
                 </button>
               ))}
             </div>
           </div>
 
-          {/* Product Info - Mobile layout reorganized */}
-          <div className="lg:hidden space-y-4 px-2 mt-24"> {/* Added px-2 for mobile */}
-            {/* Description - Mobile */}
+          {/* RIGHT COLUMN - PRODUCT INFO (Design same, only conditional content) */}
+          <div className="lg:hidden space-y-4 px-2 mt-24">
+            {/* Description - Same */}
             <div>
               <div className={`text-gray-600 text-sm leading-relaxed ${showFullDescription ? "" : "line-clamp-3"}`}>
-                <pre className="font-sans whitespace-pre-wrap">
-                  {formatDescription(currentProduct?.description)}
-                </pre>
+                <pre className="font-sans whitespace-pre-wrap">{formatDescription(currentProduct?.description)}</pre>
               </div>
-              <button
-                onClick={() => setShowFullDescription(!showFullDescription)}
-                className="text-primary text-sm font-medium mt-1"
-              >
+              <button onClick={() => setShowFullDescription(!showFullDescription)} className="text-primary text-sm font-medium mt-1">
                 {showFullDescription ? "Show Less" : "Read More"}
               </button>
             </div>
 
-            {/* Tags - Mobile */}
+            {/* Tags - Same */}
             <div className="flex flex-wrap gap-2 mt-12">
               <div className="grid grid-cols-3 gap-2">
-                {/* Tags */}
                 <div className="w-full text-center text-[10px] sm:text-xs font-semibold uppercase tracking-wide px-2 py-2 rounded-xl bg-amber-50 text-gray-900 border border-amber-100">
                   {String(tagText).replace(/-/g, " ")}
                 </div>
-                {/* Fits */}
                 <div className="w-full text-center text-[10px] sm:text-xs font-semibold uppercase tracking-wide px-2 py-2 rounded-xl bg-gray-100 text-gray-800">
                   {String(fitText).replace(/-/g, " ")}
                 </div>
-                {/* Material */}
                 <div className="w-full text-center text-[10px] sm:text-xs font-semibold uppercase tracking-wide px-2 py-2 rounded-xl bg-white text-gray-800 border border-gray-400">
                   {String(materialText).replace(/-/g, " ")}
                 </div>
               </div>
             </div>
 
-            {/* Colors - Mobile */}
-            {currentProduct.colors?.length > 0 && (
-              <div className="pt-2">
-                <h3 className="text-base font-semibold text-gray-800 mb-3">
-                  Color: <span className="font-normal">{selectedColor}</span>
-                </h3>
-                <div className="flex flex-wrap gap-2">
-                  {currentProduct.colors.map((color) => (
-                    <button
-                      key={color.name}
-                      onClick={() => setSelectedColor(color.name)}
-                      className={`flex items-center gap-2 px-3 py-2 rounded-full border ${selectedColor === color.name
-                        ? "border-primary bg-primary/5"
-                        : "border-gray-200"
-                        }`}
-                      title={color.name}
-                      aria-label={`Select color ${color.name}`}
-                    >
-                      <div
-                        className="w-5 h-5 rounded-full border border-gray-200"
-                        style={{ backgroundColor: color.hex || color.name.toLowerCase() }}
-                      />
-                      <span className="text-sm">{color.name}</span>
-                    </button>
-                  ))}
-                </div>
-              </div>
-            )}
-
-            {/* Sizes - Mobile */}
-            {currentProduct.sizes?.length > 0 && (
-              <div data-size-section>
-                <div className="flex items-center justify-between mb-3 pt-1">
-                  <h3 className="text-base font-semibold text-gray-800">
-                    Size:{" "}
-                    <span className={`font-normal ${!selectedSize ? "text-red-500" : ""}`}>
-                      {selectedSize || "Please select"}
-                    </span>
-                  </h3>
-                  <button
-                    onClick={() => setShowSizeGuide(true)}
-                    className="text-sm rounded-xl font-medium text-primary flex items-center"
-                  >
-                    <Ruler className="w-4 h-4 mr-1" />
-                    Size Guide
-                  </button>
-                </div>
-                {!selectedSize && (
-                  <div className="mb-3 p-3 bg-red-50 border border-red-200 rounded-xl">
-                    <p className="text-sm text-red-600 font-medium">⚠️ Please select a size to continue</p>
+            {/* COLORS - Conditional */}
+            {!isBulkProduct ? (
+              // Regular Product Colors (Single selection)
+              currentProduct.colors?.length > 0 && (
+                <div className="pt-2">
+                  <h3 className="text-base font-semibold text-gray-800 mb-3">Color: <span className="font-normal">{selectedColor}</span></h3>
+                  <div className="flex flex-wrap gap-2">
+                    {currentProduct.colors.map((color) => (
+                      <button
+                        key={color.name}
+                        onClick={() => setSelectedColor(color.name)}
+                        className={`flex items-center gap-2 px-3 py-2 rounded-full border ${selectedColor === color.name ? "border-primary bg-primary/5" : "border-gray-200"}`}
+                      >
+                        <div className="w-5 h-5 rounded-full border border-gray-200" style={{ backgroundColor: color.hex || color.name.toLowerCase() }} />
+                        <span className="text-sm">{color.name}</span>
+                      </button>
+                    ))}
                   </div>
-                )}
-                <div className="grid grid-cols-4 gap-2">
-                  {currentProduct.sizes.map((s) => (
-                    <button
-                      key={s.size}
-                      onClick={() => setSelectedSize(s.size)}
-                      disabled={s.stock === 0}
-                      className={`px-3 py-3 rounded-xl border font-medium text-sm ${selectedSize === s.size
-                        ? "border-primary bg-primary/10 text-primary"
-                        : s.stock === 0
-                          ? "border-gray-200 bg-gray-100 text-gray-400"
-                          : "border-gray-300 hover:border-primary"
-                        }`}
-                    >
-                      {s.size}
-                    </button>
-                  ))}
                 </div>
-                <span className="text-sm py-3 mb-3 font-medium text-gray-600 block">
-                  {selectedSize
-                    ? `${getSelectedSizeStock()} available in ${selectedSize}`
-                    : "Select a size to see availability"}
-                </span>
+              )
+            ) : (
+              // Bulk Product Colors (Multiple selection)
+              totalColors > 0 && (
+                <div className="pt-2">
+                  <h3 className="text-base font-semibold text-gray-800 mb-3">
+                    Select Colors <span className="text-sm text-gray-500 font-normal">(Min {minColors} | Max {maxColors})</span>
+                  </h3>
+                  <div className="flex flex-wrap gap-2">
+                    {currentProduct.colors.map((color) => (
+                      <button
+                        key={color.name}
+                        onClick={() => handleColorToggle(color.name)}
+                        className={`flex items-center gap-2 px-3 py-2 rounded-full border ${selectedColors.includes(color.name) ? "border-primary bg-primary/5" : "border-gray-200"}`}
+                      >
+                        <div className="w-5 h-5 rounded-full border border-gray-200" style={{ backgroundColor: color.hex || color.name.toLowerCase() }} />
+                        <span className="text-sm">{color.name}</span>
+                      </button>
+                    ))}
+                  </div>
+                  {selectedColors.length > 0 && (
+                    <p className="text-xs text-gray-500 mt-2">Selected: {selectedColors.join(", ")}</p>
+                  )}
+                </div>
+              )
+            )}
+
+            {/* SIZES - Conditional */}
+            {!isBulkProduct ? (
+              // Regular Product Sizes (Selectable)
+              currentProduct.sizes?.length > 0 && (
+                <div data-size-section>
+                  <div className="flex items-center justify-between mb-3 pt-1">
+                    <h3 className="text-base font-semibold text-gray-800">Size: <span className={`font-normal ${!selectedSize ? "text-red-500" : ""}`}>{selectedSize || "Please select"}</span></h3>
+                    <button onClick={() => setShowSizeGuide(true)} className="text-sm rounded-xl font-medium text-primary flex items-center">
+                      <Ruler className="w-4 h-4 mr-1" /> Size Guide
+                    </button>
+                  </div>
+                  {!selectedSize && (
+                    <div className="mb-3 p-3 bg-red-50 border border-red-200 rounded-xl">
+                      <p className="text-sm text-red-600 font-medium">⚠️ Please select a size to continue</p>
+                    </div>
+                  )}
+                  <div className="grid grid-cols-4 gap-2">
+                    {currentProduct.sizes.map((s) => (
+                      <button
+                        key={s.size}
+                        onClick={() => setSelectedSize(s.size)}
+                        disabled={s.stock === 0}
+                        className={`px-3 py-3 rounded-xl border font-medium text-sm ${selectedSize === s.size ? "border-primary bg-primary/10 text-primary" : s.stock === 0 ? "border-gray-200 bg-gray-100 text-gray-400" : "border-gray-300 hover:border-primary"}`}
+                      >
+                        {s.size}
+                      </button>
+                    ))}
+                  </div>
+                  <span className="text-sm py-3 mb-3 font-medium text-gray-600 block">
+                    {selectedSize ? `${getSelectedSizeStock()} available in ${selectedSize}` : "Select a size to see availability"}
+                  </span>
+                </div>
+              )
+            ) : (
+              // Bulk Product Sizes (Display only)
+              currentProduct.sizes?.length > 0 && (
+                <div data-size-section>
+                  <div className="flex items-center justify-between mb-3 pt-1">
+                    <h3 className="text-base font-semibold text-gray-800">Sizes Included:</h3>
+                    <button onClick={() => setShowSizeGuide(true)} className="text-sm rounded-xl font-medium text-primary flex items-center">
+                      <Ruler className="w-4 h-4 mr-1" /> Size Guide
+                    </button>
+                  </div>
+                  <div className="grid grid-cols-4 gap-2">
+                    {currentProduct.sizes.map((s) => (
+                      <div key={s.size} className="px-3 py-3 rounded-xl border border-gray-300 bg-gray-50 text-center font-medium text-sm">
+                        {s.size}
+                      </div>
+                    ))}
+                  </div>
+                  <p className="text-xs text-gray-500 mt-2">✓ You will get {currentProduct.bulkConfig?.piecesPerSize || 1} piece(s) of each size per set</p>
+                </div>
+              )
+            )}
+
+            {/* QUANTITY - Conditional */}
+            {!isBulkProduct ? (
+              <div>
+                <h3 className="text-base font-semibold text-gray-800 mb-3">Quantity</h3>
+                <div className="flex items-center space-x-4">
+                  <div className="flex items-center border border-gray-300 rounded-xl overflow-hidden">
+                    <button onClick={() => setQuantity(Math.max(1, quantity - 1))} disabled={quantity <= 1} className="p-3 hover:bg-gray-50 text-gray-600">
+                      <Minus className="w-4 h-4" />
+                    </button>
+                    <span className="px-4 py-2 font-medium border-x border-gray-300 min-w-[60px] text-center">{quantity}</span>
+                    <button onClick={() => setQuantity(Math.min(getSelectedSizeStock(), quantity + 1))} disabled={quantity >= getSelectedSizeStock()} className="p-3 hover:bg-gray-50 text-gray-600">
+                      <Plus className="w-4 h-4" />
+                    </button>
+                  </div>
+                  <span className="text-sm text-gray-500">{getSelectedSizeStock()} in stock</span>
+                </div>
+              </div>
+            ) : (
+              <div>
+                <h3 className="text-base font-semibold text-gray-800 mb-3">Quantity (Sets)</h3>
+                <div className="flex items-center space-x-4">
+                  <div className="flex items-center border border-gray-300 rounded-xl overflow-hidden">
+                    <button onClick={() => setBulkQuantity(Math.max(1, bulkQuantity - 1))} disabled={bulkQuantity <= 1} className="p-3 hover:bg-gray-50 text-gray-600">
+                      <Minus className="w-4 h-4" />
+                    </button>
+                    <span className="px-4 py-2 font-medium border-x border-gray-300 min-w-[60px] text-center">{bulkQuantity}</span>
+                    <button onClick={() => setBulkQuantity(Math.min(10, bulkQuantity + 1))} disabled={bulkQuantity >= 10} className="p-3 hover:bg-gray-50 text-gray-600">
+                      <Plus className="w-4 h-4" />
+                    </button>
+                  </div>
+                  <span className="text-sm text-gray-500">Max 10 sets</span>
+                </div>
               </div>
             )}
 
-            {/* Quantity - Mobile */}
-            <div>
-              <h3 className="text-base font-semibold text-gray-800 mb-3">Quantity</h3>
-              <div className="flex items-center space-x-4">
-                <div className="flex items-center border border-gray-300 rounded-xl overflow-hidden">
-                  <button
-                    onClick={() => setQuantity(Math.max(1, quantity - 1))}
-                    disabled={quantity <= 1}
-                    className="p-3 hover:bg-gray-50 text-gray-600"
-                  >
-                    <Minus className="w-4 h-4" />
-                  </button>
-                  <span className="px-4 py-2 font-medium border-x border-gray-300 min-w-[60px] text-center">{quantity}</span>
-                  <button
-                    onClick={() => setQuantity(Math.min(getSelectedSizeStock(), quantity + 1))}
-                    disabled={quantity >= getSelectedSizeStock()}
-                    className="p-3 hover:bg-gray-50 text-gray-600"
-                  >
-                    <Plus className="w-4 h-4" />
-                  </button>
-                </div>
-                <span className="text-sm text-gray-500">
-                  {getSelectedSizeStock()} in stock
-                </span>
-              </div>
-            </div>
-
-            {/* Product Details - Mobile */}
+            {/* Product Details - Same */}
             <div className="pt-4 border-t border-gray-200">
               <h3 className="text-base font-semibold text-gray-800 mb-3">Product Details</h3>
               {currentProduct.material && (
@@ -605,267 +631,253 @@ const ProductDetailPage = () => {
             </div>
           </div>
 
-          {/* Product Info - DESKTOP (UNCHANGED) */}
+          {/* DESKTOP RIGHT COLUMN (Design same, only conditional) */}
           <div className="hidden lg:block space-y-1">
             <div className="flex items-start justify-between">
               <div className="hidden lg:block mb-1">
-                <p className="text-lg font-semibold text-gray-900">
-                  <span>{currentProduct.brand || "Ksauni Bliss"}</span>
-                </p>
+                <p className="text-lg font-semibold text-gray-900"><span>{currentProduct.brand || "Ksauni Bliss"}</span></p>
                 {currentProduct.name && (
-                  <p className="text-base text-gray-600 mb-5">
-                    {typeof currentProduct.name === "string"
-                      ? currentProduct.name
-                      : JSON.stringify(currentProduct.name)}
-                  </p>
+                  <p className="text-base text-gray-600 mb-5">{typeof currentProduct.name === "string" ? currentProduct.name : JSON.stringify(currentProduct.name)}</p>
                 )}
-                {/* Price section */}
-                <span className="text-3xl font-bold text-gray-900">₹{currentProduct.price.toLocaleString()}</span>
-                {currentProduct.originalPrice && currentProduct.originalPrice > currentProduct.price && (
-                  <span className="text-xl text-gray-500 line-through ml-3">
-                    ₹{currentProduct.originalPrice.toLocaleString()}
-                  </span>
+                <span className="text-3xl font-bold text-gray-900">₹{displayPrice?.toLocaleString()}</span>
+                {displayOriginalPrice && displayOriginalPrice > displayPrice && (
+                  <span className="text-xl text-gray-500 line-through ml-3">₹{displayOriginalPrice?.toLocaleString()}</span>
                 )}
                 {getDiscountPercentage() > 0 && (
                   <span className="ml-3 text-base font-medium text-green-600">{getDiscountPercentage()}% OFF</span>
                 )}
+                {isBulkProduct && <span className="ml-2 text-sm text-gray-500">/ set</span>}
               </div>
             </div>
+
             <div className="lg:hidden">
               <span className="font-semibold mt-5">Product Description</span>
               <div className={`text-sm text-gray-700 leading-relaxed ${showFullDescription ? "" : "line-clamp-6"}`}>
-                <pre className="font-sans whitespace-pre-wrap">
-                  {formatDescription(currentProduct?.description)}
-                </pre>
+                <pre className="font-sans whitespace-pre-wrap">{formatDescription(currentProduct?.description)}</pre>
               </div>
-
-              <button
-                onClick={() => setShowFullDescription(!showFullDescription)}
-                className="text-red-500 text-xs font-semibold mt-5"
-              >
+              <button onClick={() => setShowFullDescription(!showFullDescription)} className="text-red-500 text-xs font-semibold mt-5">
                 {showFullDescription ? "Show Less" : "Read More"}
               </button>
             </div>
+
             <div className="lg:hidden -mt-2">
               <div className="grid grid-cols-3 gap-2">
-                {/* Tags */}
                 <div className="w-full text-center text-[10px] sm:text-xs font-semibold uppercase tracking-wide px-2 py-2 rounded-xl bg-amber-50 text-gray-900 border border-amber-100">
                   {String(tagText).replace(/-/g, " ")}
                 </div>
-                {/* Fits */}
                 <div className="w-full text-center text-[10px] sm:text-xs font-semibold uppercase tracking-wide px-2 py-2 rounded-xl bg-gray-100 text-gray-800">
                   {String(fitText).replace(/-/g, " ")}
                 </div>
-                {/* Material */}
                 <div className="w-full text-center text-[10px] sm:text-xs font-semibold uppercase tracking-wide px-2 py-2 rounded-xl bg-white text-gray-800 border border-gray-400">
                   {String(materialText).replace(/-/g, " ")}
                 </div>
               </div>
             </div>
-            {/* Colors */}
-            {currentProduct.colors?.length > 0 && (
-              <div className="pt-3">
-                <h3 className="text-lg font-semibold text-gray-800 mb-3">
-                  Color: <span className="font-normal">{selectedColor}</span>
-                </h3>
-                <div className="flex flex-wrap gap-2">
-                  {currentProduct.colors.map((color) => (
-                    <motion.button
-                      key={color.name}
-                      whileHover={{ scale: 1.05 }}
-                      whileTap={{ scale: 0.95 }}
-                      onClick={() => setSelectedColor(color.name)}
-                      className={`flex items-center justify-center w-10 h-10 rounded-full border-2 ${selectedColor === color.name
-                        ? "border-primary shadow-md"
-                        : "border-gray-200 hover:border-gray-300"
-                        }`}
-                      title={color.name}
-                      aria-label={`Select color ${color.name}`}
-                    >
-                      <div
-                        className="w-8 h-8 rounded-full border border-gray-200"
-                        style={{ backgroundColor: color.hex || color.name.toLowerCase() }}
-                      />
-                    </motion.button>
-                  ))}
-                </div>
-              </div>
-            )}
-            {/* Sizes */}
-            {currentProduct.sizes?.length > 0 && (
-              <div data-size-section>
-                <div className="flex items-center justify-between mb-3 pt-1">
-                  <h3 className="text-lg font-semibold text-gray-800">
-                    Size:{" "}
-                    <span className={`font-normal rounded-sm ${!selectedSize ? "text-red-500" : ""}`}>
-                      {selectedSize || "Please select a size"}
-                    </span>
-                  </h3>
-                  <button
-                    onClick={() => setShowSizeGuide(true)}
-                    className="text-sm font-medium text-primary hover:text-primary-dark flex items-center"
-                  >
-                    <Ruler className="w-4 h-4 mr-1" />
-                    Size Guide
-                  </button>
-                </div>
-                {!selectedSize && (
-                  <div className="mb-3 p-2 bg-red-50 border border-red-200 rounded-lg">
-                    <p className="text-sm text-red-600 font-medium">⚠️ Please select a size to continue</p>
+
+            {/* COLORS - Desktop */}
+            {!isBulkProduct ? (
+              currentProduct.colors?.length > 0 && (
+                <div className="pt-3">
+                  <h3 className="text-lg font-semibold text-gray-800 mb-3">Color: <span className="font-normal">{selectedColor}</span></h3>
+                  <div className="flex flex-wrap gap-2">
+                    {currentProduct.colors.map((color) => (
+                      <motion.button
+                        key={color.name}
+                        whileHover={{ scale: 1.05 }}
+                        whileTap={{ scale: 0.95 }}
+                        onClick={() => setSelectedColor(color.name)}
+                        className={`flex items-center justify-center w-10 h-10 rounded-full border-2 ${selectedColor === color.name ? "border-primary shadow-md" : "border-gray-200 hover:border-gray-300"}`}
+                      >
+                        <div className="w-8 h-8 rounded-full border border-gray-200" style={{ backgroundColor: color.hex || color.name.toLowerCase() }} />
+                      </motion.button>
+                    ))}
                   </div>
-                )}
-                <div className="grid grid-cols-4 sm:grid-cols-5 gap-2 p-3 border border-gray-200 rounded-xl">
-                  {currentProduct.sizes.map((s) => (
-                    <motion.button
-                      key={s.size}
-                      onClick={() => setSelectedSize(s.size)}
-                      disabled={s.stock === 0}
-                      className={`px-4 py-2 border border-gray-300 rounded-xl font-medium text-sm ${selectedSize === s.size
-                        ? "border-primary rounded bg-primary/10 text-primary"
-                        : s.stock === 0
-                          ? "border-gray-200 bg-gray-100 text-gray-400 cursor-not-allowed"
-                          : "border-gray-300 hover:border-primary hover:text-primary"
-                        }`}
-                    >
-                      {s.size}
-                    </motion.button>
-                  ))}
                 </div>
-                <span className="text-sm py-3 mb-3 mx-2 font-semibold text-gray-600">
-                  {selectedSize
-                    ? `${getSelectedSizeStock()} available in ${selectedSize}`
-                    : "Please select a size to see availability"}
-                </span>
+              )
+            ) : (
+              totalColors > 0 && (
+                <div className="pt-3">
+                  <h3 className="text-lg font-semibold text-gray-800 mb-3">Select Colors <span className="text-sm text-gray-500 font-normal">(Min {minColors} | Max {maxColors})</span></h3>
+                  <div className="flex flex-wrap gap-2">
+                    {currentProduct.colors.map((color) => (
+                      <motion.button
+                        key={color.name}
+                        whileHover={{ scale: 1.05 }}
+                        whileTap={{ scale: 0.95 }}
+                        onClick={() => handleColorToggle(color.name)}
+                        className={`flex items-center justify-center w-10 h-10 rounded-full border-2 ${selectedColors.includes(color.name) ? "border-primary shadow-md" : "border-gray-200 hover:border-gray-300"}`}
+                      >
+                        <div className="w-8 h-8 rounded-full border border-gray-200" style={{ backgroundColor: color.hex || color.name.toLowerCase() }} />
+                      </motion.button>
+                    ))}
+                  </div>
+                  {selectedColors.length > 0 && (
+                    <p className="text-sm text-gray-500 mt-2">Selected: {selectedColors.join(", ")}</p>
+                  )}
+                </div>
+              )
+            )}
+
+            {/* SIZES - Desktop */}
+            {!isBulkProduct ? (
+              currentProduct.sizes?.length > 0 && (
+                <div data-size-section>
+                  <div className="flex items-center justify-between mb-3 pt-1">
+                    <h3 className="text-lg font-semibold text-gray-800">Size: <span className={`font-normal rounded-sm ${!selectedSize ? "text-red-500" : ""}`}>{selectedSize || "Please select a size"}</span></h3>
+                    <button onClick={() => setShowSizeGuide(true)} className="text-sm font-medium text-primary hover:text-primary-dark flex items-center">
+                      <Ruler className="w-4 h-4 mr-1" /> Size Guide
+                    </button>
+                  </div>
+                  {!selectedSize && (
+                    <div className="mb-3 p-2 bg-red-50 border border-red-200 rounded-lg">
+                      <p className="text-sm text-red-600 font-medium">⚠️ Please select a size to continue</p>
+                    </div>
+                  )}
+                  <div className="grid grid-cols-4 sm:grid-cols-5 gap-2 p-3 border border-gray-200 rounded-xl">
+                    {currentProduct.sizes.map((s) => (
+                      <motion.button
+                        key={s.size}
+                        onClick={() => setSelectedSize(s.size)}
+                        disabled={s.stock === 0}
+                        className={`px-4 py-2 border border-gray-300 rounded-xl font-medium text-sm ${selectedSize === s.size ? "border-primary rounded bg-primary/10 text-primary" : s.stock === 0 ? "border-gray-200 bg-gray-100 text-gray-400 cursor-not-allowed" : "border-gray-300 hover:border-primary hover:text-primary"}`}
+                      >
+                        {s.size}
+                      </motion.button>
+                    ))}
+                  </div>
+                  <span className="text-sm py-3 mb-3 mx-2 font-semibold text-gray-600">
+                    {selectedSize ? `${getSelectedSizeStock()} available in ${selectedSize}` : "Please select a size to see availability"}
+                  </span>
+                </div>
+              )
+            ) : (
+              currentProduct.sizes?.length > 0 && (
+                <div data-size-section>
+                  <div className="flex items-center justify-between mb-3 pt-1">
+                    <h3 className="text-lg font-semibold text-gray-800">Sizes Included:</h3>
+                    <button onClick={() => setShowSizeGuide(true)} className="text-sm font-medium text-primary hover:text-primary-dark flex items-center">
+                      <Ruler className="w-4 h-4 mr-1" /> Size Guide
+                    </button>
+                  </div>
+                  <div className="grid grid-cols-4 sm:grid-cols-5 gap-2 p-3 border border-gray-200 rounded-xl">
+                    {currentProduct.sizes.map((s) => (
+                      <div key={s.size} className="px-4 py-2 border border-gray-300 rounded-xl font-medium text-sm bg-gray-50 text-center">
+                        {s.size}
+                      </div>
+                    ))}
+                  </div>
+                  <p className="text-xs text-gray-500 mt-2">✓ You will get {currentProduct.bulkConfig?.piecesPerSize || 1} piece(s) of each size per set</p>
+                </div>
+              )
+            )}
+
+            {/* QUANTITY - Desktop */}
+            {!isBulkProduct ? (
+              <div>
+                <h3 className="text-lg font-semibold text-gray-800 mb-3">Quantity</h3>
+                <div className="flex items-center space-x-4">
+                  <div className="flex items-center border border-gray-300 rounded-xl overflow-hidden">
+                    <motion.button whileHover={{ scale: 1.1 }} whileTap={{ scale: 0.9 }} onClick={() => setQuantity(Math.max(1, quantity - 1))} className="p-2 hover:bg-gray-50 text-gray-600" disabled={quantity <= 1}>
+                      <Minus className="w-4 h-4" />
+                    </motion.button>
+                    <span className="px-4 py-2 font-medium border-x border-gray-300">{quantity}</span>
+                    <motion.button whileHover={{ scale: 1.1 }} whileTap={{ scale: 0.9 }} onClick={() => setQuantity(Math.min(getSelectedSizeStock(), quantity + 1))} disabled={quantity >= getSelectedSizeStock()} className="p-2 hover:bg-gray-50 text-gray-600 disabled:opacity-50">
+                      <Plus className="w-4 h-4" />
+                    </motion.button>
+                  </div>
+                </div>
+              </div>
+            ) : (
+              <div>
+                <h3 className="text-lg font-semibold text-gray-800 mb-3">Quantity (Sets)</h3>
+                <div className="flex items-center space-x-4">
+                  <div className="flex items-center border border-gray-300 rounded-xl overflow-hidden">
+                    <motion.button whileHover={{ scale: 1.1 }} whileTap={{ scale: 0.9 }} onClick={() => setBulkQuantity(Math.max(1, bulkQuantity - 1))} className="p-2 hover:bg-gray-50 text-gray-600" disabled={bulkQuantity <= 1}>
+                      <Minus className="w-4 h-4" />
+                    </motion.button>
+                    <span className="px-4 py-2 font-medium border-x border-gray-300">{bulkQuantity}</span>
+                    <motion.button whileHover={{ scale: 1.1 }} whileTap={{ scale: 0.9 }} onClick={() => setBulkQuantity(Math.min(10, bulkQuantity + 1))} disabled={bulkQuantity >= 10} className="p-2 hover:bg-gray-50 text-gray-600 disabled:opacity-50">
+                      <Plus className="w-4 h-4" />
+                    </motion.button>
+                  </div>
+                </div>
               </div>
             )}
-            {/* Quantity */}
-            <div>
-              <h3 className="text-lg font-semibold text-gray-800 mb-3">Quantity</h3>
-              <div className="flex items-center space-x-4">
-                <div className="flex items-center border border-gray-300 rounded-xl overflow-hidden">
-                  <motion.button
-                    whileHover={{ scale: 1.1 }}
-                    whileTap={{ scale: 0.9 }}
-                    onClick={() => setQuantity(Math.max(1, quantity - 1))}
-                    className="p-2 hover:bg-gray-50 text-gray-600 hover:text-gray-900"
-                    disabled={quantity <= 1}
-                  >
-                    <Minus className="w-4 h-4" />
-                  </motion.button>
-                  <span className="px-4 py-2 font-medium border-x border-gray-300">{quantity}</span>
-                  <motion.button
-                    whileHover={{ scale: 1.1 }}
-                    whileTap={{ scale: 0.9 }}
-                    onClick={() => setQuantity(Math.min(getSelectedSizeStock(), quantity + 1))}
-                    disabled={quantity >= getSelectedSizeStock()}
-                    className="p-2 hover:bg-gray-50 text-gray-600 hover:text-gray-900 disabled:opacity-50"
-                  >
-                    <Plus className="w-4 h-4" />
-                  </motion.button>
-                </div>
-              </div>
-            </div>
+
             <div className="mt-4 md:hidden">
               {currentProduct.productDetails && (
                 <div className="pt-1">
                   <h2 className="text-md font-bold text-gray-700 mb-1">Product Details</h2>
-                  <p className="text-gray-600 whitespace-pre-line">
-                    {typeof currentProduct.productDetails === "string"
-                      ? currentProduct.productDetails
-                      : JSON.stringify(currentProduct.productDetails)}
-                  </p>
+                  <p className="text-gray-600 whitespace-pre-line">{typeof currentProduct.productDetails === "string" ? currentProduct.productDetails : JSON.stringify(currentProduct.productDetails)}</p>
                 </div>
               )}
             </div>
+
             <div className="mt-4 hidden md:block">
               <span className="font-semibold">Product Description</span>
               <div className={`text-md text-gray-700 leading-relaxed ${showFullDescription ? "" : "line-clamp-6"}`}>
-                <pre className="font-sans whitespace-pre-wrap">
-                  {formatDescription(currentProduct?.description)}
-                </pre>
+                <pre className="font-sans whitespace-pre-wrap">{formatDescription(currentProduct?.description)}</pre>
               </div>
-
-              <button
-                onClick={() => setShowFullDescription(!showFullDescription)}
-                className="text-red-500 text-xs font-semibold mt-1"
-              >
+              <button onClick={() => setShowFullDescription(!showFullDescription)} className="text-red-500 text-xs font-semibold mt-1">
                 {showFullDescription ? "Show Less" : "Read More"}
               </button>
             </div>
 
-            {/* Product Details Section */}
-            <div className=" pt-1">
+            {/* Product Details Section - Same */}
+            <div className="pt-1">
               {currentProduct.material && (
                 <div>
                   <h2 className="text-md font-bold text-gray-700 mb-1">Material & Care</h2>
-                  <p className="text-gray-600 whitespace-pre-line">
-                    {typeof currentProduct.material === "string"
-                      ? currentProduct.material
-                      : JSON.stringify(currentProduct.material)}
-                  </p>
+                  <p className="text-gray-600 whitespace-pre-line">{typeof currentProduct.material === "string" ? currentProduct.material : JSON.stringify(currentProduct.material)}</p>
                 </div>
               )}
               {currentProduct.fits && (
                 <div>
                   <h2 className="text-md font-bold text-gray-700 mb-1">Model Size and Fits</h2>
-                  <p className="text-gray-600 whitespace-pre-line">
-                    {typeof currentProduct.fits === "string"
-                      ? `${currentProduct.fits} Fit`
-                      : `${JSON.stringify(currentProduct.fits)} Fit`}
-                  </p>
+                  <p className="text-gray-600 whitespace-pre-line">{typeof currentProduct.fits === "string" ? `${currentProduct.fits} Fit` : `${JSON.stringify(currentProduct.fits)} Fit`}</p>
                 </div>
               )}
               {currentProduct.care && (
                 <div>
                   <h2 className="text-md font-bold text-gray-700 mb-1">Care Instructions</h2>
-                  <p className="text-gray-600">
-                    {typeof currentProduct.care === "string"
-                      ? currentProduct.care
-                      : JSON.stringify(currentProduct.care)}
-                  </p>
+                  <p className="text-gray-600">{typeof currentProduct.care === "string" ? currentProduct.care : JSON.stringify(currentProduct.care)}</p>
                 </div>
               )}
             </div>
+
+            {/* Action Buttons - Desktop */}
             <div className="hidden lg:block pt-4 border-t border-gray-200">
               <div className="flex gap-3 max-w-md">
                 <button
                   onClick={handleAddToCartClick}
-                  disabled={
-                    isAddingToCart ||
-                    (selectedSize && getSelectedSizeStock() === 0)
-                  }
-                  className={`flex-1 flex items-center justify-center gap-2 px-4 py-1 border-2 font-semibold rounded-xl transition-colors disabled:cursor-not-allowed ${selectedSize && getSelectedSizeStock() === 0
-                    ? "bg-gray-100 border-gray-300 text-gray-400"
-                    : "bg-white border-gray-300 text-gray-800 hover:border-gray-400 hover:bg-gray-50"
-                    } ${isAddingToCart ? "opacity-50" : ""}`}
+                  disabled={isAddingToCart || (!isBulkProduct && selectedSize && getSelectedSizeStock() === 0) || (isBulkProduct && selectedColors.length < minColors)}
+                  className={`flex-1 flex items-center justify-center gap-2 px-4 py-1 border-2 font-semibold rounded-xl transition-colors disabled:cursor-not-allowed ${
+                    ((!isBulkProduct && selectedSize && getSelectedSizeStock() === 0) || (isBulkProduct && selectedColors.length < minColors))
+                      ? "bg-gray-100 border-gray-300 text-gray-400"
+                      : "bg-white border-gray-300 text-gray-800 hover:border-gray-400 hover:bg-gray-50"
+                  } ${isAddingToCart ? "opacity-50" : ""}`}
                 >
                   <ShoppingCart className="w-5 h-5" />
-                  {selectedSize && getSelectedSizeStock() === 0 ? "OUT OF STOCK" : "ADD TO CART"}
+                  ADD TO CART
                 </button>
                 <button
                   onClick={handleBuyNowClick}
-                  disabled={
-                    isAddingToCart ||
-                    (selectedSize && getSelectedSizeStock() === 0)
-                  }
-                  className={`flex-1 flex items-center justify-center gap-2 px-4 py-1 font-semibold rounded-xl transition-colors disabled:cursor-not-allowed ${selectedSize && getSelectedSizeStock() === 0
-                    ? "bg-gray-400 text-gray-200"
-                    : "bg-red-600 text-white hover:bg-red-700"
-                    } ${isAddingToCart ? "opacity-50" : ""}`}
+                  disabled={isAddingToCart || (!isBulkProduct && selectedSize && getSelectedSizeStock() === 0) || (isBulkProduct && selectedColors.length < minColors)}
+                  className={`flex-1 flex items-center justify-center gap-2 px-4 py-1 font-semibold rounded-xl transition-colors disabled:cursor-not-allowed ${
+                    ((!isBulkProduct && selectedSize && getSelectedSizeStock() === 0) || (isBulkProduct && selectedColors.length < minColors))
+                      ? "bg-gray-400 text-gray-200"
+                      : "bg-red-600 text-white hover:bg-red-700"
+                  } ${isAddingToCart ? "opacity-50" : ""}`}
                 >
                   <img src="/buynow1.svg" className="w-8 h-8" />
-                  {selectedSize && getSelectedSizeStock() === 0 ? "OUT OF STOCK" : "BUY NOW"}
+                  BUY NOW
                 </button>
               </div>
               <div className="mt-4">
                 {currentProduct.productDetails && (
                   <div className="pt-1">
                     <h2 className="text-md font-bold text-gray-700 mb-1">Product Details</h2>
-                    <p className="text-gray-600 whitespace-pre-line">
-                      {typeof currentProduct.productDetails === "string"
-                        ? currentProduct.productDetails
-                        : JSON.stringify(currentProduct.productDetails)}
-                    </p>
+                    <p className="text-gray-600 whitespace-pre-line">{typeof currentProduct.productDetails === "string" ? currentProduct.productDetails : JSON.stringify(currentProduct.productDetails)}</p>
                   </div>
                 )}
               </div>
@@ -873,39 +885,36 @@ const ProductDetailPage = () => {
           </div>
         </div>
 
-        {/* Static Design Section */}
-        <div className="px-4 mt-6"> {/* Changed to regular div with padding */}
+        {/* Static Design Section - Same */}
+        <div className="px-4 mt-6">
           <div className="bg-white border border-gray-200 rounded-xl shadow-sm py-4 px-4">
             <img src="/badge.jpeg" className="w-full h-auto rounded-xl" />
           </div>
         </div>
-        
-        {/* Reviews Section */}
-        <div
-          id="reviews"
-          className="border-t border-gray-200 rounded-xl px-4 py-6 mt-6 bg-white" /* Removed sm: classes */
-        >
+
+        {/* Reviews & Related Products - Same */}
+        <div id="reviews" className="border-t border-gray-200 rounded-xl px-4 py-6 mt-6 bg-white">
           <ProductReviews productId={currentProduct._id} />
         </div>
-        
-        {/* Related Products */}
-        <div className="border-t rounded-xl px-4 py-6 mt-6 bg-white"> {/* Removed sm: classes */}
+        <div className="border-t rounded-xl px-4 py-6 mt-6 bg-white">
           <RelatedProducts currentProduct={currentProduct} />
         </div>
       </div>
 
-      {/* Buy Now Size Selection Modal - Mobile optimized */}
+      {/* All Modals (Same as original, just added bulk modal) */}
+      
+      {/* Bulk Modal - Only for Bulk Products */}
       <AnimatePresence>
-        {showBuyNowSizeModal && (
+        {showBulkModal && isBulkProduct && (
           <motion.div
             className="fixed inset-0 bg-black bg-opacity-50 z-50 flex items-center justify-center p-4"
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
             exit={{ opacity: 0 }}
-            onClick={() => setShowBuyNowSizeModal(false)}
+            onClick={() => setShowBulkModal(false)}
           >
             <motion.div
-              className="relative bg-white rounded-xl w-full max-w-md max-h-[80vh] overflow-y-auto" /* Changed max-h */
+              className="relative bg-white rounded-xl w-full max-w-md max-h-[80vh] overflow-y-auto"
               initial={{ scale: 0.9, y: 20 }}
               animate={{ scale: 1, y: 0 }}
               exit={{ scale: 0.9, y: 20 }}
@@ -913,90 +922,72 @@ const ProductDetailPage = () => {
             >
               <div className="p-5">
                 <div className="flex items-center justify-between mb-4">
-                  <h3 className="text-lg font-bold text-gray-900">Select Size</h3>
-                  <button
-                    onClick={() => setShowBuyNowSizeModal(false)}
-                    className="p-1 rounded-full hover:bg-gray-100"
-                  >
+                  <h3 className="text-lg font-bold text-gray-900">Select Colors</h3>
+                  <button onClick={() => setShowBulkModal(false)} className="p-1 rounded-full hover:bg-gray-100">
                     <X className="w-5 h-5 text-gray-500" />
                   </button>
                 </div>
 
-                {/* Product Info */}
                 <div className="flex items-center space-x-3 mb-4">
-                  <img
-                    src={currentProduct.images[0]?.url || "/placeholder.svg"}
-                    alt={currentProduct.name}
-                    className="w-14 h-14 object-cover rounded-lg"
-                  />
+                  <img src={currentProduct.images[0]?.url || "/placeholder.svg"} alt={currentProduct.name} className="w-14 h-14 object-cover rounded-lg" />
                   <div>
                     <h4 className="font-semibold text-gray-900 text-sm">{currentProduct.name}</h4>
-                    <p className="text-lg font-bold text-gray-900">₹{currentProduct.price.toLocaleString()}</p>
+                    <p className="text-lg font-bold text-gray-900">₹{displayPrice?.toLocaleString()}/set</p>
                   </div>
                 </div>
 
-                {/* Size Selection */}
-                <div className="mb-6">
-                  <div className="flex items-center justify-between mb-3">
-                    <h4 className="text-base font-semibold text-gray-800">Select Size</h4>
-                    <button
-                      onClick={() => {
-                        setShowBuyNowSizeModal(false)
-                        setShowSizeGuide(true)
-                      }}
-                      className="text-sm font-medium text-primary flex items-center"
-                    >
-                      <Ruler className="w-4 h-4 mr-1" />
-                      Size Guide
-                    </button>
-                  </div>
+                {/* Sizes Info */}
+                <div className="mb-4">
+                  <p className="text-sm text-gray-600">Sizes: {currentProduct.sizes?.map(s => s.size).join(", ")}</p>
+                  <p className="text-xs text-gray-500">You will get {currentProduct.bulkConfig?.piecesPerSize || 1} piece(s) of each size per set</p>
+                </div>
 
-                  {/* Size Grid - Mobile (4 columns) */}
-                  <div className="grid grid-cols-4 gap-2 mb-4">
-                    {currentProduct.sizes.map((s) => (
+                {/* Color Selection */}
+                <div className="mb-6">
+                  <p className="text-sm font-medium mb-3">Select Colors (Min {minColors}, Max {maxColors})</p>
+                  <div className="flex flex-wrap gap-2">
+                    {currentProduct.colors?.map((color) => (
                       <button
-                        key={s.size}
-                        onClick={() => setSelectedSize(s.size)}
-                        disabled={s.stock === 0}
-                        className={`px-3 py-3 border rounded-lg font-medium text-sm ${selectedSize === s.size
-                          ? "border-red-500 bg-red-50 text-red-600"
-                          : s.stock === 0
-                            ? "border-gray-200 bg-gray-100 text-gray-400"
-                            : "border-gray-300 hover:border-red-400"
-                          }`}
+                        key={color.name}
+                        onClick={() => handleColorToggle(color.name)}
+                        className={`px-3 py-1.5 rounded-lg text-sm border ${selectedColors.includes(color.name) ? "border-red-500 bg-red-50 text-red-600" : "border-gray-200"}`}
                       >
-                        {s.size}
+                        {color.name}
                       </button>
                     ))}
                   </div>
+                </div>
 
-                  <div className="text-center">
-                    <p className="text-sm text-gray-600">
-                      {selectedSize
-                        ? `Selected: ${selectedSize} - ${getSelectedSizeStock()} available`
-                        : "Please select a size"
-                      }
-                    </p>
+                {/* Quantity */}
+                <div className="mb-6">
+                  <p className="text-sm font-medium mb-3">Quantity (Sets)</p>
+                  <div className="flex items-center gap-3">
+                    <button onClick={() => setBulkQuantity(Math.max(1, bulkQuantity - 1))} className="p-1 border rounded-lg px-2">
+                      <Minus className="w-4 h-4" />
+                    </button>
+                    <span className="font-medium w-8 text-center">{bulkQuantity}</span>
+                    <button onClick={() => setBulkQuantity(Math.min(10, bulkQuantity + 1))} className="p-1 border rounded-lg px-2">
+                      <Plus className="w-4 h-4" />
+                    </button>
                   </div>
                 </div>
 
-                {/* Action Buttons */}
-                <div className="flex gap-3">
+                {/* Summary */}
+                <div className="p-4 bg-gray-50 rounded-lg">
+                  <div className="flex justify-between mb-2">
+                    <span className="text-sm text-gray-600">Total Pieces:</span>
+                    <span className="font-medium">{totalPieces} pcs</span>
+                  </div>
+                  <div className="flex justify-between mb-4">
+                    <span className="text-sm text-gray-600">Total Price:</span>
+                    <span className="text-xl font-bold text-red-600">₹{totalPrice.toLocaleString()}</span>
+                  </div>
                   <button
-                    onClick={() => setShowBuyNowSizeModal(false)}
-                    className="flex-1 px-4 py-3 border border-gray-300 text-gray-700 font-medium rounded-lg"
+                    onClick={handleAddToCart}
+                    disabled={selectedColors.length < minColors}
+                    className={`w-full py-2 rounded-lg font-medium ${selectedColors.length < minColors ? "bg-gray-300 cursor-not-allowed" : "bg-red-600 text-white"}`}
                   >
-                    Cancel
-                  </button>
-                  <button
-                    onClick={handleProceedToCheckout}
-                    disabled={!selectedSize}
-                    className={`flex-1 px-4 py-3 font-medium rounded-lg ${!selectedSize
-                      ? "bg-gray-400 text-gray-200"
-                      : "bg-red-600 text-white"
-                      }`}
-                  >
-                    Buy Now
+                    Add to Cart
                   </button>
                 </div>
               </div>
@@ -1005,9 +996,79 @@ const ProductDetailPage = () => {
         )}
       </AnimatePresence>
 
-      {/* Add to Cart Size Selection Modal - Mobile optimized */}
+      {/* Buy Now Size Modal - Only for Regular Products */}
       <AnimatePresence>
-        {showAddToCartSizeModal && (
+        {showBuyNowSizeModal && !isBulkProduct && (
+          <motion.div
+            className="fixed inset-0 bg-black bg-opacity-50 z-50 flex items-center justify-center p-4"
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            onClick={() => setShowBuyNowSizeModal(false)}
+          >
+            <motion.div
+              className="relative bg-white rounded-xl w-full max-w-md max-h-[80vh] overflow-y-auto"
+              initial={{ scale: 0.9, y: 20 }}
+              animate={{ scale: 1, y: 0 }}
+              exit={{ scale: 0.9, y: 20 }}
+              onClick={(e) => e.stopPropagation()}
+            >
+              <div className="p-5">
+                {/* Same as original */}
+                <div className="flex items-center justify-between mb-4">
+                  <h3 className="text-lg font-bold text-gray-900">Select Size</h3>
+                  <button onClick={() => setShowBuyNowSizeModal(false)} className="p-1 rounded-full hover:bg-gray-100">
+                    <X className="w-5 h-5 text-gray-500" />
+                  </button>
+                </div>
+
+                <div className="flex items-center space-x-3 mb-4">
+                  <img src={currentProduct.images[0]?.url || "/placeholder.svg"} alt={currentProduct.name} className="w-14 h-14 object-cover rounded-lg" />
+                  <div>
+                    <h4 className="font-semibold text-gray-900 text-sm">{currentProduct.name}</h4>
+                    <p className="text-lg font-bold text-gray-900">₹{currentProduct.price.toLocaleString()}</p>
+                  </div>
+                </div>
+
+                <div className="mb-6">
+                  <div className="flex items-center justify-between mb-3">
+                    <h4 className="text-base font-semibold text-gray-800">Select Size</h4>
+                    <button onClick={() => { setShowBuyNowSizeModal(false); setShowSizeGuide(true) }} className="text-sm font-medium text-primary flex items-center">
+                      <Ruler className="w-4 h-4 mr-1" /> Size Guide
+                    </button>
+                  </div>
+
+                  <div className="grid grid-cols-4 gap-2 mb-4">
+                    {currentProduct.sizes.map((s) => (
+                      <button
+                        key={s.size}
+                        onClick={() => setSelectedSize(s.size)}
+                        disabled={s.stock === 0}
+                        className={`px-3 py-3 border rounded-lg font-medium text-sm ${selectedSize === s.size ? "border-red-500 bg-red-50 text-red-600" : s.stock === 0 ? "border-gray-200 bg-gray-100 text-gray-400" : "border-gray-300 hover:border-red-400"}`}
+                      >
+                        {s.size}
+                      </button>
+                    ))}
+                  </div>
+
+                  <div className="text-center">
+                    <p className="text-sm text-gray-600">{selectedSize ? `Selected: ${selectedSize} - ${getSelectedSizeStock()} available` : "Please select a size"}</p>
+                  </div>
+                </div>
+
+                <div className="flex gap-3">
+                  <button onClick={() => setShowBuyNowSizeModal(false)} className="flex-1 px-4 py-3 border border-gray-300 text-gray-700 font-medium rounded-lg">Cancel</button>
+                  <button onClick={handleProceedToCheckout} disabled={!selectedSize} className={`flex-1 px-4 py-3 font-medium rounded-lg ${!selectedSize ? "bg-gray-400 text-gray-200" : "bg-red-600 text-white"}`}>Buy Now</button>
+                </div>
+              </div>
+            </motion.div>
+          </motion.div>
+        )}
+      </AnimatePresence>
+
+      {/* Add to Cart Size Modal - Only for Regular Products */}
+      <AnimatePresence>
+        {showAddToCartSizeModal && !isBulkProduct && (
           <motion.div
             className="fixed inset-0 bg-black bg-opacity-50 z-50 flex items-center justify-center p-4"
             initial={{ opacity: 0 }}
@@ -1023,58 +1084,37 @@ const ProductDetailPage = () => {
               onClick={(e) => e.stopPropagation()}
             >
               <div className="p-5">
+                {/* Same as original */}
                 <div className="flex items-center justify-between mb-4">
                   <h3 className="text-lg font-bold text-gray-900">Select Size</h3>
-                  <button
-                    onClick={() => setShowAddToCartSizeModal(false)}
-                    className="p-1 rounded-full hover:bg-gray-100"
-                  >
+                  <button onClick={() => setShowAddToCartSizeModal(false)} className="p-1 rounded-full hover:bg-gray-100">
                     <X className="w-5 h-5 text-gray-500" />
                   </button>
                 </div>
 
-                {/* Product Info */}
                 <div className="flex items-center space-x-3 mb-4">
-                  <img
-                    src={currentProduct.images[0]?.url || "/placeholder.svg"}
-                    alt={currentProduct.name}
-                    className="w-14 h-14 object-cover rounded-lg"
-                  />
+                  <img src={currentProduct.images[0]?.url || "/placeholder.svg"} alt={currentProduct.name} className="w-14 h-14 object-cover rounded-lg" />
                   <div>
                     <h4 className="font-semibold text-gray-900 text-sm">{currentProduct.name}</h4>
                     <p className="text-lg font-bold text-gray-900">₹{currentProduct.price.toLocaleString()}</p>
                   </div>
                 </div>
 
-                {/* Size Selection */}
                 <div className="mb-6">
                   <div className="flex items-center justify-between mb-3">
                     <h4 className="text-base font-semibold text-gray-800">Select Size</h4>
-                    <button
-                      onClick={() => {
-                        setShowAddToCartSizeModal(false)
-                        setShowSizeGuide(true)
-                      }}
-                      className="text-sm font-medium text-primary flex items-center"
-                    >
-                      <Ruler className="w-4 h-4 mr-1" />
-                      Size Guide
+                    <button onClick={() => { setShowAddToCartSizeModal(false); setShowSizeGuide(true) }} className="text-sm font-medium text-primary flex items-center">
+                      <Ruler className="w-4 h-4 mr-1" /> Size Guide
                     </button>
                   </div>
 
-                  {/* Size Grid - Mobile (4 columns) */}
                   <div className="grid grid-cols-4 gap-2 mb-4">
                     {currentProduct.sizes.map((s) => (
                       <button
                         key={s.size}
                         onClick={() => setSelectedSize(s.size)}
                         disabled={s.stock === 0}
-                        className={`px-3 py-3 border rounded-lg font-medium text-sm ${selectedSize === s.size
-                          ? "border-red-500 bg-red-50 text-red-600"
-                          : s.stock === 0
-                            ? "border-gray-200 bg-gray-100 text-gray-400"
-                            : "border-gray-300 hover:border-red-400"
-                          }`}
+                        className={`px-3 py-3 border rounded-lg font-medium text-sm ${selectedSize === s.size ? "border-red-500 bg-red-50 text-red-600" : s.stock === 0 ? "border-gray-200 bg-gray-100 text-gray-400" : "border-gray-300 hover:border-red-400"}`}
                       >
                         {s.size}
                       </button>
@@ -1082,33 +1122,13 @@ const ProductDetailPage = () => {
                   </div>
 
                   <div className="text-center">
-                    <p className="text-sm text-gray-600">
-                      {selectedSize
-                        ? `Selected: ${selectedSize} - ${getSelectedSizeStock()} available`
-                        : "Please select a size"
-                      }
-                    </p>
+                    <p className="text-sm text-gray-600">{selectedSize ? `Selected: ${selectedSize} - ${getSelectedSizeStock()} available` : "Please select a size"}</p>
                   </div>
                 </div>
 
-                {/* Action Buttons */}
                 <div className="flex gap-3">
-                  <button
-                    onClick={() => setShowAddToCartSizeModal(false)}
-                    className="flex-1 px-4 py-3 border border-gray-300 text-gray-700 font-medium rounded-lg"
-                  >
-                    Cancel
-                  </button>
-                  <button
-                    onClick={handleProceedToAddToCart}
-                    disabled={!selectedSize}
-                    className={`flex-1 px-4 py-3 font-medium rounded-lg ${!selectedSize
-                      ? "bg-gray-400 text-gray-200"
-                      : "bg-red-600 text-white"
-                      }`}
-                  >
-                    Add to Cart
-                  </button>
+                  <button onClick={() => setShowAddToCartSizeModal(false)} className="flex-1 px-4 py-3 border border-gray-300 text-gray-700 font-medium rounded-lg">Cancel</button>
+                  <button onClick={handleProceedToAddToCart} disabled={!selectedSize} className={`flex-1 px-4 py-3 font-medium rounded-lg ${!selectedSize ? "bg-gray-400 text-gray-200" : "bg-red-600 text-white"}`}>Add to Cart</button>
                 </div>
               </div>
             </motion.div>
@@ -1116,7 +1136,7 @@ const ProductDetailPage = () => {
         )}
       </AnimatePresence>
 
-      {/* Image Modal - Mobile optimized */}
+      {/* Image Modal */}
       <AnimatePresence>
         {showImageModal && (
           <motion.div
@@ -1126,25 +1146,17 @@ const ProductDetailPage = () => {
             exit={{ opacity: 0 }}
             onClick={() => setShowImageModal(false)}
           >
-            <button
-              onClick={() => setShowImageModal(false)}
-              className="absolute top-4 right-4 p-2 text-white bg-black/50 rounded-full"
-            >
+            <button onClick={() => setShowImageModal(false)} className="absolute top-4 right-4 p-2 text-white bg-black/50 rounded-full">
               <X className="w-6 h-6" />
             </button>
             <div className="w-full h-full flex items-center justify-center">
-              <img
-                src={currentProduct.images[selectedImage]?.url || "/placeholder.svg"}
-                alt={currentProduct.name}
-                className="w-full h-auto max-h-screen object-contain"
-                loading="lazy"
-              />
+              <img src={currentProduct.images[selectedImage]?.url || "/placeholder.svg"} alt={currentProduct.name} className="w-full h-auto max-h-screen object-contain" />
             </div>
           </motion.div>
         )}
       </AnimatePresence>
 
-      {/* Size Guide Modal - Mobile optimized */}
+      {/* Size Guide Modal */}
       <AnimatePresence>
         {showSizeGuide && (
           <motion.div
@@ -1164,45 +1176,40 @@ const ProductDetailPage = () => {
               <div className="p-4">
                 <div className="flex items-center justify-between mb-3">
                   <h3 className="text-lg font-bold text-gray-900">Size Guide</h3>
-                  <button
-                    onClick={() => setShowSizeGuide(false)}
-                    className="p-1 rounded-full hover:bg-gray-100"
-                  >
+                  <button onClick={() => setShowSizeGuide(false)} className="p-1 rounded-full hover:bg-gray-100">
                     <X className="w-5 h-5 text-gray-700" />
                   </button>
                 </div>
-                <img
-                  src="/6.webp"
-                  alt="Size Guide"
-                  className="w-full h-auto rounded-lg"
-                />
+                <img src="/6.webp" alt="Size Guide" className="w-full h-auto rounded-lg" />
               </div>
             </motion.div>
           </motion.div>
         )}
       </AnimatePresence>
 
-      {/* Fixed Mobile Action Bar - Improved */}
+      {/* Fixed Mobile Action Bar */}
       <div className="lg:hidden fixed bottom-0 left-0 right-0 bg-white border-t border-gray-200 p-4 z-40 shadow-lg">
         <div className="flex gap-3">
           <button
             onClick={handleAddToCartClick}
-            disabled={isAddingToCart || (selectedSize && getSelectedSizeStock() === 0)}
-            className={`flex-1 flex items-center justify-center gap-2 px-4 py-3 rounded-xl font-semibold text-sm ${selectedSize && getSelectedSizeStock() === 0
-              ? "bg-gray-100 text-gray-400"
-              : "bg-white border border-gray-300 text-gray-800"
-              }`}
+            disabled={isAddingToCart || (!isBulkProduct && selectedSize && getSelectedSizeStock() === 0) || (isBulkProduct && selectedColors.length < minColors)}
+            className={`flex-1 flex items-center justify-center gap-2 px-4 py-3 rounded-xl font-semibold text-sm ${
+              ((!isBulkProduct && selectedSize && getSelectedSizeStock() === 0) || (isBulkProduct && selectedColors.length < minColors))
+                ? "bg-gray-100 text-gray-400"
+                : "bg-white border border-gray-300 text-gray-800"
+            }`}
           >
             <ShoppingCart className="w-5 h-5" />
             ADD TO CART
           </button>
           <button
             onClick={handleBuyNowClick}
-            disabled={isAddingToCart || (selectedSize && getSelectedSizeStock() === 0)}
-            className={`flex-1 flex items-center justify-center gap-2 px-4 py-3 rounded-xl font-semibold text-sm ${selectedSize && getSelectedSizeStock() === 0
-              ? "bg-gray-400 text-gray-200"
-              : "bg-red-600 text-white"
-              }`}
+            disabled={isAddingToCart || (!isBulkProduct && selectedSize && getSelectedSizeStock() === 0) || (isBulkProduct && selectedColors.length < minColors)}
+            className={`flex-1 flex items-center justify-center gap-2 px-4 py-3 rounded-xl font-semibold text-sm ${
+              ((!isBulkProduct && selectedSize && getSelectedSizeStock() === 0) || (isBulkProduct && selectedColors.length < minColors))
+                ? "bg-gray-400 text-gray-200"
+                : "bg-red-600 text-white"
+            }`}
           >
             <img src="/buynow1.svg" className="w-6 h-6" />
             BUY NOW
