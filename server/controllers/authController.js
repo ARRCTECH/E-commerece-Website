@@ -31,6 +31,158 @@ const checkRateLimit = (identifier, maxAttempts = 5, windowMs = 15 * 60 * 1000) 
   }
 }
 
+// GOOGLE SIGN-IN - NEW ENDPOINT
+const googleSignIn = async (req, res) => {
+  try {
+    const { idToken, email, name, photoURL } = req.body
+
+    if (!idToken) {
+      return res.status(400).json({
+        success: false,
+        message: "ID token is required",
+      })
+    }
+
+    try {
+      // Verify Firebase ID token
+      const decodedToken = await admin.auth().verifyIdToken(idToken)
+      
+      // Get Firebase user details
+      const firebaseUser = await admin.auth().getUser(decodedToken.uid)
+
+      // Find or create user in database
+      let user = await User.findOne({ 
+        $or: [
+          { firebaseUid: decodedToken.uid },
+          { email: firebaseUser.email?.toLowerCase() || email?.toLowerCase() }
+        ]
+      })
+
+      if (!user) {
+        // Create new user with Google data
+        user = new User({
+          firebaseUid: decodedToken.uid,
+          name: firebaseUser.displayName || name || firebaseUser.email?.split("@")[0] || "User",
+          email: firebaseUser.email?.toLowerCase() || email?.toLowerCase(),
+          authMethod: "google",
+          isVerified: firebaseUser.emailVerified || true,
+          role: "user",
+          avatar: firebaseUser.photoURL || photoURL,
+          createdAt: new Date(),
+        })
+
+        await user.save()
+
+        // Send welcome email (optional)
+        if (user.email) {
+          try {
+            await sendEmail({
+              to: user.email,
+              template: "welcome",
+              data: {
+                name: user.name,
+                email: user.email,
+              },
+            })
+          } catch (emailError) {
+            console.error("Failed to send welcome email:", emailError)
+            // Don't fail registration if email fails
+          }
+        }
+      } else {
+        // Update existing user with latest Google data
+        user.firebaseUid = decodedToken.uid
+        user.name = firebaseUser.displayName || name || user.name
+        user.avatar = firebaseUser.photoURL || photoURL || user.avatar
+        user.isVerified = firebaseUser.emailVerified || true
+        user.lastLogin = new Date()
+        
+        // If user had email auth but now using Google, update auth method
+        if (user.authMethod === "email") {
+          user.authMethod = "google"
+        }
+        
+        await user.save()
+      }
+
+      // Update last login
+      user.lastLogin = new Date()
+      await user.save()
+
+      // Generate JWT token
+      const jwtToken = jwt.sign(
+        {
+          userId: user._id,
+          firebaseUid: user.firebaseUid,
+          email: user.email,
+          phoneNumber: user.phoneNumber,
+          role: user.role,
+        },
+        process.env.JWT_SECRET,
+        { expiresIn: "7d" }
+      )
+
+      // Create custom token for Firebase
+      const customToken = await admin.auth().createCustomToken(decodedToken.uid)
+
+      res.status(200).json({
+        success: true,
+        message: "Google sign-in successful!",
+        user: {
+          _id: user._id,
+          firebaseUid: user.firebaseUid,
+          name: user.name,
+          email: user.email,
+          phoneNumber: user.phoneNumber,
+          authMethod: user.authMethod,
+          role: user.role,
+          isVerified: user.isVerified,
+          avatar: user.avatar,
+          createdAt: user.createdAt,
+          lastLogin: user.lastLogin,
+        },
+        customToken,
+        jwtToken,
+      })
+    } catch (firebaseError) {
+      console.error("Firebase Google auth error:", firebaseError)
+      
+      if (firebaseError.code === "auth/id-token-expired") {
+        return res.status(401).json({
+          success: false,
+          message: "Token has expired. Please try again.",
+        })
+      }
+      
+      if (firebaseError.code === "auth/invalid-id-token") {
+        return res.status(401).json({
+          success: false,
+          message: "Invalid token. Please try again.",
+        })
+      }
+      
+      return res.status(401).json({
+        success: false,
+        message: "Google authentication failed. Please try again.",
+      })
+    }
+  } catch (error) {
+    console.error("Google sign-in error:", error)
+    
+    if (error.message.includes("Too many attempts")) {
+      return res.status(429).json({
+        success: false,
+        message: error.message,
+      })
+    }
+    
+    res.status(500).json({
+      success: false,
+      message: "Google sign-in failed. Please try again.",
+    })
+  }
+}
+
 // Email Registration - FIXED VERSION
 const registerWithEmail = async (req, res) => {
   try {
@@ -43,7 +195,6 @@ const registerWithEmail = async (req, res) => {
         message: "Email, password, and name are required",
       })
     }
-
 
     // Email validation
     const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/
@@ -131,7 +282,7 @@ const registerWithEmail = async (req, res) => {
           role: user.role,
         },
         process.env.JWT_SECRET,
-        { expiresIn: "7d" },
+        { expiresIn: "7d" }
       )
 
       // Send welcome email (optional, don't fail registration if this fails)
@@ -283,7 +434,7 @@ const loginWithEmail = async (req, res) => {
             role: newUser.role,
           },
           process.env.JWT_SECRET,
-          { expiresIn: "7d" },
+          { expiresIn: "7d" }
         )
 
         return res.status(200).json({
@@ -321,7 +472,7 @@ const loginWithEmail = async (req, res) => {
           role: user.role,
         },
         process.env.JWT_SECRET,
-        { expiresIn: "7d" },
+        { expiresIn: "7d" }
       )
 
       // Update last login
@@ -545,7 +696,7 @@ const verifyPhoneOTP = async (req, res) => {
           role: user.role,
         },
         process.env.JWT_SECRET,
-        { expiresIn: "7d" },
+        { expiresIn: "7d" }
       )
 
       // Create custom token for Firebase
@@ -683,7 +834,7 @@ const verifyFirebaseToken = async (req, res) => {
         role: user.role,
       },
       process.env.JWT_SECRET,
-      { expiresIn: "7d" },
+      { expiresIn: "7d" }
     )
 
     res.status(200).json({
@@ -722,7 +873,6 @@ const verifyFirebaseToken = async (req, res) => {
   }
 }
 
-// Keep other functions as they were...
 const forgotPassword = async (req, res) => {
   try {
     const { email } = req.body
@@ -1013,6 +1163,7 @@ const deleteAccount = async (req, res) => {
 module.exports = {
   registerWithEmail,
   loginWithEmail,
+  googleSignIn, // Added Google Sign-In
   verifyFirebaseToken,
   forgotPassword,
   getProfile,

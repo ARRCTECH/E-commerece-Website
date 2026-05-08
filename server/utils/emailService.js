@@ -102,7 +102,7 @@ const templates = {
         <!-- Header -->
         <div style="background: linear-gradient(135deg, #ec4899, #be185d); padding: 30px; text-align: center;">
           <h1 style="color: white; margin: 0; font-size: 28px;">✅ Order Confirmed!</h1>
-          <p style="color: white; margin: 10px 0 0 0; opacity: 0.9; font-size: 16px;">Thank you for shopping with KsauniBliss</p>
+          <p style="color: white; margin: 10px 0 0 0; opacity: 0.9; font-size: 16px;">Thank you for shopping with Factory Sale</p>
         </div>
 
         <!-- Main Content -->
@@ -199,20 +199,20 @@ const templates = {
           <div style="background: #fefce8; padding: 20px; border-radius: 8px; border-left: 4px solid #eab308; margin: 25px 0;">
             <p style="margin: 0; color: #92400e; font-size: 14px;">
               <strong>Need Help?</strong> Contact our customer support team at 
-              <a href="mailto:support@ksaunibliss.com" style="color: #92400e; text-decoration: underline;">support@ksaunibliss.com</a>
+              <a href="mailto:support@Factory Sale.com" style="color: #92400e; text-decoration: underline;">support@Factory Sale.com</a>
               or call us at <strong>+91-XXXXXXXXXX</strong>
             </p>
           </div>
 
           <p style="color: #6b7280; font-size: 16px; text-align: center; margin-top: 30px;">
-            Thank you for choosing <strong style="color: #ec4899;">KsauniBliss</strong>! ❤️
+            Thank you for choosing <strong style="color: #ec4899;">Factory Sale</strong>! ❤️
           </p>
         </div>
 
         <!-- Footer -->
         <div style="background: #1f2937; padding: 25px; text-align: center;">
           <p style="color: #9ca3af; margin: 0 0 10px 0; font-size: 14px;">
-            © 2024 KsauniBliss. All rights reserved.
+            © 2024 Factory Sale. All rights reserved.
           </p>
           <p style="color: #6b7280; margin: 0; font-size: 12px;">
             You received this email because you placed an order with us. If you have any questions, please contact support.
@@ -245,7 +245,7 @@ const sendEmail = async ({ to, subject, template, data, html, text }) => {
     }
 
     const mailOptions = {
-      from: `"KsauniBliss" <${process.env.SMTP_USER || "order@ksaunibliss.com"}>`,
+      from: `"Factory Sale" <${process.env.SMTP_USER || "order@Factory Sale.com"}>`,
       to,
       ...emailContent,
     }

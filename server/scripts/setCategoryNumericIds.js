@@ -6,7 +6,7 @@ const Counter = require('../models/Counter');
 const run = async () => {
   try {
     // MongoDB connection string (तुझी .env वरून किंवा थेट)
-    const mongoURI = process.env.MONGODB_URI || 'mongodb+srv://ksaunibliss:LGaRwEasIMDN1M2x@cluster0.lbc8x6q.mongodb.net/?retryWrites=true&w=majority&appName=Cluster0';
+    const mongoURI = process.env.MONGODB_URI || 'mongodb+srv://Factory Sale:LGaRwEasIMDN1M2x@cluster0.lbc8x6q.mongodb.net/?retryWrites=true&w=majority&appName=Cluster0';
     
     await mongoose.connect(mongoURI);
     console.log('✅ Connected to MongoDB');

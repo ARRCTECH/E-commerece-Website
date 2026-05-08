@@ -86,7 +86,7 @@ class ShiprocketService {
         billing_email:
           orderData.user?.email ||
           orderData.shippingAddress?.email ||
-          "customer@ksaunibliss.com",
+          "customer@Factory Sale.com",
         billing_phone: orderData.shippingAddress.phoneNumber
           .replace(/^\+91/, "")
           .replace(/\D/g, ""),

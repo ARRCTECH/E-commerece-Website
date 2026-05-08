@@ -5,6 +5,29 @@ const User = require("../models/User");
 // 🔒 Authentication Middleware
 // =============================
 const protect = async (req, res, next) => {
+  // List of public routes that don't require authentication
+  const publicRoutes = [
+    '/auth/google',
+    '/google',
+    '/register/email',
+    '/login/email',
+    '/forgot-password',
+    '/phone/prepare-otp',
+    '/phone/verify-otp',
+    '/verify-token',
+    '/health',
+    '/register',
+    '/login'
+  ];
+  
+  // Check if current route is public
+  const isPublicRoute = publicRoutes.some(route => req.path.includes(route));
+  
+  if (isPublicRoute) {
+    console.log(`Public route accessed: ${req.method} ${req.path} - Skipping authentication`);
+    return next();
+  }
+  
   try {
     const authHeader = req.header("Authorization");
 
@@ -59,11 +82,29 @@ const protect = async (req, res, next) => {
       phoneNumber: user.phoneNumber,
       name: user.name,
       email: user.email,
+      firebaseUid: user.firebaseUid,
+      authMethod: user.authMethod,
     };
 
     next();
   } catch (error) {
     console.error("Auth middleware error:", error);
+    
+    // Handle specific JWT errors
+    if (error.name === 'JsonWebTokenError') {
+      return res.status(401).json({
+        success: false,
+        message: "Invalid token. Please login again.",
+      });
+    }
+    
+    if (error.name === 'TokenExpiredError') {
+      return res.status(401).json({
+        success: false,
+        message: "Token has expired. Please login again.",
+      });
+    }
+    
     return res.status(401).json({
       success: false,
       message: "Invalid or expired token. Please login again.",
@@ -75,7 +116,7 @@ const protect = async (req, res, next) => {
 // 🔒 Admin-only Middleware
 // =============================
 const adminAuth = (req, res, next) => {
-    console.log("req.user:", req.user); // <- check this
+  console.log("Admin auth check - req.user:", req.user);
 
   if (!req.user || req.user.role !== "admin") {
     return res.status(403).json({
@@ -89,7 +130,6 @@ const adminAuth = (req, res, next) => {
 // =============================
 // 🔒 Digital Marketer-only Middleware
 // =============================
-
 const digitalMarketerAuth = (req, res, next) => {
   if (!req.user || (req.user.role !== "digitalMarketer" && req.user.role !== "admin")) {
     return res.status(403).json({
@@ -140,9 +180,12 @@ const optionalProtect = async (req, res, next) => {
         phoneNumber: user.phoneNumber,
         name: user.name,
         email: user.email,
+        firebaseUid: user.firebaseUid,
+        authMethod: user.authMethod,
       };
     } catch (tokenError) {
       // Invalid token, continue as guest
+      console.log("Invalid token in optional auth:", tokenError.message);
       req.user = null;
     }
 
@@ -154,9 +197,24 @@ const optionalProtect = async (req, res, next) => {
   }
 };
 
+// =============================
+// 🔒 Route-specific middleware to skip auth for certain routes
+// =============================
+const skipAuthForRoutes = (routes) => {
+  return (req, res, next) => {
+    const shouldSkip = routes.some(route => req.path === route || req.path.startsWith(route));
+    if (shouldSkip) {
+      console.log(`Skipping auth for route: ${req.method} ${req.path}`);
+      return next();
+    }
+    return protect(req, res, next);
+  };
+};
+
 module.exports = {
   protect,
   adminAuth,
   digitalMarketerAuth,
   optionalProtect,
+  skipAuthForRoutes,
 };

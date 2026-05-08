@@ -121,7 +121,7 @@ app.use("/uploads", (req, res, next) => {
 app.get("/", (req, res) => {
   res.status(200).json({
     success: true,
-    message: "Ksaunibliss API Server is running",
+    message: "Factory Sale API Server is running",
     timestamp: new Date().toISOString(),
     version: "1.0.0",
   })

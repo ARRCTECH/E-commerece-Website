@@ -127,6 +127,9 @@ function AppContent() {
             {/* Public Routes */}
             <Route path="/" element={<HomePage />} />
             <Route path="/login" element={<LoginPage />} />
+            <Route path="/login" element={<LoginPage />} />
+<Route path="/register" element={<LoginPage />} />
+<Route path="/signup" element={<LoginPage />} />
             <Route path="/products" element={<ProductsPage />} />
             <Route path="/products/:category" element={<ProductsPage />} />
             {/* <Route path="/product/:id" element={<ProductDetailPage />} /> */}

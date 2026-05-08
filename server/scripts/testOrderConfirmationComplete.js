@@ -114,7 +114,7 @@ async function testActualOrderConfirmation() {
     // Send customer confirmation email using the same method as orderController
     console.log('📤 Sending customer confirmation email...');
     await sendEmail({
-      to: process.env.ADMIN || 'ksaunibliss@gmail.com', // Send to admin for testing
+      to: process.env.ADMIN || 'Factory Sale@gmail.com', // Send to admin for testing
       template: 'orderConfirmation',
       data: emailData
     });
@@ -124,7 +124,7 @@ async function testActualOrderConfirmation() {
     // Also test admin notification (simplified version)
     console.log('📤 Sending admin notification email...');
     await sendEmail({
-      to: process.env.ADMIN || 'ksaunibliss@gmail.com',
+      to: process.env.ADMIN || 'Factory Sale@gmail.com',
       subject: `🛎️ NEW ORDER: ${mockOrder.orderNumber} - ${fmt(totalNum)}`,
       html: `
         <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; padding: 20px;">

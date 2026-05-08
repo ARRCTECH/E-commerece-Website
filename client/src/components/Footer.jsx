@@ -55,7 +55,7 @@ const Footer = () => {
             </a>
 
             <a
-              href="https://youtube.com/@ksaunibliss?si=wDSr5h_upC5gfIWC"
+              href="https://youtube.com/@Factory Sale?si=wDSr5h_upC5gfIWC"
               target="_blank"
               rel="noreferrer"
               className="hover:text-red-400 transition"
@@ -64,7 +64,7 @@ const Footer = () => {
             </a>
 
             <a
-              href="https://in.pinterest.com/ksaunibliss0051/?actingBusinessId=1092545328261126096"
+              href="https://in.pinterest.com/Factory Sale0051/?actingBusinessId=1092545328261126096"
               target="_blank"
               rel="noreferrer"
               className="hover:text-red-400 transition"
@@ -162,7 +162,7 @@ const Footer = () => {
 
               <li className="flex justify-center sm:justify-start items-center space-x-2">
                 <Mail className="w-4 h-4 text-red-400" />
-                <span>support@ksaunibliss.com</span>
+                <span>support@Factory Sale.com</span>
               </li>
             </ul>
           </div>

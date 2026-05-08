@@ -1,5 +1,5 @@
 <<<<<<< HEAD
-# KsauniBliss - Simple CI/CD Setup
+# Factory Sale - Simple CI/CD Setup
 
 ## 🚀 Simple Deployment
 
@@ -20,7 +20,7 @@ This project uses a clean, simple CI/CD setup with just GitHub Actions and Docke
    - Pulls code to your VPS
    - Builds Docker containers
    - Starts your application
-3. **Live at** https://ksaunibliss.com
+3. **Live at** https://Factory Sale.com
 
 ### Setup Requirements:
 Add these secrets to GitHub repository settings:
@@ -34,7 +34,7 @@ PORT = 22
 ### Manual Deployment:
 ```bash
 # On your VPS:
-cd /var/www/KsauniBlissFinal
+cd /var/www/Factory SaleFinal
 git pull origin main
 docker-compose up --build -d
 ```
