@@ -3,11 +3,14 @@ import axios from "axios"
 const API_URL = import.meta.env.VITE_API_URL || "http://localhost:5000/api"
 
 const productAPI = {
+  // ===============================
+  // Existing Methods (No changes)
+  // ===============================
   getProducts: (params) => axios.get(`${API_URL}/products`, { params }),
 
   getTrendingProducts: () => axios.get(`${API_URL}/products/trending`),
 
-getNewArrivals: () => axios.get(`${API_URL}/products/new`),
+  getNewArrivals: () => axios.get(`${API_URL}/products/new`),
 
   getOversizedProducts: () => axios.get(`${API_URL}/products/oversized`),
 
@@ -38,7 +41,28 @@ getNewArrivals: () => axios.get(`${API_URL}/products/new`),
 
   searchProducts: (query) => axios.get(`${API_URL}/products/search?q=${query}`),
 
-  getProductsByCategory: (categoryId, params) => axios.get(`${API_URL}/products/category/${categoryId}`, { params }),
+  getProductsByCategory: (categoryId, params) => 
+    axios.get(`${API_URL}/products/category/${categoryId}`, { params }),
+
+  // ===============================
+  // 🆕 Bulk Product Specific Methods
+  // ===============================
+  
+  // Get only bulk products
+  getBulkProducts: (params) => 
+    axios.get(`${API_URL}/products/bulk`, { params }),
+  
+  // Get only regular products
+  getRegularProducts: (params) => 
+    axios.get(`${API_URL}/products/regular`, { params }),
+  
+  // Get products with type filter (using query param)
+  getProductsByType: (type, params) => 
+    axios.get(`${API_URL}/products`, { params: { ...params, type } }),
+  
+  // Get bulk products by category
+  getBulkProductsByCategory: (categoryId, params) => 
+    axios.get(`${API_URL}/products/category/${categoryId}`, { params: { ...params, type: 'bulk' } }),
 }
 
 export default productAPI

@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from "react"
 import { useDispatch } from "react-redux"
-import { Plus, Search, Edit, Trash2, ArrowUp, ArrowDown, Star } from "lucide-react"
+import { Plus, Search, Edit, Trash2, ArrowUp, ArrowDown, Star, Package } from "lucide-react"
 import adminAPI from "../../store/api/adminApi"
 import { fetchCategories as fetchCategoriesAction } from "../../store/slices/categorySlice"
 
@@ -14,6 +14,7 @@ const ProductsManagement = () => {
   const [showModal, setShowModal] = useState(false)
   const [editingProduct, setEditingProduct] = useState(null)
   const [searchTerm, setSearchTerm] = useState("")
+  const [productType, setProductType] = useState("regular") 
   const [filters, setFilters] = useState({
     category: "",
     minPrice: "",
@@ -24,6 +25,15 @@ const ProductsManagement = () => {
     current: 1,
     pages: 1,
     total: 0,
+  })
+
+  // 🆕 Bulk Config State
+  const [bulkConfig, setBulkConfig] = useState({
+    piecesPerSize: 1,
+    minColorsToSelect: 1,
+    maxColorsToSelect: null,
+    pricePerSet: "",
+    originalPricePerSet: "",
   })
 
   const [formData, setFormData] = useState({
@@ -86,12 +96,11 @@ const ProductsManagement = () => {
       setLoading(true)
       const formDataToSend = new FormData()
 
-      // Append text fields
+      // Append common fields
       Object.keys(formData).forEach((key) => {
         if (editingProduct && key === "category") {
-          return // Don't include category in updates
+          return
         }
-
         if (key === "sizes" || key === "colors" || key === "tags") {
           formDataToSend.append(key, JSON.stringify(formData[key]))
         } else if (key === "dimensions") {
@@ -101,23 +110,29 @@ const ProductsManagement = () => {
         }
       })
 
+      // 🆕 Append bulk fields
+      formDataToSend.append("isBulkProduct", productType === "bulk")
+      if (productType === "bulk") {
+        formDataToSend.append("bulkConfig", JSON.stringify(bulkConfig))
+        // For bulk products, price is pricePerSet
+        formDataToSend.append("price", bulkConfig.pricePerSet)
+        formDataToSend.append("originalPrice", bulkConfig.originalPricePerSet)
+      }
+
       const newImages = images.filter((img) => !img.isExisting && img.file)
       const existingImageIds = images
         .filter((img) => img.isExisting)
         .map((img) => img.imageId)
         .filter(Boolean)
 
-      // Append new images
       newImages.forEach((img) => {
         formDataToSend.append("images", img.file)
       })
 
-      // Send existing image IDs to preserve them
       if (existingImageIds.length > 0) {
         formDataToSend.append("existingImages", JSON.stringify(existingImageIds))
       }
 
-      // Send complete image order (both existing and new)
       const imageOrder = images.map((img, index) => ({
         type: img.isExisting ? "existing" : "new",
         id: img.isExisting ? img.imageId : img.name,
@@ -175,12 +190,24 @@ const ProductsManagement = () => {
       weight: "",
       dimensions: { length: "", width: "", height: "" },
     })
+    setBulkConfig({
+      piecesPerSize: 1,
+      minColorsToSelect: 1,
+      maxColorsToSelect: null,
+      pricePerSet: "",
+      originalPricePerSet: "",
+    })
+    setProductType("regular")
     setImages([])
     setEditingProduct(null)
   }
 
   const openEditModal = (product) => {
     setEditingProduct(product)
+    const isBulk = product.isBulkProduct === true
+    
+    setProductType(isBulk ? "bulk" : "regular")
+    
     setFormData({
       name: product.name || "",
       brand: product.brand || "Factory Sale",
@@ -200,14 +227,24 @@ const ProductsManagement = () => {
       dimensions: product.dimensions || { length: "", width: "", height: "" },
     })
 
+    if (isBulk && product.bulkConfig) {
+      setBulkConfig({
+        piecesPerSize: product.bulkConfig.piecesPerSize || 1,
+        minColorsToSelect: product.bulkConfig.minColorsToSelect || 1,
+        maxColorsToSelect: product.bulkConfig.maxColorsToSelect || null,
+        pricePerSet: product.bulkConfig.pricePerSet || product.price,
+        originalPricePerSet: product.bulkConfig.originalPricePerSet || product.originalPrice,
+      })
+    }
+
     if (product.images && product.images.length > 0) {
       const existingImages = product.images.map((img, index) => ({
         file: null,
         name: `existing-image-${index}`,
-        preview: img.url, // Use the existing image URL as preview
-        sizeKB: 0, // Size unknown for existing images
-        isExisting: true, // Flag to identify existing images
-        imageId: img._id || img.id, // Store image ID for potential deletion
+        preview: img.url,
+        sizeKB: 0,
+        isExisting: true,
+        imageId: img._id || img.id,
       }))
       setImages(existingImages)
     } else {
@@ -264,7 +301,6 @@ const ProductsManagement = () => {
     setFormData({ ...formData, colors: newColors })
   }
 
-  // small helpers to reorder images and cleanup previews
   const moveImage = (index, direction) => {
     setImages((prev) => {
       const next = [...prev]
@@ -293,30 +329,23 @@ const ProductsManagement = () => {
       const [removed] = next.splice(index, 1)
       try {
         if (removed?.preview) URL.revokeObjectURL(removed.preview)
-      } catch {
-        // Ignore error when revoking object URL
-      }
+      } catch {}
       return next
     })
   }
 
-  // revoke any object URLs on unmount or full replacement
   useEffect(() => {
     return () => {
       images.forEach((img) => {
         try {
           if (img?.preview) URL.revokeObjectURL(img.preview)
-        } catch {
-          // Ignore error when revoking object URL
-        }
+        } catch {}
       })
     }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [])
 
   return (
     <div className="space-y-6">
-      {/* Header */}
       <div className="flex items-center justify-between">
         <h1 className="text-2xl font-bold text-gray-900">Products Management</h1>
         <button
@@ -339,26 +368,24 @@ const ProductsManagement = () => {
                 placeholder="Search products..."
                 value={searchTerm}
                 onChange={(e) => setSearchTerm(e.target.value)}
-                className="w-full py-2 pl-10 pr-4 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                className="w-full py-2 pl-10 pr-4 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500"
               />
             </div>
           </div>
           <select
             value={filters.category}
             onChange={(e) => setFilters({ ...filters, category: e.target.value })}
-            className="px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500"
+            className="px-4 py-2 border border-gray-300 rounded-lg"
           >
             <option value="">All Categories</option>
             {categories.map((category) => (
-              <option key={category._id} value={category._id}>
-                {category.name}
-              </option>
+              <option key={category._id} value={category._id}>{category.name}</option>
             ))}
           </select>
           <select
             value={filters.sort}
             onChange={(e) => setFilters({ ...filters, sort: e.target.value })}
-            className="px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500"
+            className="px-4 py-2 border border-gray-300 rounded-lg"
           >
             <option value="newest">Newest First</option>
             <option value="oldest">Oldest First</option>
@@ -375,40 +402,24 @@ const ProductsManagement = () => {
           <table className="min-w-full divide-y divide-gray-200">
             <thead className="bg-gray-50">
               <tr>
-                <th className="px-6 py-3 text-xs font-medium tracking-wider text-left text-gray-500 uppercase">
-                  Product
-                </th>
-                <th className="px-6 py-3 text-xs font-medium tracking-wider text-left text-gray-500 uppercase">
-                  Category
-                </th>
-                <th className="px-6 py-3 text-xs font-medium tracking-wider text-left text-gray-500 uppercase">
-                  Price
-                </th>
-                <th className="px-6 py-3 text-xs font-medium tracking-wider text-left text-gray-500 uppercase">
-                  Stock
-                </th>
-                <th className="px-6 py-3 text-xs font-medium tracking-wider text-left text-gray-500 uppercase">
-                  Status
-                </th>
-                <th className="px-6 py-3 text-xs font-medium tracking-wider text-left text-gray-500 uppercase">
-                  Actions
-                </th>
+                <th className="px-6 py-3 text-xs font-medium text-left text-gray-500 uppercase">Product</th>
+                <th className="px-6 py-3 text-xs font-medium text-left text-gray-500 uppercase">Type</th>
+                <th className="px-6 py-3 text-xs font-medium text-left text-gray-500 uppercase">Category</th>
+                <th className="px-6 py-3 text-xs font-medium text-left text-gray-500 uppercase">Price</th>
+                <th className="px-6 py-3 text-xs font-medium text-left text-gray-500 uppercase">Stock</th>
+                <th className="px-6 py-3 text-xs font-medium text-left text-gray-500 uppercase">Actions</th>
               </tr>
             </thead>
             <tbody className="bg-white divide-y divide-gray-200">
               {loading ? (
                 <tr>
                   <td colSpan="6" className="px-6 py-4 text-center">
-                    <div className="flex justify-center">
-                      <div className="w-6 h-6 border-b-2 border-blue-600 rounded-full animate-spin"></div>
-                    </div>
+                    <div className="flex justify-center"><div className="w-6 h-6 border-b-2 border-blue-600 rounded-full animate-spin"></div></div>
                   </td>
                 </tr>
               ) : products.length === 0 ? (
                 <tr>
-                  <td colSpan="6" className="px-6 py-4 text-center text-gray-500">
-                    No products found
-                  </td>
+                  <td colSpan="6" className="px-6 py-4 text-center text-gray-500">No products found</td>
                 </tr>
               ) : (
                 products.map((product) => (
@@ -416,17 +427,22 @@ const ProductsManagement = () => {
                     <td className="px-6 py-4 whitespace-nowrap">
                       <div className="flex items-center">
                         <div className="flex-shrink-0 w-12 h-12">
-                          <img
-                            className="object-cover w-12 h-12 rounded-lg"
-                            src={product.images[0]?.url || "/placeholder.jpg"}
-                            alt={product.name}
-                          />
+                          <img className="object-cover w-12 h-12 rounded-lg" src={product.images[0]?.url || "/placeholder.jpg"} alt={product.name} />
                         </div>
                         <div className="ml-4">
                           <div className="text-sm font-medium text-gray-900">{product.name}</div>
                           <div className="text-sm text-gray-500">SKU: {product.sku}</div>
                         </div>
                       </div>
+                    </td>
+                    <td className="px-6 py-4 whitespace-nowrap">
+                      {product.isBulkProduct ? (
+                        <span className="inline-flex items-center px-2 py-1 text-xs font-semibold rounded-full bg-purple-100 text-purple-800">
+                          <Package className="w-3 h-3 mr-1" /> BULK
+                        </span>
+                      ) : (
+                        <span className="inline-flex px-2 py-1 text-xs font-semibold rounded-full bg-gray-100 text-gray-600">Regular</span>
+                      )}
                     </td>
                     <td className="px-6 py-4 whitespace-nowrap">
                       <div className="text-sm text-gray-900">{product.category?.name}</div>
@@ -439,15 +455,6 @@ const ProductsManagement = () => {
                     </td>
                     <td className="px-6 py-4 whitespace-nowrap">
                       <div className="text-sm text-gray-900">{product.stock}</div>
-                    </td>
-                    <td className="px-6 py-4 whitespace-nowrap">
-                      <span
-                        className={`inline-flex px-2 py-1 text-xs font-semibold rounded-full ${
-                          product.isActive ? "bg-green-100 text-green-800" : "bg-red-100 text-red-800"
-                        }`}
-                      >
-                        {product.isActive ? "Active" : "Inactive"}
-                      </span>
                     </td>
                     <td className="px-6 py-4 text-sm font-medium whitespace-nowrap">
                       <div className="flex space-x-2">
@@ -517,93 +524,95 @@ const ProductsManagement = () => {
 
       {/* Modal */}
       {showModal && (
-        <div className="fixed inset-0 z-50 w-full h-full overflow-y-auto bg-gray-600 bg-opacity-50">
+        <div className="fixed inset-0 z-50 w-full h-full overflow-y-auto bg-gray-600 bg-opacity-50 ms-10">
           <div className="relative w-11/12 max-w-4xl p-5 mx-auto bg-white border rounded-md shadow-lg top-20">
             <div className="mt-3">
               <h3 className="mb-4 text-lg font-medium text-gray-900">
                 {editingProduct ? "Edit Product" : "Add New Product"}
               </h3>
               <form onSubmit={handleSubmit} className="space-y-4">
+                {/* 🆕 Product Type Selection */}
+                <div className="p-4 bg-gray-50 rounded-lg">
+                  <label className="block mb-2 text-sm font-medium text-gray-700">Product Type</label>
+                  <div className="flex gap-4">
+                    <label className="flex items-center gap-2">
+                      <input
+                        type="radio"
+                        value="regular"
+                        checked={productType === "regular"}
+                        onChange={() => setProductType("regular")}
+                        className="w-4 h-4 text-blue-600"
+                      />
+                      <span className="text-sm">Regular Product</span>
+                    </label>
+                    <label className="flex items-center gap-2">
+                      <input
+                        type="radio"
+                        value="bulk"
+                        checked={productType === "bulk"}
+                        onChange={() => setProductType("bulk")}
+                        className="w-4 h-4 text-blue-600"
+                      />
+                      <span className="text-sm flex items-center gap-1">
+                        <Package className="w-4 h-4" /> Bulk Pack Product
+                      </span>
+                    </label>
+                  </div>
+                </div>
+
+                {/* Regular Fields (existing code) */}
                 <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
                   <div>
                     <label className="block mb-1 text-sm font-medium text-gray-700">Product Name</label>
-                    <input
-                      type="text"
-                      value={formData.name}
-                      onChange={(e) => setFormData({ ...formData, name: e.target.value })}
-                      className="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500"
-                      required
-                    />
+                    <input type="text" value={formData.name} onChange={(e) => setFormData({ ...formData, name: e.target.value })} className="w-full px-3 py-2 border rounded-md" required />
                   </div>
                   <div>
                     <label className="block mb-1 text-sm font-medium text-gray-700">Category</label>
-                    <select
-                      value={formData.category}
-                      onChange={(e) => setFormData({ ...formData, category: e.target.value })}
-                      className="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500"
-                      required
-                      disabled={editingProduct} // Disable category selection when editing
-                    >
+                    <select value={formData.category} onChange={(e) => setFormData({ ...formData, category: e.target.value })} className="w-full px-3 py-2 border rounded-md" required disabled={editingProduct}>
                       <option value="">Select Category</option>
-                      {categories.map((category) => (
-                        <option key={category._id} value={category._id}>
-                          {category.name}
-                        </option>
-                      ))}
+                      {categories.map((category) => (<option key={category._id} value={category._id}>{category.name}</option>))}
                     </select>
-                    {editingProduct && (
-                      <p className="mt-1 text-sm text-gray-500">Category cannot be changed when updating a product</p>
-                    )}
+                    {editingProduct && <p className="mt-1 text-sm text-gray-500">Category cannot be changed when updating</p>}
                   </div>
-                  <div>
-                    <label className="block mb-1 text-sm font-medium text-gray-700">Price (₹)</label>
-                    <input
-                      type="number"
-                      value={formData.price}
-                      onChange={(e) => setFormData({ ...formData, price: e.target.value })}
-                      className="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500"
-                      required
-                    />
-                  </div>
-                  <div>
-                    <label className="block mb-1 text-sm font-medium text-gray-700">Original Price (₹)</label>
-                    <input
-                      type="number"
-                      value={formData.originalPrice}
-                      onChange={(e) => setFormData({ ...formData, originalPrice: e.target.value })}
-                      className="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500"
-                    />
-                  </div>
+                  
+                  {/* Price fields - Different for bulk */}
+                  {productType === "bulk" ? (
+                    <>
+                      <div>
+                        <label className="block mb-1 text-sm font-medium text-gray-700">Price per Set (₹)</label>
+                        <input type="number" value={bulkConfig.pricePerSet} onChange={(e) => setBulkConfig({ ...bulkConfig, pricePerSet: e.target.value })} className="w-full px-3 py-2 border rounded-md" required />
+                      </div>
+                      <div>
+                        <label className="block mb-1 text-sm font-medium text-gray-700">Original Price per Set (₹)</label>
+                        <input type="number" value={bulkConfig.originalPricePerSet} onChange={(e) => setBulkConfig({ ...bulkConfig, originalPricePerSet: e.target.value })} className="w-full px-3 py-2 border rounded-md" />
+                      </div>
+                    </>
+                  ) : (
+                    <>
+                      <div>
+                        <label className="block mb-1 text-sm font-medium text-gray-700">Price (₹)</label>
+                        <input type="number" value={formData.price} onChange={(e) => setFormData({ ...formData, price: e.target.value })} className="w-full px-3 py-2 border rounded-md" required />
+                      </div>
+                      <div>
+                        <label className="block mb-1 text-sm font-medium text-gray-700">Original Price (₹)</label>
+                        <input type="number" value={formData.originalPrice} onChange={(e) => setFormData({ ...formData, originalPrice: e.target.value })} className="w-full px-3 py-2 border rounded-md" />
+                      </div>
+                    </>
+                  )}
+                  
                   <div>
                     <label className="block mb-1 text-sm font-medium text-gray-700">Stock</label>
-                    <input
-                      type="number"
-                      value={formData.stock}
-                      onChange={(e) => setFormData({ ...formData, stock: e.target.value })}
-                      className="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500"
-                      required
-                    />
+                    <input type="number" value={formData.stock} onChange={(e) => setFormData({ ...formData, stock: e.target.value })} className="w-full px-3 py-2 border rounded-md" required />
                   </div>
                   <div>
                     <label className="block mb-1 text-sm font-medium text-gray-700">Weight (grams)</label>
-                    <input
-                      type="number"
-                      value={formData.weight}
-                      onChange={(e) => setFormData({ ...formData, weight: e.target.value })}
-                      className="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500"
-                    />
+                    <input type="number" value={formData.weight} onChange={(e) => setFormData({ ...formData, weight: e.target.value })} className="w-full px-3 py-2 border rounded-md" />
                   </div>
                 </div>
 
                 <div>
                   <label className="block mb-1 text-sm font-medium text-gray-700">Description</label>
-                  <textarea
-                    value={formData.description}
-                    onChange={(e) => setFormData({ ...formData, description: e.target.value })}
-                    rows={3}
-                    className="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500"
-                    required
-                  />
+                  <textarea value={formData.description} onChange={(e) => setFormData({ ...formData, description: e.target.value })} rows={3} className="w-full px-3 py-2 border rounded-md" required />
                 </div>
 
                 <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
@@ -619,11 +628,7 @@ const ProductsManagement = () => {
                   </div>
                   <div>
                     <label className="block mb-1 text-sm font-medium text-gray-700">Fit</label>
-                    <select
-                      value={formData.fits}
-                      onChange={(e) => setFormData({ ...formData, fits: e.target.value })}
-                      className="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500"
-                    >
+                    <select value={formData.fits} onChange={(e) => setFormData({ ...formData, fits: e.target.value })} className="w-full px-3 py-2 border rounded-md">
                       <option value="regular">Regular</option>
                       <option value="loose">Loose</option>
                       <option value="oversized">Oversized</option>
@@ -634,104 +639,65 @@ const ProductsManagement = () => {
                   </div>
                   <div>
                     <label className="block mb-1 text-sm font-medium text-gray-700">Material</label>
-                    <input
-                      type="text"
-                      value={formData.material}
-                      onChange={(e) => setFormData({ ...formData, material: e.target.value })}
-                      className="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500"
-                      placeholder="e.g., Cotton, Polyester"
-                    />
+                    <input type="text" value={formData.material} onChange={(e) => setFormData({ ...formData, material: e.target.value })} className="w-full px-3 py-2 border rounded-md" />
                   </div>
                 </div>
 
                 <div>
                   <label className="block mb-1 text-sm font-medium text-gray-700">Product Details</label>
-                  <textarea
-                    value={formData.productDetails}
-                    onChange={(e) => setFormData({ ...formData, productDetails: e.target.value })}
-                    rows={3}
-                    className="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500"
-                    placeholder="Additional product details..."
-                  />
+                  <textarea value={formData.productDetails} onChange={(e) => setFormData({ ...formData, productDetails: e.target.value })} rows={3} className="w-full px-3 py-2 border rounded-md" />
                 </div>
 
+                {/* 🆕 Bulk Configuration (shown only when bulk is selected) */}
+                {productType === "bulk" && (
+                  <div className="p-4 border border-purple-200 rounded-lg bg-purple-50">
+                    <h4 className="mb-3 text-sm font-semibold text-purple-800 flex items-center gap-2">
+                      <Package className="w-4 h-4" /> Bulk Configuration
+                    </h4>
+                    <div className="grid grid-cols-2 gap-4">
+                      <div>
+                        <label className="block mb-1 text-xs font-medium text-gray-700">Pieces per Size</label>
+                        <input type="number" value={bulkConfig.piecesPerSize} onChange={(e) => setBulkConfig({ ...bulkConfig, piecesPerSize: parseInt(e.target.value) })} className="w-full px-3 py-2 text-sm border rounded-md" min="1" />
+                        <p className="mt-1 text-xs text-gray-500">How many pieces of each size per set</p>
+                      </div>
+                      <div>
+                        <label className="block mb-1 text-xs font-medium text-gray-700">Min Colors to Select</label>
+                        <input type="number" value={bulkConfig.minColorsToSelect} onChange={(e) => setBulkConfig({ ...bulkConfig, minColorsToSelect: parseInt(e.target.value) })} className="w-full px-3 py-2 text-sm border rounded-md" min="1" />
+                      </div>
+                      <div>
+                        <label className="block mb-1 text-xs font-medium text-gray-700">Max Colors to Select</label>
+                        <input type="number" value={bulkConfig.maxColorsToSelect || ""} onChange={(e) => setBulkConfig({ ...bulkConfig, maxColorsToSelect: e.target.value ? parseInt(e.target.value) : null })} className="w-full px-3 py-2 text-sm border rounded-md" />
+                        <p className="mt-1 text-xs text-gray-500">Leave empty for unlimited</p>
+                      </div>
+                    </div>
+                    <p className="mt-3 text-xs text-purple-600 italic">
+                      💡 Customer will get {bulkConfig.piecesPerSize} piece(s) of each size per set, and can select {bulkConfig.minColorsToSelect}-{bulkConfig.maxColorsToSelect || "all"} colors.
+                    </p>
+                  </div>
+                )}
+
+                {/* Images Section */}
                 <div>
                   <label className="block mb-1 text-sm font-medium text-gray-700">Product Images</label>
-                  <input
-                    type="file"
-                    multiple
-                    accept="image/*"
-                    onChange={handleImageChange}
-                    className="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500"
-                  />
+                  <input type="file" multiple accept="image/*" onChange={handleImageChange} className="w-full px-3 py-2 border rounded-md" />
                   <p className="mt-1 text-sm text-gray-500">Select multiple images for the product</p>
                   {images.length > 0 && (
                     <div className="mt-4">
-                      <div className="mb-2 text-sm font-medium text-gray-700">
-                        Arrange images (first will be the cover)
-                      </div>
+                      <div className="mb-2 text-sm font-medium text-gray-700">Arrange images (first will be the cover)</div>
                       <div className="flex items-stretch overflow-x-auto gap-3 p-2 -m-2">
                         {images.map((img, index) => (
-                          <div
-                            key={img.name + index}
-                            className="flex flex-col items-center justify-between p-2 border rounded-md min-w-[110px] max-w-[110px] bg-white"
-                          >
+                          <div key={img.name + index} className="flex flex-col items-center justify-between p-2 border rounded-md min-w-[110px] max-w-[110px] bg-white">
                             <div className="relative w-[96px] h-[96px] overflow-hidden rounded">
-                              <img
-                                src={img.preview || "/placeholder.svg"}
-                                alt={`preview ${index + 1}`}
-                                className="object-cover w-full h-full"
-                                draggable={false}
-                              />
-                              {index === 0 && (
-                                <span className="absolute top-1 left-1 inline-flex items-center gap-1 px-1.5 py-0.5 text-[10px] font-semibold rounded bg-blue-600 text-white">
-                                  <Star className="w-3 h-3" /> Cover
-                                </span>
-                              )}
-                              {img.isExisting && (
-                                <span className="absolute top-1 right-1 inline-flex items-center px-1.5 py-0.5 text-[10px] font-semibold rounded bg-green-600 text-white">
-                                  Current
-                                </span>
-                              )}
+                              <img src={img.preview || "/placeholder.svg"} alt={`preview ${index + 1}`} className="object-cover w-full h-full" draggable={false} />
+                              {index === 0 && <span className="absolute top-1 left-1 inline-flex items-center gap-1 px-1.5 py-0.5 text-[10px] font-semibold rounded bg-blue-600 text-white"><Star className="w-3 h-3" /> Cover</span>}
+                              {img.isExisting && <span className="absolute top-1 right-1 inline-flex items-center px-1.5 py-0.5 text-[10px] font-semibold rounded bg-green-600 text-white">Current</span>}
                             </div>
-                            <div className="mt-1 text-xs text-gray-600 font-medium">
-                              {img.isExisting ? "Current" : `${img.sizeKB} KB`}
-                            </div>
+                            <div className="mt-1 text-xs text-gray-600 font-medium">{img.isExisting ? "Current" : `${img.sizeKB} KB`}</div>
                             <div className="flex items-center gap-1 mt-2">
-                              <button
-                                type="button"
-                                onClick={() => moveImage(index, -1)}
-                                className="inline-flex items-center justify-center w-7 h-7 rounded border text-gray-700 hover:bg-gray-50 disabled:opacity-40"
-                                disabled={index === 0}
-                                title="Move up"
-                              >
-                                <ArrowUp className="w-4 h-4" />
-                              </button>
-                              <button
-                                type="button"
-                                onClick={() => moveImage(index, 1)}
-                                className="inline-flex items-center justify-center w-7 h-7 rounded border text-gray-700 hover:bg-gray-50 disabled:opacity-40"
-                                disabled={index === images.length - 1}
-                                title="Move down"
-                              >
-                                <ArrowDown className="w-4 h-4" />
-                              </button>
-                              <button
-                                type="button"
-                                onClick={() => setAsFirst(index)}
-                                className="inline-flex items-center justify-center px-2 h-7 rounded border text-gray-700 hover:bg-gray-50"
-                                title="Set as first"
-                              >
-                                First
-                              </button>
-                              <button
-                                type="button"
-                                onClick={() => removeImage(index)}
-                                className="inline-flex items-center justify-center px-2 h-7 rounded border text-red-600 hover:bg-red-50"
-                                title="Remove"
-                              >
-                                <Trash2 className="w-4 h-4" />
-                              </button>
+                              <button type="button" onClick={() => moveImage(index, -1)} className="inline-flex items-center justify-center w-7 h-7 rounded border text-gray-700 hover:bg-gray-50 disabled:opacity-40" disabled={index === 0}><ArrowUp className="w-4 h-4" /></button>
+                              <button type="button" onClick={() => moveImage(index, 1)} className="inline-flex items-center justify-center w-7 h-7 rounded border text-gray-700 hover:bg-gray-50 disabled:opacity-40" disabled={index === images.length - 1}><ArrowDown className="w-4 h-4" /></button>
+                              <button type="button" onClick={() => setAsFirst(index)} className="inline-flex items-center justify-center px-2 h-7 rounded border text-gray-700 hover:bg-gray-50">First</button>
+                              <button type="button" onClick={() => removeImage(index)} className="inline-flex items-center justify-center px-2 h-7 rounded border text-red-600 hover:bg-red-50"><Trash2 className="w-4 h-4" /></button>
                             </div>
                             <div className="mt-1 text-xs text-gray-500">#{index + 1}</div>
                           </div>
@@ -746,32 +712,12 @@ const ProductsManagement = () => {
                   <label className="block mb-2 text-sm font-medium text-gray-700">Sizes</label>
                   {formData.sizes.map((size, index) => (
                     <div key={index} className="flex items-center mb-2 space-x-2">
-                      <input
-                        type="text"
-                        placeholder="Size (e.g., S, M, L)"
-                        value={size.size}
-                        onChange={(e) => updateSize(index, "size", e.target.value)}
-                        className="flex-1 px-3 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500"
-                      />
-                      <input
-                        type="number"
-                        placeholder="Stock"
-                        value={size.stock}
-                        onChange={(e) => updateSize(index, "stock", Number.parseInt(e.target.value))}
-                        className="w-24 px-3 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500"
-                      />
-                      <button
-                        type="button"
-                        onClick={() => removeSize(index)}
-                        className="text-red-600 hover:text-red-800"
-                      >
-                        <Trash2 className="w-4 h-4" />
-                      </button>
+                      <input type="text" placeholder="Size (e.g., S, M, L)" value={size.size} onChange={(e) => updateSize(index, "size", e.target.value)} className="flex-1 px-3 py-2 border rounded-md" />
+                      <input type="number" placeholder="Stock" value={size.stock} onChange={(e) => updateSize(index, "stock", Number.parseInt(e.target.value))} className="w-24 px-3 py-2 border rounded-md" />
+                      <button type="button" onClick={() => removeSize(index)} className="text-red-600 hover:text-red-800"><Trash2 className="w-4 h-4" /></button>
                     </div>
                   ))}
-                  <button type="button" onClick={addSize} className="text-sm text-blue-600 hover:text-blue-800">
-                    + Add Size
-                  </button>
+                  <button type="button" onClick={addSize} className="text-sm text-blue-600 hover:text-blue-800">+ Add Size</button>
                 </div>
 
                 {/* Colors Section */}
@@ -779,39 +725,19 @@ const ProductsManagement = () => {
                   <label className="block mb-2 text-sm font-medium text-gray-700">Colors</label>
                   {formData.colors.map((color, index) => (
                     <div key={index} className="flex items-center mb-2 space-x-2">
-                      <input
-                        type="text"
-                        placeholder="Color Name"
-                        value={color.name}
-                        onChange={(e) => updateColor(index, "name", e.target.value)}
-                        className="flex-1 px-3 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500"
-                      />
-                      <input
-                        type="text"
-                        placeholder="Color Code (#hex)"
-                        value={color.code}
-                        onChange={(e) => updateColor(index, "code", e.target.value)}
-                        className="w-32 px-3 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500"
-                      />
-                      <button
-                        type="button"
-                        onClick={() => removeColor(index)}
-                        className="text-red-600 hover:text-red-800"
-                      >
-                        <Trash2 className="w-4 h-4" />
-                      </button>
+                      <input type="text" placeholder="Color Name" value={color.name} onChange={(e) => updateColor(index, "name", e.target.value)} className="flex-1 px-3 py-2 border rounded-md" />
+                      <input type="text" placeholder="Color Code (#hex)" value={color.code} onChange={(e) => updateColor(index, "code", e.target.value)} className="w-32 px-3 py-2 border rounded-md" />
+                      <button type="button" onClick={() => removeColor(index)} className="text-red-600 hover:text-red-800"><Trash2 className="w-4 h-4" /></button>
                     </div>
                   ))}
-                  <button type="button" onClick={addColor} className="text-sm text-blue-600 hover:text-blue-800">
-                    + Add Color
-                  </button>
+                  <button type="button" onClick={addColor} className="text-sm text-blue-600 hover:text-blue-800">+ Add Color</button>
                 </div>
 
                 {/* Tags Section */}
                 <div>
                   <label className="block mb-1 text-sm font-medium text-gray-700">Tags</label>
                   <div className="flex flex-wrap gap-2 mb-2">
-                    {["trending", "new-arrival", "sale", "featured"].map((tag) => (
+                    {["trending", "new-arrival", "sale", "featured", "bulk"].map((tag) => (
                       <label key={tag} className="flex items-center">
                         <input
                           type="checkbox"
@@ -820,10 +746,7 @@ const ProductsManagement = () => {
                             if (e.target.checked) {
                               setFormData({ ...formData, tags: [...formData.tags, tag] })
                             } else {
-                              setFormData({
-                                ...formData,
-                                tags: formData.tags.filter((t) => t !== tag),
-                              })
+                              setFormData({ ...formData, tags: formData.tags.filter((t) => t !== tag) })
                             }
                           }}
                           className="mr-2"
@@ -835,21 +758,8 @@ const ProductsManagement = () => {
                 </div>
 
                 <div className="flex justify-end pt-4 space-x-3">
-                  <button
-                    type="button"
-                    onClick={() => {
-                      setShowModal(false)
-                      resetForm()
-                    }}
-                    className="px-4 py-2 text-gray-700 border border-gray-300 rounded-md hover:bg-gray-50"
-                  >
-                    Cancel
-                  </button>
-                  <button
-                    type="submit"
-                    disabled={loading}
-                    className="px-4 py-2 text-white bg-blue-600 rounded-md hover:bg-blue-700 disabled:opacity-50"
-                  >
+                  <button type="button" onClick={() => { setShowModal(false); resetForm() }} className="px-4 py-2 text-gray-700 border rounded-md">Cancel</button>
+                  <button type="submit" disabled={loading} className="px-4 py-2 text-white bg-blue-600 rounded-md hover:bg-blue-700 disabled:opacity-50">
                     {loading ? "Saving..." : editingProduct ? "Update Product" : "Create Product"}
                   </button>
                 </div>

@@ -14,7 +14,7 @@ export const fetchCart = createAsyncThunk("cart/fetchCart", async (_, { rejectWi
 export const addToCart = createAsyncThunk("cart/addToCart", async (cartData, { rejectWithValue }) => {
   try {
     const response = await cartAPI.addToCart(cartData)
-    return response.data // Assuming this returns { cart: { items, summary } }
+    return response.data
   } catch (error) {
     return rejectWithValue(error.response?.data?.message || "Failed to add item to cart")
   }
@@ -63,14 +63,29 @@ const initialState = {
   isUpdatingCart: false,
 }
 
-// Helper function to calculate totals
+// Helper function to calculate totals - Updated for Bulk Products
 const calculateTotals = (items) => {
   const totalItems = items.length
-  const totalQuantity = items.reduce((total, item) => total + (item.quantity || 0), 0)
-  const subtotal = items.reduce(
-    (total, item) => total + (item.itemTotal || item.product?.price * item.quantity || 0),
-    0,
-  )
+  let totalQuantity = 0
+  let subtotal = 0
+
+  items.forEach((item) => {
+    let quantity = 0
+    let itemTotal = 0
+
+    if (item.isBulkProduct) {
+      quantity = item.totalSets || item.quantity || 1
+      const pricePerSet = item.pricePerSet || item.product?.bulkConfig?.pricePerSet || item.product?.price
+      itemTotal = pricePerSet * quantity
+    } else {
+      quantity = item.quantity || 1
+      itemTotal = (item.product?.price || 0) * quantity
+    }
+
+    totalQuantity += quantity
+    subtotal += itemTotal
+  })
+
   const shipping = subtotal > 999 ? 0 : 99
   const total = subtotal + shipping
 
@@ -96,60 +111,23 @@ const cartSlice = createSlice({
       state.totalQuantity = 0
     },
     updateLocalQuantity: (state, action) => {
-      const { itemId, quantity } = action.payload
+      const { itemId, quantity, totalSets } = action.payload
       const item = state.items.find((item) => item._id === itemId)
-      if (item && quantity > 0) {
-        item.quantity = quantity
-        item.itemTotal = (item.product?.price || 0) * quantity
-
-        const totals = calculateTotals(state.items)
-        state.summary.totalItems = totals.totalItems
-        state.summary.subtotal = totals.subtotal
-        state.summary.shipping = totals.shipping
-        state.summary.total = totals.total
-        state.totalQuantity = totals.totalQuantity
-      }
-    },
-    // Add missing optimistic actions
-    optimisticAddToCart: (state, action) => {
-      const { product, quantity = 1, size, color } = action.payload
-
-      const existingItemIndex = state.items.findIndex(
-        (item) => item.product._id === product._id && item.size === size && item.color === color,
-      )
-
-      if (existingItemIndex > -1) {
-        state.items[existingItemIndex].quantity += quantity
-        state.items[existingItemIndex].itemTotal =
-          state.items[existingItemIndex].product.price * state.items[existingItemIndex].quantity
-      } else {
-        const newItem = {
-          _id: `temp_${Date.now()}`,
-          product,
-          quantity,
-          size,
-          color,
-          itemTotal: product.price * quantity,
+      if (item) {
+        if (item.isBulkProduct) {
+          const newTotalSets = totalSets !== undefined ? totalSets : quantity
+          if (newTotalSets > 0) {
+            item.totalSets = newTotalSets
+            item.totalPieces = (item.piecesPerSet || 0) * newTotalSets
+            item.quantity = newTotalSets
+            item.itemTotal = (item.pricePerSet || item.product?.bulkConfig?.pricePerSet) * newTotalSets
+          }
+        } else {
+          if (quantity > 0) {
+            item.quantity = quantity
+            item.itemTotal = (item.product?.price || 0) * quantity
+          }
         }
-        state.items.push(newItem)
-      }
-
-      const totals = calculateTotals(state.items)
-      state.summary = {
-        totalItems: totals.totalItems,
-        subtotal: totals.subtotal,
-        shipping: totals.shipping,
-        total: totals.total,
-      }
-      state.totalQuantity = totals.totalQuantity
-    },
-    // Add missing optimistic update quantity
-    optimisticUpdateQuantity: (state, action) => {
-      const { itemId, quantity } = action.payload
-      const item = state.items.find((item) => item._id === itemId)
-      if (item && quantity > 0) {
-        item.quantity = quantity
-        item.itemTotal = (item.product?.price || 0) * quantity
 
         const totals = calculateTotals(state.items)
         state.summary = {
@@ -161,7 +139,100 @@ const cartSlice = createSlice({
         state.totalQuantity = totals.totalQuantity
       }
     },
-    // Add missing optimistic remove from cart
+    
+    optimisticAddToCart: (state, action) => {
+      const { product, quantity = 1, size, color, isBulkProduct, selectedColors, totalSets, totalPieces, piecesPerSet, pricePerSet } = action.payload
+
+      if (isBulkProduct) {
+        const existingItemIndex = state.items.findIndex(
+          (item) => 
+            item.product?._id === product._id && 
+            item.isBulkProduct === true &&
+            JSON.stringify(item.selectedColors?.sort()) === JSON.stringify(selectedColors?.sort())
+        )
+
+        if (existingItemIndex > -1) {
+          state.items[existingItemIndex].totalSets += totalSets || 1
+          state.items[existingItemIndex].totalPieces = (piecesPerSet || 0) * state.items[existingItemIndex].totalSets
+          state.items[existingItemIndex].quantity = state.items[existingItemIndex].totalSets
+          state.items[existingItemIndex].itemTotal = (pricePerSet || product.bulkConfig?.pricePerSet) * state.items[existingItemIndex].totalSets
+        } else {
+          const newItem = {
+            _id: `temp_${Date.now()}`,
+            product,
+            isBulkProduct: true,
+            selectedColors: selectedColors || [],
+            totalSets: totalSets || 1,
+            totalPieces: totalPieces || 0,
+            piecesPerSet: piecesPerSet || 0,
+            pricePerSet: pricePerSet || product.bulkConfig?.pricePerSet,
+            quantity: totalSets || 1,
+            itemTotal: (pricePerSet || product.bulkConfig?.pricePerSet) * (totalSets || 1),
+          }
+          state.items.push(newItem)
+        }
+      } else {
+        const existingItemIndex = state.items.findIndex(
+          (item) => item.product?._id === product._id && item.size === size && item.color === color && item.isBulkProduct !== true,
+        )
+
+        if (existingItemIndex > -1) {
+          state.items[existingItemIndex].quantity += quantity
+          state.items[existingItemIndex].itemTotal = state.items[existingItemIndex].product.price * state.items[existingItemIndex].quantity
+        } else {
+          const newItem = {
+            _id: `temp_${Date.now()}`,
+            product,
+            quantity,
+            size,
+            color,
+            isBulkProduct: false,
+            itemTotal: product.price * quantity,
+          }
+          state.items.push(newItem)
+        }
+      }
+
+      const totals = calculateTotals(state.items)
+      state.summary = {
+        totalItems: totals.totalItems,
+        subtotal: totals.subtotal,
+        shipping: totals.shipping,
+        total: totals.total,
+      }
+      state.totalQuantity = totals.totalQuantity
+    },
+    
+    optimisticUpdateQuantity: (state, action) => {
+      const { itemId, quantity, totalSets } = action.payload
+      const item = state.items.find((item) => item._id === itemId)
+      if (item) {
+        if (item.isBulkProduct) {
+          const newTotalSets = totalSets !== undefined ? totalSets : quantity
+          if (newTotalSets > 0) {
+            item.totalSets = newTotalSets
+            item.totalPieces = (item.piecesPerSet || 0) * newTotalSets
+            item.quantity = newTotalSets
+            item.itemTotal = (item.pricePerSet || item.product?.bulkConfig?.pricePerSet) * newTotalSets
+          }
+        } else {
+          if (quantity > 0) {
+            item.quantity = quantity
+            item.itemTotal = (item.product?.price || 0) * quantity
+          }
+        }
+
+        const totals = calculateTotals(state.items)
+        state.summary = {
+          totalItems: totals.totalItems,
+          subtotal: totals.subtotal,
+          shipping: totals.shipping,
+          total: totals.total,
+        }
+        state.totalQuantity = totals.totalQuantity
+      }
+    },
+    
     optimisticRemoveFromCart: (state, action) => {
       const itemId = action.payload
       state.items = state.items.filter((item) => item._id !== itemId)
@@ -175,7 +246,7 @@ const cartSlice = createSlice({
       }
       state.totalQuantity = totals.totalQuantity
     },
-    // Keep existing localStorage functionality
+    
     loadCartFromStorage: (state) => {
       const savedCart = localStorage.getItem("guestCart")
       if (savedCart) {
@@ -185,6 +256,7 @@ const cartSlice = createSlice({
         state.totalQuantity = cart.totalQuantity || 0
       }
     },
+    
     saveCartToStorage: (state) => {
       localStorage.setItem(
         "guestCart",
@@ -205,11 +277,25 @@ const cartSlice = createSlice({
       })
       .addCase(fetchCart.fulfilled, (state, action) => {
         state.isLoading = false
-        state.items = action.payload.cart?.items || []
+        const cartItems = action.payload.cart?.items || []
+        
+        state.items = cartItems.map((item) => {
+          if (item.isBulkProduct) {
+            return {
+              ...item,
+              itemTotal: (item.pricePerSet || item.product?.bulkConfig?.pricePerSet) * (item.totalSets || item.quantity || 1),
+            }
+          }
+          return {
+            ...item,
+            itemTotal: (item.product?.price || 0) * (item.quantity || 1),
+          }
+        })
+        
         state.summary = action.payload.cart?.summary || initialState.summary
-
-        // Calculate totalQuantity
-        state.totalQuantity = state.items.reduce((total, item) => total + (item.quantity || 0), 0)
+        state.totalQuantity = state.items.reduce((total, item) => {
+          return total + (item.isBulkProduct ? (item.totalSets || item.quantity || 1) : (item.quantity || 1))
+        }, 0)
         state.lastUpdated = new Date().toISOString()
       })
       .addCase(fetchCart.rejected, (state, action) => {
@@ -226,13 +312,12 @@ const cartSlice = createSlice({
         state.isAddingToCart = false
         state.isLoading = false
 
-        // Update the cart with returned data
         if (action.payload.cart) {
           state.items = action.payload.cart.items || []
           state.summary = action.payload.cart.summary || initialState.summary
-
-          // Calculate totalQuantity for badge
-          state.totalQuantity = state.items.reduce((total, item) => total + (item.quantity || 0), 0)
+          state.totalQuantity = state.items.reduce((total, item) => {
+            return total + (item.isBulkProduct ? (item.totalSets || item.quantity || 1) : (item.quantity || 1))
+          }, 0)
         }
 
         state.lastUpdated = new Date().toISOString()
@@ -253,19 +338,30 @@ const cartSlice = createSlice({
         state.isUpdatingCart = false
 
         if (action.payload.cart) {
-          // Update entire cart if server returns full cart
           state.items = action.payload.cart.items || []
           state.summary = action.payload.cart.summary || initialState.summary
-          state.totalQuantity = state.items.reduce((total, item) => total + (item.quantity || 0), 0)
+          state.totalQuantity = state.items.reduce((total, item) => {
+            return total + (item.isBulkProduct ? (item.totalSets || item.quantity || 1) : (item.quantity || 1))
+          }, 0)
         } else if (action.payload.cartItem) {
-          // Update specific item if server returns just the updated item
           const updatedItem = action.payload.cartItem
           const itemIndex = state.items.findIndex((item) => item._id === updatedItem._id)
 
           if (itemIndex > -1) {
-            state.items[itemIndex] = { ...state.items[itemIndex], ...updatedItem }
+            if (updatedItem.isBulkProduct) {
+              state.items[itemIndex] = {
+                ...state.items[itemIndex],
+                ...updatedItem,
+                itemTotal: (updatedItem.pricePerSet || updatedItem.product?.bulkConfig?.pricePerSet) * (updatedItem.totalSets || updatedItem.quantity || 1),
+              }
+            } else {
+              state.items[itemIndex] = {
+                ...state.items[itemIndex],
+                ...updatedItem,
+                itemTotal: (updatedItem.product?.price || 0) * (updatedItem.quantity || 1),
+              }
+            }
 
-            // Recalculate totals
             const totals = calculateTotals(state.items)
             state.summary = {
               totalItems: totals.totalItems,
@@ -290,7 +386,6 @@ const cartSlice = createSlice({
         state.error = null
       })
       .addCase(removeFromCart.fulfilled, (state, action) => {
-        // Remove item and recalculate
         state.items = state.items.filter((item) => item._id !== action.payload.itemId)
 
         const totals = calculateTotals(state.items)

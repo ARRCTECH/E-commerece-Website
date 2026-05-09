@@ -15,6 +15,7 @@ import InnovationManagement from "../../components/admin/InnovationManagement";
 import CouponsManagement from "../../components/admin/CouponsManagement";
 import KsauniTshirtManagement from "../../components/admin/KsauniTshirtMangement";
 import CancellationReasonsChart from "../../components/admin/CancellationReasons";
+import PartialCodSetting from "../../components/admin/PartialCodSetting";
 import { clearError, clearSuccess } from "../../store/slices/adminSlice";
 // ✅ Import your ToastProvider
 import ToastProvider from "../../components/ToastProvider";
@@ -89,6 +90,7 @@ const AdminDashboard = () => {
               <Route path="innovations" element={<InnovationManagement />} />
               <Route path="ksaunitshirtstyle" element={<KsauniTshirtManagement />} />
               <Route path="referral" element = {<ReferralDiscountManager/>} />
+              <Route path="partial-cod" element={<PartialCodSetting />} />
               {user.role === "admin" && (
                 <>
                   <Route path="users" element={<UsersManagement />} />

@@ -18,6 +18,7 @@ import searchSlice from "./slices/searchSlice";
 import popupReducer from "./slices/popupSlice";
 import innovationReducer from "./slices/innovationSlice";
 import ksauniTshirtReducer from "./slices/ksauniTshirtSlice";
+import partialCodReducer from "./slices/partialCodSlice";
 const innovationPersistConfig = {
   key: "innovations",
   storage,
@@ -41,7 +42,8 @@ export const store = configureStore({
     search: searchSlice,
     popup: popupReducer,
     innovations: persistedInnovationReducer,
-    ksauniTshirt: ksauniTshirtReducer, // Added missing ksauniTshirt reducer to store
+    ksauniTshirt: ksauniTshirtReducer, 
+    partialCod: partialCodReducer
   },
   middleware: (getDefaultMiddleware) =>
     getDefaultMiddleware({
