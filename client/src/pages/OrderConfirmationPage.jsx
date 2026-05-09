@@ -1,4 +1,3 @@
-
 // src/pages/OrderConfirmationPage.jsx
 "use client";
 import { useEffect, useMemo, useState } from "react";
@@ -13,19 +12,20 @@ import {
   CreditCard,
   Calendar,
   ArrowRight,
+  Clock,
 } from "lucide-react";
 import { fetchOrderDetails } from "../store/slices/orderSlice";
 import LoadingSpinner from "../components/LoadingSpinner";
 
 const OrderConfirmationPage = () => {
-  // NOTE: keep the param name as in your routes
   const { orderId } = useParams();
   const navigate = useNavigate();
   const dispatch = useDispatch();
   const { user, token } = useSelector((state) => state.auth || {});
 
-  const API_URL = import.meta.env.VITE_API_URL || "http://localhost:5000/api"
+  const API_URL = import.meta.env.VITE_API_URL || "http://localhost:5000/api";
   const [coupons, setCoupons] = useState([]);
+
   useEffect(() => {
     const fetchCoupons = async () => {
       try {
@@ -46,14 +46,16 @@ const OrderConfirmationPage = () => {
       }
     };
     fetchCoupons();
-  }, [token]);
-  const filterYCoupon = coupons.filter((coupon) => coupon.isFreeCoupon !== "N")
-  // same slice/shape as your file
+  }, [token, API_URL]);
+
+  const filterYCoupon = coupons.filter((coupon) => coupon.isFreeCoupon !== "N");
   const { currentOrder, loading } = useSelector((state) => state.orders || {});
+
   useEffect(() => {
     if (orderId) dispatch(fetchOrderDetails(orderId));
   }, [orderId, dispatch]);
-  // ----- Safety: normalize pricing regardless of where totals are stored -----
+
+  // Safe pricing calculation
   const safePricing = useMemo(() => {
     const o = currentOrder || {};
     const p = o.pricing || {};
@@ -65,25 +67,40 @@ const OrderConfirmationPage = () => {
       return sum + (isNaN(itemTotal) ? 0 : itemTotal);
     }, 0);
     const subtotal = p.subtotal ?? o.subtotal ?? calcItemsSubtotal;
-    const freediscount = p.freediscount;
+    const freediscount = p.freediscount ?? o.freediscount ?? 0;
     const shippingCharges = p.shippingCharges ?? o.shippingCharge ?? 0;
-    const deliveryCharge = p.deliveryCharge ?? o.deliveryCharge ?? 0;
     const discount = p.discount ?? 0;
-    const tax = p.tax ?? 0;
-    const total = Math.round(subtotal + Number(shippingCharges || 0) + Number(deliveryCharge || 0) + Number(tax || 0) - Number(discount || 0) - Number(freediscount || 0));
+    const total = Math.round(subtotal + Number(shippingCharges || 0) - Number(discount || 0) - Number(freediscount || 0));
     return {
       subtotal,
       shippingCharges,
-      deliveryCharge,
       discount,
-      tax,
       total,
       freediscount
     };
   }, [currentOrder]);
+
+  // Get partial COD info
+  const partialCodInfo = useMemo(() => {
+    const o = currentOrder || {};
+    const partial = o.partialCod || {};
+    const paymentMethod = o.paymentInfo?.method || "";
+    
+    if (paymentMethod === "PARTIAL_COD" && partial.enabled) {
+      return {
+        isPartialCod: true,
+        onlineAmount: partial.onlineAmount || 0,
+        codAmount: partial.codAmount || 0,
+        percentage: partial.percentage || 0,
+        onlinePaymentStatus: partial.onlinePaymentStatus || "PENDING"
+      };
+    }
+    return { isPartialCod: false };
+  }, [currentOrder]);
+
   const getStatusColor = (status) => {
     const s = String(status || "").toLowerCase();
-    const normalized = s === "placed" ? "confirmed" : s; // backend may send "PLACED"
+    const normalized = s === "placed" ? "confirmed" : s;
     switch (normalized) {
       case "confirmed":
         return "text-green-600 bg-green-100";
@@ -93,10 +110,13 @@ const OrderConfirmationPage = () => {
         return "text-purple-600 bg-purple-100";
       case "delivered":
         return "text-green-600 bg-green-100";
+      case "cancelled":
+        return "text-red-600 bg-red-100";
       default:
         return "text-gray-600 bg-gray-100";
     }
   };
+
   const getStatusText = (status) => {
     const s = String(status || "").toLowerCase();
     const normalized = s === "placed" ? "confirmed" : s;
@@ -109,12 +129,15 @@ const OrderConfirmationPage = () => {
         return "Shipped";
       case "delivered":
         return "Delivered";
+      case "cancelled":
+        return "Cancelled";
       default:
         return "Pending";
     }
   };
-  // estimated delivery (fallback: order.createdAt + 7 days)
-  const estimatedDeliveryDate = (() => {
+
+  // Estimated delivery date
+  const estimatedDeliveryDate = useMemo(() => {
     const base = currentOrder?.trackingInfo?.estimatedDelivery
       ? new Date(currentOrder.trackingInfo.estimatedDelivery)
       : currentOrder?.createdAt
@@ -124,13 +147,8 @@ const OrderConfirmationPage = () => {
       base.setDate(base.getDate() + 7);
     }
     return base;
-  })();
-  // AWB/banner
-  const awbStatus = currentOrder?.trackingInfo?.awbStatus || "PENDING";
-  const awbError =
-    currentOrder?.trackingInfo?.awbError ||
-    currentOrder?.trackingInfo?.error ||
-    null;
+  }, [currentOrder]);
+
   if (loading?.fetching) {
     return (
       <div className="flex items-center justify-center min-h-screen">
@@ -138,6 +156,7 @@ const OrderConfirmationPage = () => {
       </div>
     );
   }
+
   if (!currentOrder) {
     return (
       <div className="flex items-center justify-center min-h-screen">
@@ -156,6 +175,12 @@ const OrderConfirmationPage = () => {
       </div>
     );
   }
+
+  const paymentMethod = String(currentOrder?.paymentInfo?.method || currentOrder?.paymentInfo?.paymentMethod || "").toUpperCase();
+  const isCOD = paymentMethod === "COD";
+  const isPartialCOD = paymentMethod === "PARTIAL_COD";
+  const isOnline = paymentMethod === "RAZORPAY";
+
   return (
     <div className="min-h-screen py-8 bg-gray-50">
       <div className="container px-4 mx-auto">
@@ -175,12 +200,7 @@ const OrderConfirmationPage = () => {
               Thank you for your purchase. Your order has been successfully placed.
             </p>
           </motion.div>
-          {/* AWB failure banner (non-blocking) */}
-          {awbStatus === "FAILED" && (
-            <div className="p-3 mb-6 text-sm text-yellow-800 bg-yellow-50 border border-yellow-200 rounded">
-              Shipping label pending: {awbError || "We’ll retry shortly."}
-            </div>
-          )}
+
           {/* Order Details Card */}
           <motion.div
             initial={{ opacity: 0, y: 20 }}
@@ -212,6 +232,7 @@ const OrderConfirmationPage = () => {
                 </span>
               </div>
             </div>
+
             {/* Order Items */}
             <div className="pt-6 border-t">
               <h3 className="flex items-center mb-4 font-semibold">
@@ -230,8 +251,9 @@ const OrderConfirmationPage = () => {
                       <div className="flex-1">
                         <h4 className="font-medium">{item.name || item?.product?.name}</h4>
                         <p className="text-sm text-gray-600">
-                          Size: {item.size || "—"} | Color: {item.color || "—"} | Quantity:{" "}
-                          {item.quantity}
+                          {item.size && `Size: ${item.size} | `}
+                          {item.color && `Color: ${item.color} | `}
+                          Quantity: {item.quantity}
                         </p>
                         <p className="font-semibold">₹{Number(item.price || 0)}</p>
                       </div>
@@ -246,6 +268,7 @@ const OrderConfirmationPage = () => {
               </div>
             </div>
           </motion.div>
+
           <div className="grid gap-6 md:grid-cols-2">
             {/* Shipping Information */}
             <motion.div
@@ -280,6 +303,7 @@ const OrderConfirmationPage = () => {
                 <p className="text-xs text-blue-600">5-7 business days</p>
               </div>
             </motion.div>
+
             {/* Payment & Pricing */}
             <motion.div
               initial={{ opacity: 0, x: 20 }}
@@ -302,43 +326,68 @@ const OrderConfirmationPage = () => {
                     {Number(safePricing.shippingCharges) === 0 ? "FREE" : `₹${safePricing.shippingCharges}`}
                   </span>
                 </div>
-                {Number(safePricing.deliveryCharge) > 0 && (
-                  <div className="flex justify-between text-sm">
-                    <span>Cash on Delivery charge</span>
-                    <span>₹{Number(safePricing.deliveryCharge)}</span>
-                  </div>
-                )}
                 {Number(safePricing.discount) > 0 && (
                   <div className="flex justify-between text-sm text-green-600">
-                    <span>Discount</span>
+                    <span>Coupon Discount</span>
                     <span>-₹{safePricing.discount}</span>
                   </div>
                 )}
-                {safePricing.freediscount > 0 && (
+                {Number(safePricing.freediscount) > 0 && (
                   <div className="flex justify-between text-sm text-blue-600">
-                    <span>Free Discount</span>
+                    <span>Special Discount</span>
                     <span>-₹{Math.round(safePricing.freediscount)}</span>
-                  </div>)}
-                <div className="flex justify-between text-sm">
-                  <span>Tax (GST)</span>
-                  <span>₹{safePricing.tax}</span>
-                </div>
+                  </div>
+                )}
                 <div className="flex justify-between pt-2 font-semibold border-t">
-                  <span>{String(currentOrder?.paymentInfo?.paymentMethod || currentOrder?.paymentInfo?.method).toUpperCase() === "COD" ? 'Final amount to be collected' : 'Total Paid'}</span>
+                  <span>Total</span>
                   <span>₹{safePricing.total}</span>
                 </div>
               </div>
+
+              {/* Payment Status Card */}
               <div className="p-3 rounded-lg bg-green-50">
-                {String(currentOrder?.paymentInfo?.paymentMethod || currentOrder?.paymentInfo?.method).toUpperCase() === "COD" ? (
-                  <p className="text-sm font-medium text-green-800">Payment Method: COD</p>
-                ) : (
-                  <>
-                    <p className="text-sm font-medium text-green-800">Payment Successful</p>
-                  </>
+                {isCOD && (
+                  <div>
+                    <p className="text-sm font-medium text-green-800">
+                      💰 Payment Method: Cash on Delivery
+                    </p>
+                    <p className="text-xs text-green-600 mt-1">
+                      Pay ₹{safePricing.total} when you receive the order
+                    </p>
+                  </div>
+                )}
+                {isOnline && (
+                  <div>
+                    <p className="text-sm font-medium text-green-800">
+                      ✅ Payment Successful (Online)
+                    </p>
+                    <p className="text-xs text-green-600 mt-1">
+                      Amount ₹{safePricing.total} paid via Razorpay
+                    </p>
+                  </div>
+                )}
+                {isPartialCOD && partialCodInfo.isPartialCod && (
+                  <div>
+                    <p className="text-sm font-medium text-orange-800">
+                      🔄 Payment: Partial COD
+                    </p>
+                    <div className="mt-2 space-y-1 text-xs">
+                      <p className="text-green-700">
+                        ✅ Online Payment: ₹{partialCodInfo.onlineAmount} ({partialCodInfo.percentage}%)
+                      </p>
+                      <p className="text-orange-700">
+                        💰 Cash on Delivery: ₹{partialCodInfo.codAmount} ({100 - partialCodInfo.percentage}%)
+                      </p>
+                      <p className="text-gray-600 mt-1">
+                        Total: ₹{safePricing.total} ({partialCodInfo.percentage}% paid online, remaining on delivery)
+                      </p>
+                    </div>
+                  </div>
                 )}
               </div>
             </motion.div>
           </div>
+
           {/* Action Buttons */}
           <motion.div
             initial={{ opacity: 0, y: 20 }}
@@ -363,8 +412,14 @@ const OrderConfirmationPage = () => {
               <ArrowRight className="w-5 h-5 ml-2" />
             </button>
           </motion.div>
+
           {/* Support Info */}
-          <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ delay: 0.7 }} className="p-6 mt-8 text-center bg-white rounded-lg shadow-md">
+          <motion.div
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            transition={{ delay: 0.7 }}
+            className="p-6 mt-8 text-center bg-white rounded-lg shadow-md"
+          >
             <h3 className="mb-2 font-semibold">Need Help?</h3>
             <p className="mb-4 text-sm text-gray-600">
               If you have any questions about your order, feel free to contact us.
@@ -383,4 +438,5 @@ const OrderConfirmationPage = () => {
     </div>
   );
 };
+
 export default OrderConfirmationPage;
