@@ -1,36 +1,26 @@
 import React, { useState } from "react";
 
 const ReferralDiscountManager = () => {
-  // Helper to get date 7 days from now (with current time)
   const getDefaultExpiry = () => {
     const date = new Date();
     date.setDate(date.getDate() + 7);
-    // Format: YYYY-MM-DDThh:mm (datetime-local required format)
     return date.toISOString().slice(0, 16);
   };
 
-  // State for Referred By (referrer) discount
+  // Referrer state
   const [referrerActive, setReferrerActive] = useState(true);
-  const [referrerType, setReferrerType] = useState("percentage"); // 'percentage' or 'fixed'
+  const [referrerType, setReferrerType] = useState("percentage");
   const [referrerValue, setReferrerValue] = useState("");
   const [referrerExpiry, setReferrerExpiry] = useState(getDefaultExpiry());
 
-  // State for Referred To (new user) discount
+  // Referred state
   const [referredActive, setReferredActive] = useState(true);
   const [referredType, setReferredType] = useState("percentage");
   const [referredValue, setReferredValue] = useState("");
   const [referredExpiry, setReferredExpiry] = useState(getDefaultExpiry());
 
-  // Helpers
-  const formatExpiryLabel = (isoString) => {
-    if (!isoString) return "Not set";
-    const date = new Date(isoString);
-    return date.toLocaleString();
-  };
-
-  const isExpired = (expiryIso) => {
-    return new Date(expiryIso) < new Date();
-  };
+  const formatExpiry = (iso) => (iso ? new Date(iso).toLocaleString() : "Not set");
+  const isExpired = (iso) => new Date(iso) < new Date();
 
   const handleSubmit = (e) => {
     e.preventDefault();
@@ -51,10 +41,9 @@ const ReferralDiscountManager = () => {
       },
     };
     console.log("Saved referral configuration:", payload);
-    alert("Referral discounts saved! Check console for details.");
+    alert("Referral discounts saved successfully!");
   };
 
-  // Validation (ensure value is positive number)
   const isValidNumber = (val) => val && !isNaN(parseFloat(val)) && parseFloat(val) > 0;
   const isFormValid = () => {
     if (referrerActive && !isValidNumber(referrerValue)) return false;
@@ -62,303 +51,244 @@ const ReferralDiscountManager = () => {
     return true;
   };
 
-  return (
-    <div className="max-w-5xl mx-auto p-6 bg-gray-50 min-h-screen font-sans">
-      <div className="mb-8 text-center">
-        <h1 className="text-3xl font-extrabold text-gray-800">
-          Referral <span className="text-indigo-600">Discount Engine</span>
-        </h1>
-        <p className="text-gray-500 mt-2">
-          Manage discounts for referrer and new user • Percentage or Fixed • Expiry date & time
-        </p>
+  const DiscountCard = ({
+    title,
+    active,
+    setActive,
+    type,
+    setType,
+    value,
+    setValue,
+    expiry,
+    setExpiry,
+    accentColor = "red",
+  }) => (
+    <div className="bg-white rounded-xl shadow-sm border border-gray-100 overflow-hidden transition-all hover:shadow-md">
+      <div className="px-5 py-4 border-b border-gray-100 flex justify-between items-center">
+        <h3 className="font-semibold text-gray-800">{title}</h3>
+        <label className="relative inline-flex items-center cursor-pointer">
+          <input
+            type="checkbox"
+            className="sr-only peer"
+            checked={active}
+            onChange={(e) => setActive(e.target.checked)}
+          />
+          <div className="w-10 h-5 bg-gray-200 rounded-full peer peer-checked:bg-red-500 peer-checked:after:translate-x-full after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:rounded-full after:h-4 after:w-4 after:transition-all"></div>
+          <span className="ml-2 text-sm font-medium text-gray-600">
+            {active ? "Active" : "Inactive"}
+          </span>
+        </label>
       </div>
-
-      <form onSubmit={handleSubmit} className="space-y-8">
-        {/* Two column layout */}
-        <div className="grid md:grid-cols-2 gap-6">
-          {/* Referred By (Referrer) Card */}
-          <div className="bg-white rounded-2xl shadow-md overflow-hidden border border-gray-200 transition-all hover:shadow-lg">
-            <div className="bg-gradient-to-r from-blue-600 to-blue-700 px-5 py-3 flex justify-between items-center">
-              <div className="flex items-center space-x-2">
-                <i className="fas fa-user-plus text-white text-xl"></i>
-                <h2 className="text-white font-bold text-lg">Referred By (Referrer)</h2>
-              </div>
-              {/* Active toggle */}
-              <label className="relative inline-flex items-center cursor-pointer">
-                <input
-                  type="checkbox"
-                  className="sr-only peer"
-                  checked={referrerActive}
-                  onChange={(e) => setReferrerActive(e.target.checked)}
-                />
-                <div className="w-11 h-6 bg-gray-300 rounded-full peer peer-checked:bg-emerald-500 peer-checked:after:translate-x-full after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:rounded-full after:h-5 after:w-5 after:transition-all"></div>
-                <span className="ml-2 text-sm font-medium text-white">
-                  {referrerActive ? "Active" : "Inactive"}
-                </span>
-              </label>
-            </div>
-            <div className="p-5 space-y-4">
-              {/* Discount type */}
-              <div>
-                <label className="block text-sm font-semibold text-gray-700 mb-1">
-                  Discount Type
-                </label>
-                <div className="flex space-x-4">
-                  <label className="flex items-center space-x-2 cursor-pointer">
-                    <input
-                      type="radio"
-                      value="percentage"
-                      checked={referrerType === "percentage"}
-                      onChange={() => setReferrerType("percentage")}
-                      className="w-4 h-4 text-indigo-600"
-                    />
-                    <span className="text-gray-700">Percentage (%)</span>
-                  </label>
-                  <label className="flex items-center space-x-2 cursor-pointer">
-                    <input
-                      type="radio"
-                      value="fixed"
-                      checked={referrerType === "fixed"}
-                      onChange={() => setReferrerType("fixed")}
-                      className="w-4 h-4 text-indigo-600"
-                    />
-                    <span className="text-gray-700">Direct Money ($)</span>
-                  </label>
-                </div>
-              </div>
-
-              {/* Discount value */}
-              <div>
-                <label className="block text-sm font-semibold text-gray-700 mb-1">
-                  {referrerType === "percentage" ? "Percentage (%)" : "Fixed Amount ($)"}
-                </label>
-                <div className="relative">
-                  <span className="absolute inset-y-0 left-0 flex items-center pl-3 text-gray-500">
-                    {referrerType === "percentage" ? "%" : "$"}
-                  </span>
-                  <input
-                    type="number"
-                    step="any"
-                    min="0"
-                    value={referrerValue}
-                    onChange={(e) => setReferrerValue(e.target.value)}
-                    placeholder={referrerType === "percentage" ? "e.g., 15" : "e.g., 20.00"}
-                    className="w-full pl-8 pr-3 py-2 border border-gray-300 rounded-xl focus:ring-2 focus:ring-blue-400 focus:border-blue-400"
-                    disabled={!referrerActive}
-                  />
-                </div>
-                {referrerActive && referrerValue && !isValidNumber(referrerValue) && (
-                  <p className="text-red-500 text-xs mt-1">Please enter a positive number</p>
-                )}
-              </div>
-
-              {/* Expiry Date & Time */}
-              <div>
-                <label className="block text-sm font-semibold text-gray-700 mb-1">
-                  Expiry Date & Time <span className="text-gray-400 text-xs">(7 days default)</span>
-                </label>
-                <input
-                  type="datetime-local"
-                  value={referrerExpiry}
-                  onChange={(e) => setReferrerExpiry(e.target.value)}
-                  className="w-full px-3 py-2 border border-gray-300 rounded-xl focus:ring-2 focus:ring-blue-400"
-                  disabled={!referrerActive}
-                />
-                {referrerActive && referrerExpiry && (
-                  <div className="mt-1 text-xs">
-                    {isExpired(referrerExpiry) ? (
-                      <span className="text-red-500 flex items-center gap-1">
-                        <i className="fas fa-exclamation-circle"></i> Expired
-                      </span>
-                    ) : (
-                      <span className="text-green-600 flex items-center gap-1">
-                        <i className="fas fa-clock"></i> Valid until: {formatExpiryLabel(referrerExpiry)}
-                      </span>
-                    )}
-                  </div>
-                )}
-              </div>
-            </div>
-          </div>
-
-          {/* Referred To (New User) Card */}
-          <div className="bg-white rounded-2xl shadow-md overflow-hidden border border-gray-200 transition-all hover:shadow-lg">
-            <div className="bg-gradient-to-r from-purple-600 to-purple-700 px-5 py-3 flex justify-between items-center">
-              <div className="flex items-center space-x-2">
-                <i className="fas fa-user-check text-white text-xl"></i>
-                <h2 className="text-white font-bold text-lg">Referred To (New User)</h2>
-              </div>
-              <label className="relative inline-flex items-center cursor-pointer">
-                <input
-                  type="checkbox"
-                  className="sr-only peer"
-                  checked={referredActive}
-                  onChange={(e) => setReferredActive(e.target.checked)}
-                />
-                <div className="w-11 h-6 bg-gray-300 rounded-full peer peer-checked:bg-emerald-500 peer-checked:after:translate-x-full after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:rounded-full after:h-5 after:w-5 after:transition-all"></div>
-                <span className="ml-2 text-sm font-medium text-white">
-                  {referredActive ? "Active" : "Inactive"}
-                </span>
-              </label>
-            </div>
-            <div className="p-5 space-y-4">
-              {/* Discount type */}
-              <div>
-                <label className="block text-sm font-semibold text-gray-700 mb-1">
-                  Discount Type
-                </label>
-                <div className="flex space-x-4">
-                  <label className="flex items-center space-x-2 cursor-pointer">
-                    <input
-                      type="radio"
-                      value="percentage"
-                      checked={referredType === "percentage"}
-                      onChange={() => setReferredType("percentage")}
-                      className="w-4 h-4 text-indigo-600"
-                    />
-                    <span className="text-gray-700">Percentage (%)</span>
-                  </label>
-                  <label className="flex items-center space-x-2 cursor-pointer">
-                    <input
-                      type="radio"
-                      value="fixed"
-                      checked={referredType === "fixed"}
-                      onChange={() => setReferredType("fixed")}
-                      className="w-4 h-4 text-indigo-600"
-                    />
-                    <span className="text-gray-700">Direct Money ($)</span>
-                  </label>
-                </div>
-              </div>
-
-              {/* Discount value */}
-              <div>
-                <label className="block text-sm font-semibold text-gray-700 mb-1">
-                  {referredType === "percentage" ? "Percentage (%)" : "Fixed Amount ($)"}
-                </label>
-                <div className="relative">
-                  <span className="absolute inset-y-0 left-0 flex items-center pl-3 text-gray-500">
-                    {referredType === "percentage" ? "%" : "$"}
-                  </span>
-                  <input
-                    type="number"
-                    step="any"
-                    min="0"
-                    value={referredValue}
-                    onChange={(e) => setReferredValue(e.target.value)}
-                    placeholder={referredType === "percentage" ? "e.g., 10" : "e.g., 15.00"}
-                    className="w-full pl-8 pr-3 py-2 border border-gray-300 rounded-xl focus:ring-2 focus:ring-purple-400"
-                    disabled={!referredActive}
-                  />
-                </div>
-                {referredActive && referredValue && !isValidNumber(referredValue) && (
-                  <p className="text-red-500 text-xs mt-1">Enter a positive number</p>
-                )}
-              </div>
-
-              {/* Expiry Date & Time */}
-              <div>
-                <label className="block text-sm font-semibold text-gray-700 mb-1">
-                  Expiry Date & Time <span className="text-gray-400 text-xs">(7 days default)</span>
-                </label>
-                <input
-                  type="datetime-local"
-                  value={referredExpiry}
-                  onChange={(e) => setReferredExpiry(e.target.value)}
-                  className="w-full px-3 py-2 border border-gray-300 rounded-xl focus:ring-2 focus:ring-purple-400"
-                  disabled={!referredActive}
-                />
-                {referredActive && referredExpiry && (
-                  <div className="mt-1 text-xs">
-                    {isExpired(referredExpiry) ? (
-                      <span className="text-red-500 flex items-center gap-1">
-                        <i className="fas fa-exclamation-circle"></i> Expired
-                      </span>
-                    ) : (
-                      <span className="text-green-600 flex items-center gap-1">
-                        <i className="fas fa-hourglass-half"></i> Valid until: {formatExpiryLabel(referredExpiry)}
-                      </span>
-                    )}
-                  </div>
-                )}
-              </div>
-            </div>
+      <div className="p-5 space-y-4">
+        {/* Discount Type */}
+        <div>
+          <label className="block text-xs font-semibold text-gray-500 uppercase tracking-wider mb-2">
+            Discount Type
+          </label>
+          <div className="flex gap-4">
+            <label className="flex items-center gap-2 text-sm text-gray-700">
+              <input
+                type="radio"
+                value="percentage"
+                checked={type === "percentage"}
+                onChange={() => setType("percentage")}
+                className="w-4 h-4 text-red-500 focus:ring-red-400"
+              />
+              Percentage (%)
+            </label>
+            <label className="flex items-center gap-2 text-sm text-gray-700">
+              <input
+                type="radio"
+                value="fixed"
+                checked={type === "fixed"}
+                onChange={() => setType("fixed")}
+                className="w-4 h-4 text-red-500 focus:ring-red-400"
+              />
+              Fixed Amount (₹)
+            </label>
           </div>
         </div>
 
-        {/* Summary & Save Section */}
-        <div className="bg-white rounded-xl shadow-md p-5 border border-gray-200">
-          <h3 className="font-semibold text-gray-800 text-lg flex items-center gap-2 mb-3">
-            <i className="fas fa-receipt text-indigo-500"></i> Discount Summary
-          </h3>
-          <div className="grid sm:grid-cols-2 gap-4 text-sm">
-            <div className="bg-gray-50 p-3 rounded-xl">
-              <p className="font-medium text-blue-700">Referred By (Referrer)</p>
-              <p className="text-gray-600">
-                Status:{" "}
-                <span className={referrerActive ? "text-green-600 font-semibold" : "text-red-500"}>
-                  {referrerActive ? "Active" : "Inactive"}
-                </span>
-              </p>
-              {referrerActive && (
-                <>
-                  <p>
-                    Discount: {referrerType === "percentage" ? `${referrerValue || "0"}%` : `$${referrerValue || "0"}`}
-                  </p>
-                  <p>
-                    Expiry:{" "}
-                    {isExpired(referrerExpiry) ? (
-                      <span className="text-red-500">Expired</span>
-                    ) : (
-                      <span className="text-gray-700">{formatExpiryLabel(referrerExpiry)}</span>
-                    )}
-                  </p>
-                </>
-              )}
-            </div>
-            <div className="bg-gray-50 p-3 rounded-xl">
-              <p className="font-medium text-purple-700">Referred To (New User)</p>
-              <p className="text-gray-600">
-                Status:{" "}
-                <span className={referredActive ? "text-green-600 font-semibold" : "text-red-500"}>
-                  {referredActive ? "Active" : "Inactive"}
-                </span>
-              </p>
-              {referredActive && (
-                <>
-                  <p>
-                    Discount: {referredType === "percentage" ? `${referredValue || "0"}%` : `$${referredValue || "0"}`}
-                  </p>
-                  <p>
-                    Expiry:{" "}
-                    {isExpired(referredExpiry) ? (
-                      <span className="text-red-500">Expired</span>
-                    ) : (
-                      <span className="text-gray-700">{formatExpiryLabel(referredExpiry)}</span>
-                    )}
-                  </p>
-                </>
-              )}
-            </div>
+        {/* Discount Value */}
+        <div>
+          <label className="block text-xs font-semibold text-gray-500 uppercase tracking-wider mb-2">
+            {type === "percentage" ? "Percentage Value" : "Amount (₹)"}
+          </label>
+          <div className="relative">
+            <span className="absolute inset-y-0 left-0 flex items-center pl-3 text-gray-400">
+              {type === "percentage" ? "%" : "₹"}
+            </span>
+            <input
+              type="number"
+              step={type === "percentage" ? "1" : "0.01"}
+              min="0"
+              value={value}
+              onChange={(e) => setValue(e.target.value)}
+              placeholder={type === "percentage" ? "e.g., 15" : "e.g., 200"}
+              className="w-full pl-8 pr-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-red-200 focus:border-red-400 transition"
+              disabled={!active}
+            />
           </div>
-          <div className="mt-5 flex justify-end">
-            <button
-              type="submit"
-              disabled={!isFormValid()}
-              className={`px-6 py-2.5 rounded-xl font-bold text-white transition-all ${
-                isFormValid()
-                  ? "bg-indigo-600 hover:bg-indigo-700 shadow-md cursor-pointer"
-                  : "bg-gray-400 cursor-not-allowed"
-              }`}
-            >
-              <i className="fas fa-save mr-2"></i> Save Referral Configuration
-            </button>
-          </div>
+          {active && value && !isValidNumber(value) && (
+            <p className="text-red-500 text-xs mt-1">Please enter a positive number</p>
+          )}
         </div>
-      </form>
 
-      <div className="text-center text-xs text-gray-400 mt-6">
-        Each discount can be independently activated, switched between % / fixed amount, and has its own expiry date & time.
+        {/* Expiry */}
+        <div>
+          <label className="block text-xs font-semibold text-gray-500 uppercase tracking-wider mb-2">
+            Expiry Date & Time
+          </label>
+          <input
+            type="datetime-local"
+            value={expiry}
+            onChange={(e) => setExpiry(e.target.value)}
+            className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-red-200 focus:border-red-400 transition"
+            disabled={!active}
+          />
+          {active && expiry && (
+            <div className="mt-1 text-xs">
+              {isExpired(expiry) ? (
+                <span className="text-red-500 flex items-center gap-1">
+                  <span>⚠️</span> Expired
+                </span>
+              ) : (
+                <span className="text-green-600 flex items-center gap-1">
+                  <span>✓</span> Valid until {formatExpiry(expiry)}
+                </span>
+              )}
+            </div>
+          )}
+        </div>
+      </div>
+    </div>
+  );
+
+  return (
+    <div className="min-h-screen bg-gray-50 py-8 px-4">
+      <div className="max-w-6xl mx-auto">
+        {/* Header */}
+        <div className="text-center mb-8">
+          <h1 className="text-3xl font-bold text-gray-800">
+            Referral <span className="text-red-600">Discount Engine</span>
+          </h1>
+          <p className="text-gray-500 mt-2">
+            Configure discounts for referrers and referred users • Percentage or fixed amount • Expiry control
+          </p>
+        </div>
+
+        <form onSubmit={handleSubmit}>
+          {/* Two column layout */}
+          <div className="grid md:grid-cols-2 gap-6 mb-8">
+            <DiscountCard
+              title="Referred By (Referrer)"
+              active={referrerActive}
+              setActive={setReferrerActive}
+              type={referrerType}
+              setType={setReferrerType}
+              value={referrerValue}
+              setValue={setReferrerValue}
+              expiry={referrerExpiry}
+              setExpiry={setReferrerExpiry}
+            />
+            <DiscountCard
+              title="Referred To (New User)"
+              active={referredActive}
+              setActive={setReferredActive}
+              type={referredType}
+              setType={setReferredType}
+              value={referredValue}
+              setValue={setReferredValue}
+              expiry={referredExpiry}
+              setExpiry={setReferredExpiry}
+            />
+          </div>
+
+          {/* Summary & Save */}
+          <div className="bg-white rounded-xl shadow-sm border border-gray-100 p-6">
+            <h3 className="text-lg font-semibold text-gray-800 mb-4 flex items-center gap-2">
+              <span className="w-1 h-6 bg-red-500 rounded-full"></span>
+              Configuration Summary
+            </h3>
+            <div className="grid sm:grid-cols-2 gap-5 text-sm">
+              <div className="bg-gray-50 rounded-lg p-4">
+                <p className="font-medium text-gray-700 mb-1">Referred By (Referrer)</p>
+                <p className="text-gray-600">
+                  Status:{" "}
+                  <span className={referrerActive ? "text-green-600 font-medium" : "text-red-500"}>
+                    {referrerActive ? "Active" : "Inactive"}
+                  </span>
+                </p>
+                {referrerActive && (
+                  <>
+                    <p className="text-gray-600">
+                      Discount:{" "}
+                      <span className="font-medium">
+                        {referrerType === "percentage"
+                          ? `${referrerValue || "0"}%`
+                          : `₹${referrerValue || "0"}`}
+                      </span>
+                    </p>
+                    <p className="text-gray-600">
+                      Expiry:{" "}
+                      {isExpired(referrerExpiry) ? (
+                        <span className="text-red-500">Expired</span>
+                      ) : (
+                        <span className="text-gray-700">{formatExpiry(referrerExpiry)}</span>
+                      )}
+                    </p>
+                  </>
+                )}
+              </div>
+              <div className="bg-gray-50 rounded-lg p-4">
+                <p className="font-medium text-gray-700 mb-1">Referred To (New User)</p>
+                <p className="text-gray-600">
+                  Status:{" "}
+                  <span className={referredActive ? "text-green-600 font-medium" : "text-red-500"}>
+                    {referredActive ? "Active" : "Inactive"}
+                  </span>
+                </p>
+                {referredActive && (
+                  <>
+                    <p className="text-gray-600">
+                      Discount:{" "}
+                      <span className="font-medium">
+                        {referredType === "percentage"
+                          ? `${referredValue || "0"}%`
+                          : `₹${referredValue || "0"}`}
+                      </span>
+                    </p>
+                    <p className="text-gray-600">
+                      Expiry:{" "}
+                      {isExpired(referredExpiry) ? (
+                        <span className="text-red-500">Expired</span>
+                      ) : (
+                        <span className="text-gray-700">{formatExpiry(referredExpiry)}</span>
+                      )}
+                    </p>
+                  </>
+                )}
+              </div>
+            </div>
+            <div className="mt-6 flex justify-end">
+              <button
+                type="submit"
+                disabled={!isFormValid()}
+                className={`px-6 py-2.5 rounded-lg font-semibold text-white transition-all ${
+                  isFormValid()
+                    ? "bg-red-600 hover:bg-red-700 shadow-sm hover:shadow-md cursor-pointer"
+                    : "bg-gray-300 cursor-not-allowed"
+                }`}
+              >
+                Save Configuration
+              </button>
+            </div>
+          </div>
+        </form>
+
+        <div className="text-center text-xs text-gray-400 mt-6">
+          Each discount works independently. You can set percentage or fixed amount (₹) and choose an expiry date.
+        </div>
       </div>
     </div>
   );

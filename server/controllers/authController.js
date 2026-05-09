@@ -186,7 +186,7 @@ const googleSignIn = async (req, res) => {
 // Email Registration - FIXED VERSION
 const registerWithEmail = async (req, res) => {
   try {
-    const { email, password, name } = req.body
+    const { email, password, name, referredBy } = req.body
 
     // Validation
     if (!email || !password || !name) {
@@ -264,7 +264,7 @@ const registerWithEmail = async (req, res) => {
         role: "user",
         createdAt: new Date(),
         expireReferralDate: null,
-        referredBy: null,
+        referredBy: referredBy || null,
         myreferralCode: randomReferralCode(),
       })
 

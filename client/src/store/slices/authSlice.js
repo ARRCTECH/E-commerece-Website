@@ -374,7 +374,7 @@ export const uploadAvatar = createAsyncThunk("auth/uploadAvatar", async (formDat
 // Email Authentication Thunks
 export const registerWithEmail = createAsyncThunk(
   "auth/registerWithEmail",
-  async ({ email, password, name }, { rejectWithValue }) => {
+  async ({ email, password, name, referredBy }, { rejectWithValue }) => {
     try {
       // Create user with Firebase
       const userCredential = await createUserWithEmailAndPassword(auth, email, password);
@@ -385,11 +385,12 @@ export const registerWithEmail = createAsyncThunk(
       });
       // Send email verification
       await sendEmailVerification(firebaseUser);
-      // Register user in backend
+      // Register user in backend 
       const response = await axios.post(`${API_BASE_URL}/auth/register/email`, {
         email,
         password,
         name,
+        referredBy,
       });
       // Store user data
       localStorage.setItem("user", JSON.stringify(response.data.user));

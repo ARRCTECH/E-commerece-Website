@@ -20,7 +20,7 @@ import {
   Edit2,
   Trash2,
 } from "lucide-react";
-import { updateProfile, changePassword, uploadAvatar,getProfile  }from "../store/slices/authSlice";
+import { updateProfile, changePassword, uploadAvatar, getProfile } from "../store/slices/authSlice";
 import { fetchUserOrders } from "../store/slices/orderSlice";
 import { fetchWishlist } from "../store/slices/wishlistSlice";
 import toast from "react-hot-toast";
@@ -32,13 +32,13 @@ const ProfilePage = () => {
   const { user, isLoading } = useSelector((state) => state.auth);
   const { orders = [] } = useSelector((state) => state.orders);
   const { items: wishlistItems = [] } = useSelector((state) => state.wishlist);
+
   // Tab state
   const [activeTab, setActiveTab] = useState("profile");
-   
-
 
   // Profile edit mode
   const [isEditing, setIsEditing] = useState(false);
+  const [originalProfile, setOriginalProfile] = useState(null);
   const [profileData, setProfileData] = useState({
     name: "",
     email: "",
@@ -47,9 +47,10 @@ const ProfilePage = () => {
     gender: "",
     addresses: [],
     myreferralCode: "",
-    referredBy:"",
-    expireReferralDate:""
+    referredBy: "",
+    expireReferralDate: "",
   });
+
   // Password change
   const [showPasswordForm, setShowPasswordForm] = useState(false);
   const [passwordData, setPasswordData] = useState({
@@ -57,9 +58,11 @@ const ProfilePage = () => {
     newPassword: "",
     confirmPassword: "",
   });
+
   // Address management
   const [showAddressForm, setShowAddressForm] = useState(false);
   const [editingAddress, setEditingAddress] = useState(null);
+  const [isAddressSaving, setIsAddressSaving] = useState(false);
   const [newAddress, setNewAddress] = useState({
     type: "home",
     fullName: "",
@@ -71,6 +74,7 @@ const ProfilePage = () => {
     pincode: "",
     isDefault: false,
   });
+
   // Prefill profile data when user loads
   useEffect(() => {
     if (user) {
@@ -87,13 +91,14 @@ const ProfilePage = () => {
       });
     }
   }, [user]);
-  console.log(profileData)
+
   // Fetch orders & wishlist on mount
   useEffect(() => {
     dispatch(fetchUserOrders({ limit: 5 }));
     dispatch(fetchWishlist());
     dispatch(getProfile());
   }, [dispatch]);
+
   // ----- Profile Update -----
   const handleProfileUpdate = async (e) => {
     e.preventDefault();
@@ -101,10 +106,25 @@ const ProfilePage = () => {
       await dispatch(updateProfile(profileData)).unwrap();
       toast.success("Profile updated successfully!");
       setIsEditing(false);
+      setOriginalProfile(null);
     } catch (error) {
       toast.error(error.message || "Update failed");
     }
   };
+
+  const startEditing = () => {
+    setOriginalProfile({ ...profileData });
+    setIsEditing(true);
+  };
+
+  const cancelEditing = () => {
+    if (originalProfile) {
+      setProfileData(originalProfile);
+    }
+    setIsEditing(false);
+    setOriginalProfile(null);
+  };
+
   // ----- Avatar Upload -----
   const handleAvatarUpload = async (e) => {
     const file = e.target.files[0];
@@ -118,10 +138,12 @@ const ProfilePage = () => {
     try {
       await dispatch(uploadAvatar(formData)).unwrap();
       toast.success("Profile picture updated!");
+      e.target.value = ""; // allow re-upload of same file
     } catch (error) {
       toast.error(error.message);
     }
   };
+
   // ----- Password Change -----
   const handlePasswordChange = async (e) => {
     e.preventDefault();
@@ -147,6 +169,7 @@ const ProfilePage = () => {
       toast.error(error.message);
     }
   };
+
   // ----- Address Helpers -----
   const resetAddressForm = () => {
     setNewAddress({
@@ -163,8 +186,10 @@ const ProfilePage = () => {
     setEditingAddress(null);
     setShowAddressForm(false);
   };
+
   const handleAddOrUpdateAddress = async (e) => {
     e.preventDefault();
+    setIsAddressSaving(true);
     try {
       let updatedAddresses = [...profileData.addresses];
       let newAddr;
@@ -189,8 +214,11 @@ const ProfilePage = () => {
       resetAddressForm();
     } catch (error) {
       toast.error(error.message);
+    } finally {
+      setIsAddressSaving(false);
     }
   };
+
   const handleDeleteAddress = async (addressId) => {
     if (!window.confirm("Are you sure you want to delete this address?")) return;
     try {
@@ -202,13 +230,15 @@ const ProfilePage = () => {
       toast.error(error.message);
     }
   };
+
   const startEditAddress = (address) => {
     setEditingAddress(address);
     setNewAddress({ ...address });
     setShowAddressForm(true);
   };
-  const url=import.meta.env.FRONTEND_URL || "http://localhost:3000";  
-  const referralLink = `${url}/register?ref=${user?.myreferralCode}`;
+
+  // ----- Referral ----
+  const referralLink = `${window.location.origin}/register?ref=${user?.myreferralCode}`;
   const shareText = "Join now using my referral link and get exciting rewards! 🚀";
   const shareUrls = {
     whatsapp: `https://wa.me/?text=${encodeURIComponent(`${shareText} ${referralLink}`)}`,
@@ -220,12 +250,13 @@ const ProfilePage = () => {
     linkedin: `https://www.linkedin.com/sharing/share-offsite/?url=${encodeURIComponent(referralLink)}`,
     telegram: `https://t.me/share/url?url=${encodeURIComponent(referralLink)}&text=${encodeURIComponent(shareText)}`,
   };
+
   const copyToClipboard = () => {
     navigator.clipboard.writeText(referralLink);
     toast.success("Link copied to clipboard!");
   };
 
-  // ----- Tabs Definition -----
+  // ----- Tabs -----
   const tabs = [
     { id: "profile", label: "Profile", icon: User },
     { id: "orders", label: "Orders", icon: Package },
@@ -264,7 +295,8 @@ const ProfilePage = () => {
                 <h1 className="text-2xl font-bold text-gray-800">{user?.name}</h1>
                 <p className="text-gray-600">{user?.email}</p>
                 <p className="text-sm text-gray-500">
-                  Member since {user?.createdAt ? format(new Date(user.createdAt), "MMMM yyyy") : "recently"}
+                  Member since{" "}
+                  {user?.createdAt ? format(new Date(user.createdAt), "MMMM yyyy") : "recently"}
                 </p>
               </div>
               {/* Stats */}
@@ -321,28 +353,13 @@ const ProfilePage = () => {
                     >
                       <div className="flex items-center justify-between mb-6">
                         <h2 className="text-xl font-semibold text-gray-800">Personal Information</h2>
-                        {!isEditing ? (
+                        {!isEditing && (
                           <button
-                            onClick={() => setIsEditing(true)}
+                            onClick={startEditing}
                             className="px-4 py-2 text-red-600 transition-colors border border-red-600 rounded-lg hover:bg-red-50"
                           >
                             Edit Profile
                           </button>
-                        ) : (
-                          <div className="space-x-2">
-                            <button
-                              onClick={() => setIsEditing(false)}
-                              className="px-4 py-2 text-gray-600 transition-colors border border-gray-300 rounded-lg hover:bg-gray-50"
-                            >
-                              Cancel
-                            </button>
-                            <button
-                              onClick={handleProfileUpdate}
-                              className="px-4 py-2 text-white transition-colors bg-red-600 rounded-lg hover:bg-red-700"
-                            >
-                              Save Changes
-                            </button>
-                          </div>
                         )}
                       </div>
 
@@ -402,6 +419,24 @@ const ProfilePage = () => {
                             </select>
                           </div>
                         </div>
+
+                        {isEditing && (
+                          <div className="flex justify-end gap-3 pt-4 border-t">
+                            <button
+                              type="button"
+                              onClick={cancelEditing}
+                              className="px-4 py-2 text-gray-600 transition-colors border border-gray-300 rounded-lg hover:bg-gray-50"
+                            >
+                              Cancel
+                            </button>
+                            <button
+                              type="submit"
+                              className="px-4 py-2 text-white transition-colors bg-red-600 rounded-lg hover:bg-red-700"
+                            >
+                              Save Changes
+                            </button>
+                          </div>
+                        )}
                       </form>
 
                       {/* Addresses Section */}
@@ -498,8 +533,12 @@ const ProfilePage = () => {
                                 >
                                   Cancel
                                 </button>
-                                <button type="submit" className="px-3 py-1 text-sm text-white bg-red-600 rounded-lg">
-                                  {editingAddress ? "Update" : "Save"} Address
+                                <button
+                                  type="submit"
+                                  disabled={isAddressSaving}
+                                  className="px-3 py-1 text-sm text-white bg-red-600 rounded-lg disabled:opacity-50"
+                                >
+                                  {isAddressSaving ? "Saving..." : editingAddress ? "Update" : "Save"} Address
                                 </button>
                               </div>
                             </form>
@@ -700,7 +739,7 @@ const ProfilePage = () => {
                     </motion.div>
                   )}
 
-                  {/* REFERRAL TAB */}
+                  {/* REFERRAL TAB - Styled in Red */}
                   {activeTab === "referral" && (
                     <motion.div
                       key="referral"
@@ -709,25 +748,25 @@ const ProfilePage = () => {
                       exit={{ opacity: 0, y: -20 }}
                     >
                       <div className="flex items-center gap-2 mb-6">
-                        <UserPlus className="w-6 h-6 text-black" />
+                        <UserPlus className="w-6 h-6 text-red-600" />
                         <h2 className="text-xl font-semibold text-gray-800">My Referral</h2>
                       </div>
 
                       <div className="space-y-6">
                         {/* Stats */}
                         <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
-                          <div className="p-5 border border-gray-200 rounded-xl bg-white shadow-sm">
+                          <div className="p-5 border border-red-200 rounded-xl bg-white shadow-sm">
                             <p className="text-sm text-gray-500">Total Referrals</p>
-                            <h3 className="mt-2 text-3xl font-bold text-gray-800">{user?.totalReferrals || 0}</h3>
+                            <h3 className="mt-2 text-3xl font-bold text-red-700">{user?.totalReferrals || 0}</h3>
                           </div>
-                          <div className="p-5 border border-gray-200 rounded-xl bg-white shadow-sm">
+                          <div className="p-5 border border-red-200 rounded-xl bg-white shadow-sm">
                             <p className="text-sm text-gray-500">Referral Earnings</p>
-                            <h3 className="mt-2 text-3xl font-bold text-green-600">₹{user?.referralEarnings || 0}</h3>
+                            <h3 className="mt-2 text-3xl font-bold text-red-600">₹{user?.referralEarnings || 0}</h3>
                           </div>
                         </div>
 
                         {/* Referral Link */}
-                        <div className="p-5 border border-gray-200 rounded-xl bg-white shadow-sm">
+                        <div className="p-5 border border-red-200 rounded-xl bg-white shadow-sm">
                           <h3 className="mb-3 text-lg font-semibold text-gray-800">Share Referral Link</h3>
                           <div className="flex flex-col gap-3 md:flex-row">
                             <input
@@ -738,7 +777,7 @@ const ProfilePage = () => {
                             />
                             <button
                               onClick={copyToClipboard}
-                              className="flex items-center justify-center gap-2 px-5 py-3 text-white transition bg-black rounded-lg hover:bg-gray-800"
+                              className="flex items-center justify-center gap-2 px-5 py-3 text-white transition bg-red-600 rounded-lg hover:bg-red-700"
                             >
                               <Copy className="w-4 h-4" />
                               Copy
@@ -747,64 +786,64 @@ const ProfilePage = () => {
 
                           <p className="mt-3 text-sm text-gray-500">
                             Referral Code:
-                            <span className="ml-2 font-semibold text-black">{user?.myreferralCode || "N/A"}</span>
+                            <span className="ml-2 font-semibold text-red-600">{user?.myreferralCode || "N/A"}</span>
                           </p>
 
-                          {/* Social Share Buttons - using MessageCircle for WhatsApp */}
+                          {/* Social Share Buttons */}
                           <div className="grid grid-cols-2 gap-3 mt-6 md:grid-cols-3 lg:grid-cols-6">
                             <a
                               href={shareUrls.whatsapp}
                               target="_blank"
                               rel="noreferrer"
-                              className="flex items-center justify-center gap-2 px-4 py-3 transition border rounded-lg hover:bg-gray-100"
+                              className="flex items-center justify-center gap-2 px-4 py-3 transition border border-red-200 rounded-lg hover:bg-red-50"
                             >
-                              <MessageCircle className="w-5 h-5 text-green-600" />
-                              <span>WhatsApp</span>
+                              <MessageCircle className="w-5 h-5 text-red-600" />
+                              <span className="text-red-700">WhatsApp</span>
                             </a>
                             <a
                               href={shareUrls.email}
                               target="_blank"
                               rel="noreferrer"
-                              className="flex items-center justify-center gap-2 px-4 py-3 transition border rounded-lg hover:bg-gray-100"
+                              className="flex items-center justify-center gap-2 px-4 py-3 transition border border-red-200 rounded-lg hover:bg-red-50"
                             >
-                              <Mail className="w-5 h-5" />
-                              <span>Email</span>
+                              <Mail className="w-5 h-5 text-red-600" />
+                              <span className="text-red-700">Email</span>
                             </a>
                             <a
                               href={shareUrls.facebook}
                               target="_blank"
                               rel="noreferrer"
-                              className="flex items-center justify-center gap-2 px-4 py-3 transition border rounded-lg hover:bg-gray-100"
+                              className="flex items-center justify-center gap-2 px-4 py-3 transition border border-red-200 rounded-lg hover:bg-red-50"
                             >
-                              <Facebook className="w-5 h-5" />
-                              <span>Facebook</span>
+                              <Facebook className="w-5 h-5 text-red-600" />
+                              <span className="text-red-700">Facebook</span>
                             </a>
                             <a
                               href={shareUrls.twitter}
                               target="_blank"
                               rel="noreferrer"
-                              className="flex items-center justify-center gap-2 px-4 py-3 transition border rounded-lg hover:bg-gray-100"
+                              className="flex items-center justify-center gap-2 px-4 py-3 transition border border-red-200 rounded-lg hover:bg-red-50"
                             >
-                              <Twitter className="w-5 h-5" />
-                              <span>Twitter</span>
+                              <Twitter className="w-5 h-5 text-red-600" />
+                              <span className="text-red-700">Twitter</span>
                             </a>
                             <a
                               href={shareUrls.linkedin}
                               target="_blank"
                               rel="noreferrer"
-                              className="flex items-center justify-center gap-2 px-4 py-3 transition border rounded-lg hover:bg-gray-100"
+                              className="flex items-center justify-center gap-2 px-4 py-3 transition border border-red-200 rounded-lg hover:bg-red-50"
                             >
-                              <Linkedin className="w-5 h-5" />
-                              <span>LinkedIn</span>
+                              <Linkedin className="w-5 h-5 text-red-600" />
+                              <span className="text-red-700">LinkedIn</span>
                             </a>
                             <a
                               href={shareUrls.telegram}
                               target="_blank"
                               rel="noreferrer"
-                              className="flex items-center justify-center gap-2 px-4 py-3 transition border rounded-lg hover:bg-gray-100"
+                              className="flex items-center justify-center gap-2 px-4 py-3 transition border border-red-200 rounded-lg hover:bg-red-50"
                             >
-                              <Send className="w-5 h-5" />
-                              <span>Telegram</span>
+                              <Send className="w-5 h-5 text-red-600" />
+                              <span className="text-red-700">Telegram</span>
                             </a>
                           </div>
                         </div>
