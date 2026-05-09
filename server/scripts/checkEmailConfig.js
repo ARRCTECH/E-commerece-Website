@@ -22,7 +22,7 @@ try {
   console.log('✅ Email service imported successfully');
   console.log('\n📧 Testing Simple Email Send...');
   sendEmail({
-    to: process.env.ADMIN || 'ksaunibliss@gmail.com',
+    to: process.env.ADMIN || 'Factory Sale@gmail.com',
     subject: 'Email Configuration Test - ' + new Date().toLocaleString(),
     html: `
       <div style="font-family: Arial, sans-serif; padding: 20px; max-width: 600px; margin: 0 auto;">
@@ -42,7 +42,7 @@ try {
     `
   }).then(() => {
     console.log('✅ Simple email test sent successfully!');
-    console.log('📧 Email sent to:', process.env.ADMIN || 'ksaunibliss@gmail.com');
+    console.log('📧 Email sent to:', process.env.ADMIN || 'Factory Sale@gmail.com');
   }).catch((error) => {
     console.error('❌ Simple email test failed:', error.message);
   });

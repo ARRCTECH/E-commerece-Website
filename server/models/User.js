@@ -144,6 +144,8 @@ const tempOrderDataSchema = new mongoose.Schema({
     }, default: () => ({ awbStatus: "PENDING" }) },
 });
 
+
+
 // 👤 Main User Schema
 const userSchema = new mongoose.Schema(
   {
@@ -152,6 +154,18 @@ const userSchema = new mongoose.Schema(
       unique: true,
       sparse: true,
       index: true,
+    },
+    expireReferralDate:{
+       type:Date,
+       default: null
+    },
+    referredBy: {
+      type:String,
+      default:null
+    },
+    myreferralCode: {
+      type:String,
+      default:null
     },
     name: {
       type: String,

@@ -7,7 +7,7 @@ const TermsPage = () => {
       id: "acceptance",
       title: "Acceptance of Terms",
       icon: FileText,
-      content: "By accessing or using the Ksauni Bliss website (www.ksaunibliss.com), you agree to be bound by these Terms of Service and any other terms that may apply. If you do not agree to these terms, please do not use the website or purchase products.",
+      content: "By accessing or using the Ksauni Bliss website (www.Factory Sale.com), you agree to be bound by these Terms of Service and any other terms that may apply. If you do not agree to these terms, please do not use the website or purchase products.",
     },
     {
       id: "changes",

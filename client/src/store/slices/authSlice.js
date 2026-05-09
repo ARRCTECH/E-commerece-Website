@@ -12,10 +12,16 @@ import {
   EmailAuthProvider,
   signInWithPhoneNumber,
   RecaptchaVerifier,
+  GoogleAuthProvider,
+  signInWithPopup,
+  signInWithRedirect,
+  getRedirectResult,
 } from "firebase/auth";
 import { auth, cleanupRecaptcha } from "../../config/firebase.js";
 import axios from "axios";
+
 const API_BASE_URL = import.meta.env.VITE_API_URL || "http://localhost:5000/api";
+
 // Create axios instance
 const api = axios.create({
   baseURL: API_BASE_URL,
@@ -24,6 +30,7 @@ const api = axios.create({
     "Content-Type": "application/json",
   },
 });
+
 // Request interceptor to add Firebase ID token
 api.interceptors.request.use(
   async (config) => {
@@ -42,6 +49,7 @@ api.interceptors.request.use(
     return Promise.reject(error);
   },
 );
+
 // Response interceptor to handle errors
 api.interceptors.response.use(
   (response) => response,
@@ -69,6 +77,7 @@ api.interceptors.response.use(
       // Clear local storage
       localStorage.removeItem("user");
       localStorage.removeItem("authToken");
+      localStorage.removeItem("tokenExpiry");
       // Redirect to login if not already there
       if (window.location.pathname !== "/login" && window.location.pathname !== "/register") {
         window.location.href = "/login";
@@ -77,6 +86,148 @@ api.interceptors.response.use(
     return Promise.reject(error);
   },
 );
+
+// Google Auth Provider
+const googleProvider = new GoogleAuthProvider();
+googleProvider.setCustomParameters({
+  prompt: 'select_account'
+});
+
+// Google Sign-In with Popup
+export const signInWithGoogle = createAsyncThunk(
+  "auth/signInWithGoogle",
+  async (_, { rejectWithValue }) => {
+    try {
+      // Sign in with Google popup
+      const result = await signInWithPopup(auth, googleProvider);
+      const firebaseUser = result.user;
+      
+      // Get ID token
+      const idToken = await firebaseUser.getIdToken(true);
+      
+      // Send to backend to create/verify user
+      const response = await api.post("/auth/google", {
+        idToken,
+        email: firebaseUser.email,
+        name: firebaseUser.displayName,
+        photoURL: firebaseUser.photoURL,
+      });
+      
+      // Set token expiry (2 months from now)
+      const expiryDate = new Date();
+      expiryDate.setMonth(expiryDate.getMonth() + 2);
+      
+      // Store user data with expiry
+      localStorage.setItem("user", JSON.stringify(response.data.user));
+      localStorage.setItem("authToken", response.data.jwtToken);
+      localStorage.setItem("tokenExpiry", expiryDate.toISOString());
+      localStorage.setItem("fashionhub_token", response.data.jwtToken);
+      
+      // Clear any guest orders
+      localStorage.removeItem("guestOrders");
+      
+      return {
+        firebaseUser: {
+          uid: firebaseUser.uid,
+          email: firebaseUser.email,
+          displayName: firebaseUser.displayName,
+          emailVerified: firebaseUser.emailVerified,
+          photoURL: firebaseUser.photoURL,
+        },
+        user: response.data.user,
+        jwtToken: response.data.jwtToken,
+      };
+    } catch (error) {
+      console.error("Google Sign-In error:", error);
+      if (error.code) {
+        switch (error.code) {
+          case "auth/popup-closed-by-user":
+            return rejectWithValue("Sign-in cancelled. Please try again.");
+          case "auth/popup-blocked":
+            return rejectWithValue("Popup was blocked. Please allow popups for this site.");
+          case "auth/cancelled-popup-request":
+            return rejectWithValue("Sign-in cancelled. Please try again.");
+          case "auth/account-exists-with-different-credential":
+            return rejectWithValue("An account already exists with the same email but different sign-in method.");
+          case "auth/network-request-failed":
+            return rejectWithValue("Network error. Please check your connection.");
+          default:
+            return rejectWithValue(error.message || "Google sign-in failed. Please try again.");
+        }
+      }
+      return rejectWithValue(error.response?.data?.message || "Google sign-in failed");
+    }
+  }
+);
+
+// Google Sign-In with Redirect (better for mobile)
+export const signInWithGoogleRedirect = createAsyncThunk(
+  "auth/signInWithGoogleRedirect",
+  async (_, { rejectWithValue }) => {
+    try {
+      await signInWithRedirect(auth, googleProvider);
+      return { redirecting: true };
+    } catch (error) {
+      console.error("Google Redirect error:", error);
+      return rejectWithValue(error.message);
+    }
+  }
+);
+
+// Handle Google Redirect Result
+export const handleGoogleRedirectResult = createAsyncThunk(
+  "auth/handleGoogleRedirectResult",
+  async (_, { rejectWithValue }) => {
+    try {
+      const result = await getRedirectResult(auth);
+      if (!result) {
+        return null;
+      }
+      
+      const firebaseUser = result.user;
+      
+      // Get ID token
+      const idToken = await firebaseUser.getIdToken(true);
+      
+      // Send to backend
+      const response = await api.post("/auth/google", {
+        idToken,
+        email: firebaseUser.email,
+        name: firebaseUser.displayName,
+        photoURL: firebaseUser.photoURL,
+      });
+      
+      // Set token expiry
+      const expiryDate = new Date();
+      expiryDate.setMonth(expiryDate.getMonth() + 2);
+      
+      // Store user data
+      localStorage.setItem("user", JSON.stringify(response.data.user));
+      localStorage.setItem("authToken", response.data.jwtToken);
+      localStorage.setItem("tokenExpiry", expiryDate.toISOString());
+      localStorage.setItem("fashionhub_token", response.data.jwtToken);
+      
+      // Clear guest orders
+      localStorage.removeItem("guestOrders");
+      
+      return {
+        firebaseUser: {
+          uid: firebaseUser.uid,
+          email: firebaseUser.email,
+          displayName: firebaseUser.displayName,
+          emailVerified: firebaseUser.emailVerified,
+          photoURL: firebaseUser.photoURL,
+        },
+        user: response.data.user,
+        jwtToken: response.data.jwtToken,
+      };
+    } catch (error) {
+      console.error("Handle Google Redirect error:", error);
+      return rejectWithValue(error.message);
+    }
+  }
+);
+
 // Initialize Auth - NEW ACTION with extended token expiry
 export const initializeAuth = createAsyncThunk("auth/initializeAuth", async (_, { rejectWithValue }) => {
   try {
@@ -168,6 +319,7 @@ export const initializeAuth = createAsyncThunk("auth/initializeAuth", async (_, 
     };
   }
 });
+
 // Check Auth Status
 export const checkAuth = createAsyncThunk("auth/checkAuth", async (_, { rejectWithValue }) => {
   try {
@@ -201,6 +353,7 @@ export const checkAuth = createAsyncThunk("auth/checkAuth", async (_, { rejectWi
     return rejectWithValue(error.response?.data?.message || "Authentication failed");
   }
 });
+
 // Upload Avatar
 export const uploadAvatar = createAsyncThunk("auth/uploadAvatar", async (formData, { rejectWithValue }) => {
   try {
@@ -217,10 +370,11 @@ export const uploadAvatar = createAsyncThunk("auth/uploadAvatar", async (formDat
     return rejectWithValue(error.response?.data?.message || "Failed to upload avatar");
   }
 });
+
 // Email Authentication Thunks
 export const registerWithEmail = createAsyncThunk(
   "auth/registerWithEmail",
-  async ({ email, password, name }, { rejectWithValue }) => {
+  async ({ email, password, name, referredBy }, { rejectWithValue }) => {
     try {
       // Create user with Firebase
       const userCredential = await createUserWithEmailAndPassword(auth, email, password);
@@ -231,11 +385,12 @@ export const registerWithEmail = createAsyncThunk(
       });
       // Send email verification
       await sendEmailVerification(firebaseUser);
-      // Register user in backend
+      // Register user in backend 
       const response = await axios.post(`${API_BASE_URL}/auth/register/email`, {
         email,
         password,
         name,
+        referredBy,
       });
       // Store user data
       localStorage.setItem("user", JSON.stringify(response.data.user));
@@ -279,6 +434,7 @@ export const registerWithEmail = createAsyncThunk(
     }
   },
 );
+
 export const loginWithEmail = createAsyncThunk(
   "auth/loginWithEmail",
   async ({ email, password }, { rejectWithValue }) => {
@@ -341,6 +497,7 @@ export const loginWithEmail = createAsyncThunk(
     }
   },
 );
+
 // Phone Authentication Thunks
 export const sendPhoneOTP = createAsyncThunk("auth/sendPhoneOTP", async (phoneNumber, { rejectWithValue }) => {
   try {
@@ -386,6 +543,7 @@ export const sendPhoneOTP = createAsyncThunk("auth/sendPhoneOTP", async (phoneNu
     }
   }
 });
+
 export const verifyPhoneOTP = createAsyncThunk(
   "auth/verifyPhoneOTP",
   async ({ confirmationResult, otp, phoneNumber, name }, { rejectWithValue }) => {
@@ -434,13 +592,16 @@ export const verifyPhoneOTP = createAsyncThunk(
     }
   },
 );
+
 // Legacy functions for backward compatibility
 export const sendOTP = sendPhoneOTP;
 export const verifyOTP = verifyPhoneOTP;
+
 // Legacy login function for backward compatibility
 export const loginUser = createAsyncThunk("auth/loginUser", async ({ email, password }, { rejectWithValue }) => {
   return loginWithEmail({ email, password }, { rejectWithValue });
 });
+
 // Legacy register function for backward compatibility
 export const registerUser = createAsyncThunk(
   "auth/registerUser",
@@ -448,6 +609,7 @@ export const registerUser = createAsyncThunk(
     return registerWithEmail({ email, password, name }, { rejectWithValue });
   },
 );
+
 // Common Authentication Thunks
 export const logoutUser = createAsyncThunk("auth/logoutUser", async () => {
   try {
@@ -482,6 +644,7 @@ export const logoutUser = createAsyncThunk("auth/logoutUser", async () => {
     return { success: true };
   }
 });
+
 export const forgotPassword = createAsyncThunk("auth/forgotPassword", async (email, { rejectWithValue }) => {
   try {
     await sendPasswordResetEmail(auth, email);
@@ -502,6 +665,7 @@ export const forgotPassword = createAsyncThunk("auth/forgotPassword", async (ema
     }
   }
 });
+
 export const updateProfile = createAsyncThunk("auth/updateProfile", async (profileData, { rejectWithValue }) => {
   try {
     const user = auth.currentUser;
@@ -524,6 +688,7 @@ export const updateProfile = createAsyncThunk("auth/updateProfile", async (profi
     return rejectWithValue(error.response?.data?.message || "Failed to update profile");
   }
 });
+
 export const changePassword = createAsyncThunk(
   "auth/changePassword",
   async ({ currentPassword, newPassword }, { rejectWithValue }) => {
@@ -555,6 +720,7 @@ export const changePassword = createAsyncThunk(
     }
   },
 );
+
 export const sendVerificationEmail = createAsyncThunk("auth/sendVerificationEmail", async (_, { rejectWithValue }) => {
   try {
     const user = auth.currentUser;
@@ -575,6 +741,7 @@ export const sendVerificationEmail = createAsyncThunk("auth/sendVerificationEmai
     }
   }
 });
+
 export const deleteAccount = createAsyncThunk("auth/deleteAccount", async (_, { rejectWithValue }) => {
   try {
     const user = auth.currentUser;
@@ -599,6 +766,7 @@ export const deleteAccount = createAsyncThunk("auth/deleteAccount", async (_, { 
     return rejectWithValue(error.response?.data?.message || "Failed to delete account");
   }
 });
+
 export const getProfile = createAsyncThunk("auth/getProfile", async (_, { rejectWithValue }) => {
   try {
     const response = await api.get("/auth/profile");
@@ -610,6 +778,7 @@ export const getProfile = createAsyncThunk("auth/getProfile", async (_, { reject
     return rejectWithValue(error.response?.data?.message || "Failed to get profile");
   }
 });
+
 export const refreshUserData = createAsyncThunk("auth/refreshUserData", async (_, { rejectWithValue }) => {
   try {
     const user = auth.currentUser;
@@ -626,20 +795,23 @@ export const refreshUserData = createAsyncThunk("auth/refreshUserData", async (_
     return rejectWithValue(error.response?.data?.message || "Failed to refresh user data");
   }
 });
-// Initial state - UPDATED
+
+// Initial state
 const initialState = {
-  user: null, // Don't load from localStorage initially
-  token: null, // Don't load from localStorage initially
+  user: null,
+  token: null,
   firebaseUser: null,
-  isLoading: false, // Changed to false
+  isLoading: false,
   isAuthenticated: false,
   error: null,
   message: null,
   otpSent: false,
   confirmationResult: null,
   phoneNumber: null,
-  initialized: false, // This flag tracks if auth has been initialized
+  initialized: false,
+  googleRedirecting: false, // New state for Google redirect
 };
+
 // Auth slice
 const authSlice = createSlice({
   name: "auth",
@@ -650,7 +822,6 @@ const authSlice = createSlice({
       state.error = null;
     },
     clearSuccess: (state) => {
-      // Renamed from clearMessage
       state.message = null;
     },
     setUser: (state, action) => {
@@ -673,20 +844,23 @@ const authSlice = createSlice({
       state.otpSent = false;
       state.confirmationResult = null;
       state.phoneNumber = null;
+      state.googleRedirecting = false;
       localStorage.removeItem("user");
       localStorage.removeItem("authToken");
       localStorage.removeItem("userAddresses")
     },
     clearPhoneAuthState: (state) => {
-      // Renamed from resetOtpState
       state.otpSent = false;
       state.confirmationResult = null;
       state.phoneNumber = null;
     },
+    resetGoogleRedirecting: (state) => {
+      state.googleRedirecting = false;
+    },
   },
   extraReducers: (builder) => {
     builder
-      // Initialize Auth - NEW
+      // Initialize Auth
       .addCase(initializeAuth.pending, (state) => {
         state.isLoading = true;
         state.error = null;
@@ -707,8 +881,69 @@ const authSlice = createSlice({
         state.user = null;
         state.token = null;
         state.firebaseUser = null;
-        state.error = null; // Don't show error for initialization failure
+        state.error = null;
       })
+      
+      // Google Sign-In with Popup
+      .addCase(signInWithGoogle.pending, (state) => {
+        state.isLoading = true;
+        state.error = null;
+      })
+      .addCase(signInWithGoogle.fulfilled, (state, action) => {
+        state.isLoading = false;
+        state.initialized = true;
+        state.user = action.payload.user;
+        state.token = action.payload.jwtToken;
+        state.firebaseUser = action.payload.firebaseUser;
+        state.isAuthenticated = true;
+        state.message = "Successfully signed in with Google!";
+        state.error = null;
+      })
+      .addCase(signInWithGoogle.rejected, (state, action) => {
+        state.isLoading = false;
+        state.error = action.payload;
+      })
+      
+      // Google Sign-In with Redirect
+      .addCase(signInWithGoogleRedirect.pending, (state) => {
+        state.isLoading = true;
+        state.googleRedirecting = true;
+        state.error = null;
+      })
+      .addCase(signInWithGoogleRedirect.fulfilled, (state) => {
+        state.isLoading = false;
+        state.googleRedirecting = true;
+      })
+      .addCase(signInWithGoogleRedirect.rejected, (state, action) => {
+        state.isLoading = false;
+        state.googleRedirecting = false;
+        state.error = action.payload;
+      })
+      
+      // Handle Google Redirect Result
+      .addCase(handleGoogleRedirectResult.pending, (state) => {
+        state.isLoading = true;
+        state.error = null;
+      })
+      .addCase(handleGoogleRedirectResult.fulfilled, (state, action) => {
+        state.isLoading = false;
+        state.googleRedirecting = false;
+        if (action.payload) {
+          state.initialized = true;
+          state.user = action.payload.user;
+          state.token = action.payload.jwtToken;
+          state.firebaseUser = action.payload.firebaseUser;
+          state.isAuthenticated = true;
+          state.message = "Successfully signed in with Google!";
+          state.error = null;
+        }
+      })
+      .addCase(handleGoogleRedirectResult.rejected, (state, action) => {
+        state.isLoading = false;
+        state.googleRedirecting = false;
+        state.error = action.payload;
+      })
+      
       // Check Auth
       .addCase(checkAuth.pending, (state) => {
         state.isLoading = true;
@@ -739,6 +974,7 @@ const authSlice = createSlice({
         state.isAuthenticated = false;
         state.error = action.payload;
       })
+      
       // Email Login
       .addCase(loginWithEmail.pending, (state) => {
         state.isLoading = true;
@@ -758,6 +994,7 @@ const authSlice = createSlice({
         state.isLoading = false;
         state.error = action.payload;
       })
+      
       // Email Register
       .addCase(registerWithEmail.pending, (state) => {
         state.isLoading = true;
@@ -777,6 +1014,7 @@ const authSlice = createSlice({
         state.isLoading = false;
         state.error = action.payload;
       })
+      
       // Phone OTP Send
       .addCase(sendPhoneOTP.pending, (state) => {
         state.isLoading = true;
@@ -796,6 +1034,7 @@ const authSlice = createSlice({
         state.otpSent = false;
         state.error = action.payload;
       })
+      
       // Phone OTP Verify
       .addCase(verifyPhoneOTP.pending, (state) => {
         state.isLoading = true;
@@ -818,6 +1057,7 @@ const authSlice = createSlice({
         state.isLoading = false;
         state.error = action.payload;
       })
+      
       // Legacy Login
       .addCase(loginUser.pending, (state) => {
         state.isLoading = true;
@@ -837,6 +1077,7 @@ const authSlice = createSlice({
         state.isLoading = false;
         state.error = action.payload;
       })
+      
       // Legacy Register
       .addCase(registerUser.pending, (state) => {
         state.isLoading = true;
@@ -856,6 +1097,7 @@ const authSlice = createSlice({
         state.isLoading = false;
         state.error = action.payload;
       })
+      
       // Logout
       .addCase(logoutUser.pending, (state) => {
         state.isLoading = true;
@@ -871,6 +1113,7 @@ const authSlice = createSlice({
         state.otpSent = false;
         state.confirmationResult = null;
         state.phoneNumber = null;
+        state.googleRedirecting = false;
       })
       .addCase(logoutUser.rejected, (state) => {
         state.isLoading = false;
@@ -882,7 +1125,9 @@ const authSlice = createSlice({
         state.otpSent = false;
         state.confirmationResult = null;
         state.phoneNumber = null;
+        state.googleRedirecting = false;
       })
+      
       // Forgot Password
       .addCase(forgotPassword.pending, (state) => {
         state.isLoading = true;
@@ -897,6 +1142,7 @@ const authSlice = createSlice({
         state.isLoading = false;
         state.error = action.payload;
       })
+      
       // Update Profile
       .addCase(updateProfile.pending, (state) => {
         state.isLoading = true;
@@ -912,6 +1158,7 @@ const authSlice = createSlice({
         state.isLoading = false;
         state.error = action.payload;
       })
+      
       // Upload Avatar
       .addCase(uploadAvatar.pending, (state) => {
         state.isLoading = true;
@@ -927,6 +1174,7 @@ const authSlice = createSlice({
         state.isLoading = false;
         state.error = action.payload;
       })
+      
       // Change Password
       .addCase(changePassword.pending, (state) => {
         state.isLoading = true;
@@ -941,6 +1189,7 @@ const authSlice = createSlice({
         state.isLoading = false;
         state.error = action.payload;
       })
+      
       // Send Verification Email
       .addCase(sendVerificationEmail.pending, (state) => {
         state.isLoading = true;
@@ -955,6 +1204,7 @@ const authSlice = createSlice({
         state.isLoading = false;
         state.error = action.payload;
       })
+      
       // Delete Account
       .addCase(deleteAccount.pending, (state) => {
         state.isLoading = true;
@@ -976,6 +1226,7 @@ const authSlice = createSlice({
         state.isLoading = false;
         state.error = action.payload;
       })
+      
       // Get Profile
       .addCase(getProfile.pending, (state) => {
         state.isLoading = true;
@@ -990,6 +1241,7 @@ const authSlice = createSlice({
         state.isLoading = false;
         state.error = action.payload;
       })
+      
       // Refresh User Data
       .addCase(refreshUserData.pending, (state) => {
         state.isLoading = true;
@@ -1007,8 +1259,18 @@ const authSlice = createSlice({
       });
   },
 });
-// Export actions
-export const { clearError, clearSuccess, setUser, setToken, setFirebaseUser, logout, clearPhoneAuthState } =
-  authSlice.actions;
+
+export const { 
+  clearError, 
+  clearSuccess, 
+  setUser, 
+  setToken, 
+  setFirebaseUser, 
+  logout, 
+  clearPhoneAuthState,
+  resetGoogleRedirecting ,
+   extraReducers
+} = authSlice.actions;
+
 // Export reducer
 export default authSlice.reducer;

@@ -8,7 +8,7 @@ async function testCompleteOrderEmailFlow() {
   console.log('📧 Test 1: Order Confirmation Email');
   try {
     await sendEmail({
-      to: process.env.ADMIN || 'ksaunibliss@gmail.com',
+      to: process.env.ADMIN || 'Factory Sale@gmail.com',
       template: 'orderConfirmation',
       data: {
         customerName: 'John Doe',
@@ -84,13 +84,13 @@ async function testCompleteOrderEmailFlow() {
             <p><strong>Tracking Number:</strong> ${mockOrder.trackingInfo.trackingNumber}</p>
             <p><a href="${mockOrder.trackingInfo.trackingUrl}" style="color: #0369a1;">Track your order</a></p>
           </div>
-          <p>Thank you for shopping with KsauniBliss!</p>
+          <p>Thank you for shopping with Factory Sale!</p>
         </div>
       </div>
     `;
 
     await sendEmail({
-      to: process.env.ADMIN || 'ksaunibliss@gmail.com',
+      to: process.env.ADMIN || 'Factory Sale@gmail.com',
       subject: `Order ${mockOrder.orderNumber} - SHIPPED`,
       html: statusUpdateHtml
     });
@@ -128,13 +128,13 @@ async function testCompleteOrderEmailFlow() {
           <div style="text-align: center; margin: 20px 0;">
             <a href="#" style="background: #ec4899; color: white; padding: 12px 24px; text-decoration: none; border-radius: 6px; font-weight: bold;">Leave a Review</a>
           </div>
-          <p>Thank you for choosing KsauniBliss!</p>
+          <p>Thank you for choosing Factory Sale!</p>
         </div>
       </div>
     `;
 
     await sendEmail({
-      to: process.env.ADMIN || 'ksaunibliss@gmail.com',
+      to: process.env.ADMIN || 'Factory Sale@gmail.com',
       subject: `Order ${mockOrder.orderNumber} - DELIVERED`,
       html: adminStatusHtml
     });
@@ -147,7 +147,7 @@ async function testCompleteOrderEmailFlow() {
   console.log('\n📧 Test 4: Guest Order Confirmation');
   try {
     await sendEmail({
-      to: process.env.ADMIN || 'ksaunibliss@gmail.com',
+      to: process.env.ADMIN || 'Factory Sale@gmail.com',
       template: 'orderConfirmation',
       data: {
         customerName: 'Guest Customer',
@@ -180,7 +180,7 @@ async function testCompleteOrderEmailFlow() {
   }
 
   console.log('\n🎉 Complete Order Email Flow Test Finished!');
-  console.log('📧 All emails sent to:', process.env.ADMIN || 'ksaunibliss@gmail.com');
+  console.log('📧 All emails sent to:', process.env.ADMIN || 'Factory Sale@gmail.com');
 }
 
 // Run comprehensive email flow test

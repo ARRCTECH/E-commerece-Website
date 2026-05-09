@@ -16,6 +16,7 @@ const compression = require("compression")
 const helmet = require("helmet")
 const rateLimit = require("express-rate-limit")
 const app = express()
+const referralRoutes = require('../routes/referralRoutes');
 
 
 
@@ -120,7 +121,7 @@ app.use("/uploads", (req, res, next) => {
 app.get("/", (req, res) => {
   res.status(200).json({
     success: true,
-    message: "Ksaunibliss API Server is running",
+    message: "Factory Sale API Server is running",
     timestamp: new Date().toISOString(),
     version: "1.0.0",
   })
@@ -157,6 +158,8 @@ app.use("/api/popup-setting", require("../routes/popupSetting"))
 app.use("/api/ksauni-tshirts",require("../routes/ksaunitshirtstyle"))
 app.use( "/api/reason" ,require("../routes/reasonRoutes"));
 app.use('/api/catalog', require("../routes/productCatalog"));
+app.use('/api/referral-config', referralRoutes);
+
 app.use("/api/partial-cod", require("../routes/partialCodRoutes"));
 app.use("/api/orders", require("../routes/order"));
 // app.use("/api/topten", require("../routes/topten"))

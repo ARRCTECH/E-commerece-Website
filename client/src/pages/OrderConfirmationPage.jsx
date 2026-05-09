@@ -425,8 +425,8 @@ const OrderConfirmationPage = () => {
               If you have any questions about your order, feel free to contact us.
             </p>
             <div className="flex flex-col justify-center gap-4 text-sm sm:flex-row">
-              <a href="mailto:support@ksaunibliss.com" className="text-red-600 hover:text-red-700">
-                Email: support@ksaunibliss.com
+              <a href="mailto:support@Factory Sale.com" className="text-red-600 hover:text-red-700">
+                Email: support@Factory Sale.com
               </a>
               <a href="tel:+9211891719" className="text-red-600 hover:text-red-700">
                 Phone: +91 9211891719

@@ -26,13 +26,13 @@ const ContactUsPage = () => {
             <div className="flex items-center space-x-3">
               <Instagram className="w-6 h-6 text-red-600" />
               <p className="text-base">
-                <span className="font-semibold">DM us on Instagram:</span> @ksaunibliss
+                <span className="font-semibold">DM us on Instagram:</span> @Factory Sale
               </p>
             </div>
             <div className="flex items-center space-x-3">
               <Mail className="w-6 h-6 text-red-600" />
               <p className="text-base">
-                <span className="font-semibold">Email:</span> ksaunibliss@gmail.com
+                <span className="font-semibold">Email:</span> Factory Sale@gmail.com
               </p>
             </div>
           </div>

@@ -42,7 +42,7 @@ const ProductsManagement = () => {
   const [formData, setFormData] = useState({
     name: "",
     description: "",
-    brand: "KSAUNIBLISS",
+    brand: "Factory Sale",
     productDetails: "",
     material: "",
     fits: "regular",
@@ -203,7 +203,7 @@ const ProductsManagement = () => {
     setFormData({
       name: "",
       description: "",
-      brand: "KSAUNIBLISS",
+      brand: "Factory Sale",
       productDetails: "",
       material: "",
       fits: "regular",
@@ -249,7 +249,7 @@ const ProductsManagement = () => {
     
     setFormData({
       name: product.name || "",
-      brand: product.brand || "KSAUNIBLISS",
+      brand: product.brand || "Factory Sale",
       productDetails: product.productDetails || "",
       material: product.material || "",
       fits: product.fits || "regular",
@@ -657,7 +657,13 @@ const ProductsManagement = () => {
                 <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
                   <div>
                     <label className="block mb-1 text-sm font-medium text-gray-700">Brand</label>
-                    <input type="text" value={formData.brand} onChange={(e) => setFormData({ ...formData, brand: e.target.value })} className="w-full px-3 py-2 border rounded-md" />
+                    <input
+                      type="text"
+                      value={formData.brand}
+                      onChange={(e) => setFormData({ ...formData, brand: e.target.value })}
+                      className="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500"
+                      placeholder="e.g., Factory Sale"
+                    />
                   </div>
                   <div>
                     <label className="block mb-1 text-sm font-medium text-gray-700">Fit</label>

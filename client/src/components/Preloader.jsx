@@ -60,7 +60,7 @@ export default function Preloader({ onComplete, duration = 2000 }) {
             }),
           }}
         >
-          {"KSAUNIBLISS".split("").map((letter, index) => (
+          {"Factory Sale".split("").map((letter, index) => (
             <span
               key={index}
               className={`inline-block transition-all duration-500 ease-out ${

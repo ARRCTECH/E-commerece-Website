@@ -1,7 +1,7 @@
 {
-  "name": "ksaunibliss",
+  "name": "Factory Sale",
   "version": "1.0.0",
-  "description": "KsauniBliss E-commerce Application",
+  "description": "Factory Sale E-commerce Application",
   "main": "index.js",
   "scripts": {
     "server": "cd server && npm run dev",
