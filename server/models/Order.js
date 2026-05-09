@@ -7,12 +7,12 @@ const mongoose = require("mongoose")
 const orderItemSchema = new mongoose.Schema(
   {
     product: { type: mongoose.Schema.Types.ObjectId, ref: "Product", required: true },
-    name: { type: String },                          // snapshot (optional)
-    price: { type: Number, required: true, min: 0 }, // snapshot price at time of order
+    name: { type: String },
+    price: { type: Number, required: true, min: 0 },
     quantity: { type: Number, required: true, min: 1, default: 1 },
     size: { type: String, default: "" },
     color: { type: String, default: "" },
-    itemTotal: { type: Number, required: true, min: 0 }, // price * quantity
+    itemTotal: { type: Number, required: true, min: 0 },
   },
   { _id: false },
 )
@@ -27,23 +27,25 @@ const shippingAddressSchema = new mongoose.Schema(
     state: { type: String, required: true },
     pinCode: { type: String, required: true },
     landmark: { type: String, default: "" },
-    addressType : {type: String , default: ""},
-    isDefault : {type: Boolean },
-    email: { type: String, default: "" }   // ← FIXED: Not required
-
+    addressType: { type: String, default: "" },
+    isDefault: { type: Boolean },
+    email: { type: String, default: "" }
   },
   { _id: false },
 )
 
 const paymentInfoSchema = new mongoose.Schema(
   {
-    method: { type: String, enum: ["COD", "RAZORPAY"], required: true },
+    method: { 
+      type: String, 
+      enum: ["COD", "RAZORPAY", "PARTIAL_COD"],
+      required: true 
+    },
     status: {
       type: String,
-      enum: ["PENDING", "PAID", "FAILED", "REFUNDED"],
+      enum: ["PENDING", "PAID", "PARTIALLY_PAID", "FAILED", "REFUNDED"],
       default: "PENDING",
     },
-    // Razorpay
     razorpayOrderId: { type: String, default: null },
     razorpayPaymentId: { type: String, default: null },
     razorpaySignature: { type: String, default: null },
@@ -69,14 +71,57 @@ const trackingInfoSchema = new mongoose.Schema(
 )
 
 // ===============================
+// Partial COD Schema
+// ===============================
+
+const partialCodSchema = new mongoose.Schema(
+  {
+    enabled: {
+      type: Boolean,
+      default: false,
+    },
+    percentage: {
+      type: Number,
+      default: 0,
+      min: 0,
+      max: 100,
+    },
+    onlineAmount: {
+      type: Number,
+      default: 0,
+      min: 0,
+    },
+    codAmount: {
+      type: Number,
+      default: 0,
+      min: 0,
+    },
+    onlinePaymentId: {
+      type: String,
+      default: null,
+    },
+    onlinePaymentStatus: {
+      type: String,
+      enum: ["PENDING", "PAID", "FAILED"],
+      default: "PENDING",
+    },
+    onlinePaymentPaidAt: {
+      type: Date,
+      default: null,
+    },
+  },
+  { _id: false }
+);
+
+// ===============================
 // Order schema
 // ===============================
 
 const orderSchema = new mongoose.Schema(
   {
-    orderNumber: { type: String, unique: true, index: true }, // e.g. FH-<timestamp>
-    shiprocketShipmentId: { type: Number }, // REMOVED unique constraint
-    shiprocketOrderId: { type: Number }, // REMOVED unique constraint
+    orderNumber: { type: String, unique: true, index: true },
+    shiprocketShipmentId: { type: Number },
+    shiprocketOrderId: { type: Number },
     trackingUrl: { type: String, default: null },
     user: { type: mongoose.Schema.Types.ObjectId, ref: "User", required: false },
 
@@ -88,12 +133,13 @@ const orderSchema = new mongoose.Schema(
 
     trackingInfo: { type: trackingInfoSchema, default: () => ({ awbStatus: "PENDING" }) },
 
-    // money fields
+    partialCod: { type: partialCodSchema, default: () => ({}) },
+
     subtotal: { type: Number, required: true, min: 0 },
     shippingCharge: { type: Number, required: true, min: 0, default: 0 },
     discount: { type: Number, required: true, min: 0, default: 0 },
     total: { type: Number, required: true, min: 0 },
-    freediscount: {type: Number},
+    freediscount: { type: Number },
 
     pricing: {
       subtotal: Number,
@@ -109,7 +155,7 @@ const orderSchema = new mongoose.Schema(
 
     status: {
       type: String,
-      enum: ["PLACED", "CONFIRMED", "SHIPPED", "DELIVERED", "CANCELLED", "ABANDONED"],
+      enum: ["PLACED", "CONFIRMED", "SHIPPED", "DELIVERED", "CANCELLED", "ABANDONED","PENDING"],
       default: "PLACED",
       index: true,
     },
@@ -117,17 +163,9 @@ const orderSchema = new mongoose.Schema(
   { timestamps: true },
 )
 
-// ===============================
-// Indexes
-// ===============================
 orderSchema.index({ user: 1, createdAt: -1 })
 orderSchema.index({ status: 1, createdAt: -1 })
 
-// ===============================
-// Hooks
-// ===============================
-
-// Simple order number generator (keep if you already have one)
 orderSchema.pre("save", function nextOrderNumber(next) {
   if (!this.orderNumber) {
     this.orderNumber = `FH-${Date.now()}`

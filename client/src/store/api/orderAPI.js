@@ -1,10 +1,13 @@
 import axios from "axios";
-const API_BASE_URL =
-  import.meta.env.VITE_API_URL || "http://localhost:5000/api";
+
+const API_BASE_URL = import.meta.env.VITE_API_URL || "http://localhost:5000/api";
+
 // Create axios instance with interceptors
 const api = axios.create({
   baseURL: API_BASE_URL,
+  timeout: 30000,
 });
+
 // Request interceptor to add auth token
 api.interceptors.request.use(
   (config) => {
@@ -18,6 +21,7 @@ api.interceptors.request.use(
     return Promise.reject(error);
   }
 );
+
 // Response interceptor for error handling
 api.interceptors.response.use(
   (response) => response,
@@ -31,7 +35,9 @@ api.interceptors.response.use(
         '/orders/create-razorpay-order',
         '/orders/cod',
         '/orders/verify-payment',
-        '/orders/shipping-rates'
+        '/orders/create-partial-cod-order',
+        '/orders/verify-partial-cod-payment',
+        '/orders/payment-methods'
       ];
       
       const isGuestRoute = guestRoutes.some(route => requestUrl.includes(route));
@@ -44,24 +50,59 @@ api.interceptors.response.use(
     return Promise.reject(error);
   }
 );
+
 export const orderAPI = {
-  // Create Razorpay order
+  // ===============================
+  // Payment Methods
+  // ===============================
+  getPaymentMethods: (items) =>
+    api.post("/orders/payment-methods", { items }),
+
+  // ===============================
+  // Full Payment (Razorpay)
+  // ===============================
   createRazorpayOrder: (orderData) =>
     api.post("/orders/create-razorpay-order", orderData),
-  // Verify payment
+  
   verifyPayment: (paymentData) =>
     api.post("/orders/verify-payment", paymentData),
-  // Get user orders
+
+  // ===============================
+  // Partial COD Payment
+  // ===============================
+ // ===============================
+// Partial COD Payment (UPDATED)
+// ===============================
+createPartialCodOrder: (orderData) =>
+  api.post("/orders/create-partial-cod-order", {
+    items: orderData.items,
+    shippingAddress: orderData.shippingAddress,
+    couponCode: orderData.couponCode,
+    totalAmount: orderData.totalAmount,
+    onlineAmount: orderData.onlineAmount,
+    codAmount: orderData.codAmount,
+    percentage: orderData.partialPercentage,
+    freediscount: orderData.freediscount
+  }),
+  
+  verifyPartialCodPayment: (paymentData) =>
+    api.post("/orders/verify-partial-cod-payment", paymentData),
+
+  // ===============================
+  // COD Order
+  // ===============================
+  placeCodOrder: (orderData) => 
+    api.post("/orders/cod", orderData),
+
+  // ===============================
+  // Order Management
+  // ===============================
   getUserOrders: (page = 1, limit = 10) =>
     api.get(`/orders/my-orders?page=${page}&limit=${limit}`),
-  // Get order details
-  getOrderDetails: (orderId) => api.get(`/orders/${orderId}`),
-  // Get shipping rates
-  getShippingRates: (rateData) => api.post("/orders/shipping-rates", rateData),
-  // Cancel order
+  
+  getOrderDetails: (orderId) => 
+    api.get(`/orders/${orderId}`),
+  
   cancelOrder: (orderId, reason) =>
     api.put(`/orders/${orderId}/cancel`, { reason }),
-  //COD order
-  placeCodOrder: (orderData) => api.post("/orders/cod", orderData),
-  trackOrder: (order) => api.post("orders/trackingOrder",order)
 };

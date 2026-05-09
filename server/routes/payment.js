@@ -6,21 +6,27 @@ const {
   createRefund,
   getPaymentDetails,
 } = require("../controllers/paymentController")
-const { auth, adminAuth } = require("../middleware/auth")
+const { protect, adminAuth } = require("../middleware/auth")
 
 const router = express.Router()
 
-// Public routes
+// Public Routes
+// Webhook - Razorpay calls this (no auth required)
 router.post("/webhook", handleRazorpayWebhook)
 
-// Protected routes
-router.use(auth)
+// Protected Routes (Auth Required)
+router.use(protect)
 
+// Create Razorpay order
 router.post("/create-order", createRazorpayOrder)
+
+// Verify payment
 router.post("/verify", verifyRazorpayPayment)
+
+// Get payment details
 router.get("/:paymentId", getPaymentDetails)
 
-// Admin only routes
+// Admin only - Create refund
 router.post("/refund", adminAuth, createRefund)
 
 module.exports = router

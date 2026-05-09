@@ -1,6 +1,9 @@
 import { createSlice, createAsyncThunk, createSelector } from "@reduxjs/toolkit";
 import { orderAPI } from "../api/orderAPI";
-// Async thunks
+
+// ===============================
+// Async Thunks - Full Payment (Razorpay)
+// ===============================
 export const createRazorpayOrder = createAsyncThunk(
   "order/createRazorpayOrder",
   async (orderData, { rejectWithValue }) => {
@@ -10,24 +13,78 @@ export const createRazorpayOrder = createAsyncThunk(
     } catch (error) {
       return rejectWithValue(error.response?.data?.message || "Failed to create Razorpay order");
     }
-  },
+  }
 );
-export const verifyPayment = createAsyncThunk("order/verifyPayment", async (paymentData, { rejectWithValue }) => {
-  try {
-    const response = await orderAPI.verifyPayment(paymentData);
-    return response.data;
-  } catch (error) {
-    return rejectWithValue(error.response?.data?.message || "Payment verification failed");
+
+export const verifyPayment = createAsyncThunk(
+  "order/verifyPayment",
+  async (paymentData, { rejectWithValue }) => {
+    try {
+      const response = await orderAPI.verifyPayment(paymentData);
+      return response.data;
+    } catch (error) {
+      return rejectWithValue(error.response?.data?.message || "Payment verification failed");
+    }
   }
-});
-export const placeCodOrder = createAsyncThunk("order/placeCodOrder", async (orderData, { rejectWithValue }) => {
-  try {
-    const response = await orderAPI.placeCodOrder(orderData);
-    return response.data;
-  } catch (error) {
-    return rejectWithValue(error.response?.data?.message || "Failed to place COD order");
+);
+
+// ===============================
+// Async Thunks - Partial COD Payment
+// ===============================
+export const getPaymentMethods = createAsyncThunk(
+  "order/getPaymentMethods",
+  async (items, { rejectWithValue }) => {
+    try {
+      const response = await orderAPI.getPaymentMethods(items);
+      return response.data;
+    } catch (error) {
+      return rejectWithValue(error.response?.data?.message || "Failed to get payment methods");
+    }
   }
-});
+);
+
+export const createPartialCodOrder = createAsyncThunk(
+  "order/createPartialCodOrder",
+  async (orderData, { rejectWithValue }) => {
+    try {
+      const response = await orderAPI.createPartialCodOrder(orderData);
+      return response.data;
+    } catch (error) {
+      return rejectWithValue(error.response?.data?.message || "Failed to create partial COD order");
+    }
+  }
+);
+
+export const verifyPartialCodPayment = createAsyncThunk(
+  "order/verifyPartialCodPayment",
+  async (paymentData, { rejectWithValue }) => {
+    try {
+      const response = await orderAPI.verifyPartialCodPayment(paymentData);
+      return response.data;
+    } catch (error) {
+      return rejectWithValue(error.response?.data?.message || "Partial COD payment verification failed");
+    }
+  }
+);
+
+// ===============================
+// Async Thunks - COD Order
+// ===============================
+export const placeCodOrder = createAsyncThunk(
+  "order/placeCodOrder",
+  async (orderData, { rejectWithValue }) => {
+    try {
+      const response = await orderAPI.placeCodOrder(orderData);
+      return response.data;
+    } catch (error) {
+      return rejectWithValue(error.response?.data?.message || "Failed to place COD order");
+    }
+  }
+);
+
+// ===============================
+// Async Thunks - Order Management
+// ===============================
 export const fetchUserOrders = createAsyncThunk(
   "order/fetchUserOrders",
   async ({ page = 1, limit = 10 } = {}, { rejectWithValue }) => {
@@ -37,55 +94,41 @@ export const fetchUserOrders = createAsyncThunk(
     } catch (error) {
       return rejectWithValue(error.response?.data?.message || "Failed to fetch orders");
     }
-  },
+  }
 );
-export const fetchOrderDetails = createAsyncThunk("order/fetchOrderDetails", async (orderId, { rejectWithValue }) => {
-  try {
-    const response = await orderAPI.getOrderDetails(orderId);
-    return response.data;
-  } catch (error) {
-    return rejectWithValue(error.response?.data?.message || "Failed to fetch order details");
+
+export const fetchOrderDetails = createAsyncThunk(
+  "order/fetchOrderDetails",
+  async (orderId, { rejectWithValue }) => {
+    try {
+      const response = await orderAPI.getOrderDetails(orderId);
+      return response.data;
+    } catch (error) {
+      return rejectWithValue(error.response?.data?.message || "Failed to fetch order details");
+    }
   }
-});
-export const trackOrder = createAsyncThunk("order/trackOrder", async (orderId, { rejectWithValue }) => {
-  try {
-    const response = await orderAPI.trackOrder(orderId);
-    return response.data;
-  } catch (error) {
-    return rejectWithValue(error.response?.data?.message || "Failed to track order");
+);
+
+export const cancelOrder = createAsyncThunk(
+  "order/cancelOrder",
+  async ({ orderId, reason }, { rejectWithValue }) => {
+    try {
+      const response = await orderAPI.cancelOrder(orderId, reason);
+      return response.data;
+    } catch (error) {
+      return rejectWithValue(error.response?.data?.message || "Failed to cancel order");
+    }
   }
-});
-export const trackOrderInfo = createAsyncThunk("order/fetchAndSetTrackingInfo", async (order, { rejectWithValue }) => {
-  try {
-    const response = await orderAPI.trackOrder(order);
-    return response.data;
-  } catch (error) {
-    return rejectWithValue(error.response?.data?.message || "Failed to track order");
-  }
-});
-export const getShippingRates = createAsyncThunk("order/getShippingRates", async (rateData, { rejectWithValue }) => {
-  try {
-    const response = await orderAPI.getShippingRates(rateData);
-    return response.data;
-  } catch (error) {
-    return rejectWithValue(error.response?.data?.message || "Failed to get shipping rates");
-  }
-});
-export const cancelOrder = createAsyncThunk("order/cancelOrder", async ({ orderId, reason }, { rejectWithValue }) => {
-  try {
-    const response = await orderAPI.cancelOrder(orderId, reason);
-    return response.data;
-  } catch (error) {
-    return rejectWithValue(error.response?.data?.message || "Failed to cancel order");
-  }
-});
+);
+
+// ===============================
+// Initial State
+// ===============================
 const initialState = {
   orders: [],
   currentOrder: null,
   razorpayOrder: null,
   orderSummary: null,
-  trackingData: null,
-  shippingRates: [],
   pagination: {
     currentPage: 1,
     totalPages: 1,
@@ -94,12 +137,11 @@ const initialState = {
     hasPrev: false,
   },
   loading: {
-    creating: false,
-    verifying: false,
-    fetching: false,
-    cancelling: false,
-    tracking: false,
-    shippingRates: false,
+    creating: false,      // Razorpay/COD order creation
+    verifying: false,     // Payment verification
+    fetching: false,      // Fetch orders
+    cancelling: false,    // Cancel order
+    partialCod: false,    // Partial COD loading
   },
   error: null,
   success: {
@@ -107,10 +149,20 @@ const initialState = {
     paymentVerified: false,
     orderCancelled: false,
   },
-  tracking: null,
-  trackLoading: false,
-  error: null,
+  // Partial COD specific
+  paymentMethods: {
+    cod: true,
+    online: true,
+    partialCod: false,
+    partialPercentage: 0,
+  },
+  isBulkOrder: false,
+  partialCodDetails: null,
 };
+
+// ===============================
+// Slice
+// ===============================
 const orderSlice = createSlice({
   name: "order",
   initialState,
@@ -132,13 +184,42 @@ const orderSlice = createSlice({
     setCurrentOrder: (state, action) => {
       state.currentOrder = action.payload;
     },
-    clearTrackingData: (state) => {
-      state.trackingData = null;
+    clearPartialCodDetails: (state) => {
+      state.partialCodDetails = null;
+    },
+    resetPaymentMethods: (state) => {
+      state.paymentMethods = {
+        cod: true,
+        online: true,
+        partialCod: false,
+        partialPercentage: 0,
+      };
+      state.isBulkOrder = false;
     },
   },
   extraReducers: (builder) => {
     builder
-      // Razorpay order creation
+      // ========== Get Payment Methods ==========
+      .addCase(getPaymentMethods.pending, (state) => {
+        state.loading.fetching = true;
+        state.error = null;
+      })
+      .addCase(getPaymentMethods.fulfilled, (state, action) => {
+        state.loading.fetching = false;
+        state.paymentMethods = {
+          cod: action.payload.cod,
+          online: action.payload.online,
+          partialCod: action.payload.partialCod,
+          partialPercentage: action.payload.partialPercentage || 0,
+        };
+        state.isBulkOrder = action.payload.isBulkOrder || false;
+      })
+      .addCase(getPaymentMethods.rejected, (state, action) => {
+        state.loading.fetching = false;
+        state.error = action.payload;
+      })
+
+      // ========== Create Razorpay Order (Full Payment) ==========
       .addCase(createRazorpayOrder.pending, (state) => {
         state.loading.creating = true;
         state.error = null;
@@ -148,12 +229,20 @@ const orderSlice = createSlice({
         state.razorpayOrder = action.payload.razorpayOrder;
         state.orderSummary = action.payload.orderSummary;
         state.success.orderCreated = true;
+        // Update payment methods from response
+        if (action.payload.paymentMethods) {
+          state.paymentMethods = action.payload.paymentMethods;
+        }
+        if (action.payload.isBulkOrder !== undefined) {
+          state.isBulkOrder = action.payload.isBulkOrder;
+        }
       })
       .addCase(createRazorpayOrder.rejected, (state, action) => {
         state.loading.creating = false;
         state.error = action.payload;
       })
-      // Payment verification
+
+      // ========== Verify Full Payment ==========
       .addCase(verifyPayment.pending, (state) => {
         state.loading.verifying = true;
         state.error = null;
@@ -169,7 +258,41 @@ const orderSlice = createSlice({
         state.loading.verifying = false;
         state.error = action.payload;
       })
-      // COD order
+
+      // ========== Create Partial COD Order ==========
+      .addCase(createPartialCodOrder.pending, (state) => {
+        state.loading.partialCod = true;
+        state.error = null;
+      })
+      .addCase(createPartialCodOrder.fulfilled, (state, action) => {
+        state.loading.partialCod = false;
+        state.razorpayOrder = action.payload.razorpayOrder;
+        state.partialCodDetails = action.payload.partialDetails;
+        state.success.orderCreated = true;
+      })
+      .addCase(createPartialCodOrder.rejected, (state, action) => {
+        state.loading.partialCod = false;
+        state.error = action.payload;
+      })
+
+      // ========== Verify Partial COD Payment ==========
+      .addCase(verifyPartialCodPayment.pending, (state) => {
+        state.loading.verifying = true;
+        state.error = null;
+      })
+      .addCase(verifyPartialCodPayment.fulfilled, (state, action) => {
+        state.loading.verifying = false;
+        state.currentOrder = action.payload.order;
+        state.success.paymentVerified = true;
+        state.razorpayOrder = null;
+        state.partialCodDetails = null;
+      })
+      .addCase(verifyPartialCodPayment.rejected, (state, action) => {
+        state.loading.verifying = false;
+        state.error = action.payload;
+      })
+
+      // ========== Place COD Order ==========
       .addCase(placeCodOrder.pending, (state) => {
         state.loading.creating = true;
         state.error = null;
@@ -183,7 +306,8 @@ const orderSlice = createSlice({
         state.loading.creating = false;
         state.error = action.payload;
       })
-      // Fetch user orders
+
+      // ========== Fetch User Orders ==========
       .addCase(fetchUserOrders.pending, (state) => {
         state.loading.fetching = true;
         state.error = null;
@@ -197,7 +321,8 @@ const orderSlice = createSlice({
         state.loading.fetching = false;
         state.error = action.payload;
       })
-      // Fetch order details
+
+      // ========== Fetch Order Details ==========
       .addCase(fetchOrderDetails.pending, (state) => {
         state.loading.fetching = true;
         state.error = null;
@@ -210,34 +335,8 @@ const orderSlice = createSlice({
         state.loading.fetching = false;
         state.error = action.payload;
       })
-      // Track order
-      .addCase(trackOrder.pending, (state) => {
-        state.loading.tracking = true;
-        state.error = null;
-      })
-      .addCase(trackOrder.fulfilled, (state, action) => {
-        state.loading.tracking = false;
-        state.currentOrder = action.payload.order;
-        state.trackingData = action.payload.trackingData;
-      })
-      .addCase(trackOrder.rejected, (state, action) => {
-        state.loading.tracking = false;
-        state.error = action.payload;
-      })
-      // Shipping rates
-      .addCase(getShippingRates.pending, (state) => {
-        state.loading.shippingRates = true;
-        state.error = null;
-      })
-      .addCase(getShippingRates.fulfilled, (state, action) => {
-        state.loading.shippingRates = false;
-        state.shippingRates = action.payload.rates || [];
-      })
-      .addCase(getShippingRates.rejected, (state, action) => {
-        state.loading.shippingRates = false;
-        state.error = action.payload;
-      })
-      // Cancel order
+
+      // ========== Cancel Order ==========
       .addCase(cancelOrder.pending, (state) => {
         state.loading.cancelling = true;
         state.error = null;
@@ -254,94 +353,120 @@ const orderSlice = createSlice({
       .addCase(cancelOrder.rejected, (state, action) => {
         state.loading.cancelling = false;
         state.error = action.payload;
-      })
-       .addCase(trackOrderInfo.pending, (state) => {
-        state.trackLoading = true;
-        state.error = null;
-      })
-      .addCase(trackOrderInfo.fulfilled, (state, action) => {
-        state.trackLoading = false;
-        state.tracking = action.payload; // full API response
-      })
-      .addCase(trackOrderInfo.rejected, (state, action) => {
-        state.trackLoading = false;
-        state.error = action.payload;
       });
   },
 });
-export const { clearError, clearSuccess, clearRazorpayOrder, setCurrentOrder, clearTrackingData } = orderSlice.actions;
+
+// ===============================
+// Actions Export
+// ===============================
+export const { 
+  clearError, 
+  clearSuccess, 
+  clearRazorpayOrder, 
+  setCurrentOrder,
+  clearPartialCodDetails,
+  resetPaymentMethods
+} = orderSlice.actions;
+
+// ===============================
 // Memoized Selectors
+// ===============================
 const selectOrderState = (state) => state.orders || {};
-const selectCouponState = (state) => state.coupons || {};
-const selectCartState = (state) => state.cart || {};
-const selectAuthState = (state) => state.auth || {};
-export const selectShippingRates = createSelector(
-  selectOrderState,
-  (order) => order.shippingRates || []
-);
+
 export const selectOrderLoading = createSelector(
   selectOrderState,
   (order) => order.loading || {}
 );
+
 export const selectOrderError = createSelector(
   selectOrderState,
   (order) => order.error || null
 );
+
 export const selectRazorpayOrder = createSelector(
   selectOrderState,
   (order) => order.razorpayOrder || null
 );
+
 export const selectOrderSummary = createSelector(
   selectOrderState,
   (order) => order.orderSummary || null
 );
+
 export const selectOrderSuccess = createSelector(
   selectOrderState,
   (order) => order.success || {}
 );
+
 export const selectCurrentOrder = createSelector(
   selectOrderState,
   (order) => order.currentOrder || null
 );
+
 export const selectUserOrders = createSelector(
   selectOrderState,
   (order) => order.orders || []
 );
+
 export const selectOrderPagination = createSelector(
   selectOrderState,
   (order) => order.pagination || {}
 );
-export const selectTrackingData = createSelector(
+
+export const selectPaymentMethods = createSelector(
   selectOrderState,
-  (order) => order.trackingData || null
+  (order) => order.paymentMethods || { cod: true, online: true, partialCod: false, partialPercentage: 0 }
 );
+
+export const selectIsBulkOrder = createSelector(
+  selectOrderState,
+  (order) => order.isBulkOrder || false
+);
+
+export const selectPartialCodDetails = createSelector(
+  selectOrderState,
+  (order) => order.partialCodDetails || null
+);
+
 // Cross-slice selectors
+const selectCouponState = (state) => state.coupons || {};
+const selectCartState = (state) => state.cart || {};
+const selectAuthState = (state) => state.auth || {};
+
 export const selectAppliedCoupon = createSelector(
   selectCouponState,
   (coupons) => coupons.appliedCoupon || null
 );
+
 export const selectCouponLoading = createSelector(
   selectCouponState,
   (coupons) => coupons.loading || {}
 );
+
 export const selectCouponError = createSelector(
   selectCouponState,
   (coupons) => coupons.error || null
 );
+
 export const selectCartItems = createSelector(
   selectCartState,
   (cart) => cart.items || []
 );
+
 export const selectCartSummary = createSelector(
   selectCartState,
   (cart) => cart.summary || {}
 );
+
 export const selectAuthUser = createSelector(
   selectAuthState,
   (auth) => auth.user || {}
 );
+
 export const selectUser = createSelector(
   selectAuthState,
   (auth) => auth.user || {}
 );
+
 export default orderSlice.reducer;

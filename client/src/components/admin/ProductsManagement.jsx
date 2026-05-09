@@ -27,6 +27,9 @@ const ProductsManagement = () => {
     total: 0,
   })
 
+  // 🆕 Prevent double submit
+  const [isSubmitting, setIsSubmitting] = useState(false)
+
   // 🆕 Bulk Config State
   const [bulkConfig, setBulkConfig] = useState({
     piecesPerSize: 1,
@@ -92,11 +95,20 @@ const ProductsManagement = () => {
 
   const handleSubmit = async (e) => {
     e.preventDefault()
+    
+    // ✅ Prevent double submit
+    if (isSubmitting) {
+      console.log("Already submitting, please wait...")
+      return
+    }
+    
+    setIsSubmitting(true)
+    
     try {
       setLoading(true)
       const formDataToSend = new FormData()
 
-      // Append common fields
+      // Append common fields with proper handling
       Object.keys(formData).forEach((key) => {
         if (editingProduct && key === "category") {
           return
@@ -105,6 +117,20 @@ const ProductsManagement = () => {
           formDataToSend.append(key, JSON.stringify(formData[key]))
         } else if (key === "dimensions") {
           formDataToSend.append(key, JSON.stringify(formData[key]))
+        } else if (key === "price") {
+          // ✅ Ensure price is single value
+          let priceValue = formData.price
+          if (Array.isArray(priceValue)) {
+            priceValue = priceValue[0]
+          }
+          formDataToSend.append(key, priceValue)
+        } else if (key === "originalPrice") {
+          // ✅ Ensure originalPrice is single value
+          let originalPriceValue = formData.originalPrice
+          if (Array.isArray(originalPriceValue)) {
+            originalPriceValue = originalPriceValue[0]
+          }
+          formDataToSend.append(key, originalPriceValue || "")
         } else {
           formDataToSend.append(key, formData[key])
         }
@@ -114,7 +140,7 @@ const ProductsManagement = () => {
       formDataToSend.append("isBulkProduct", productType === "bulk")
       if (productType === "bulk") {
         formDataToSend.append("bulkConfig", JSON.stringify(bulkConfig))
-        // For bulk products, price is pricePerSet
+        // For bulk products, use pricePerSet
         formDataToSend.append("price", bulkConfig.pricePerSet)
         formDataToSend.append("originalPrice", bulkConfig.originalPricePerSet)
       }
@@ -153,8 +179,10 @@ const ProductsManagement = () => {
       dispatch(fetchCategoriesAction())
     } catch (error) {
       console.error("Error saving product:", error)
+      alert(error?.response?.data?.message || "Failed to save product")
     } finally {
       setLoading(false)
+      setIsSubmitting(false)
     }
   }
 
@@ -208,6 +236,17 @@ const ProductsManagement = () => {
     
     setProductType(isBulk ? "bulk" : "regular")
     
+    // ✅ Ensure price and originalPrice are single values
+    let priceValue = product.price
+    let originalPriceValue = product.originalPrice
+    
+    if (Array.isArray(priceValue)) {
+      priceValue = priceValue[0]
+    }
+    if (Array.isArray(originalPriceValue)) {
+      originalPriceValue = originalPriceValue[0]
+    }
+    
     setFormData({
       name: product.name || "",
       brand: product.brand || "Factory Sale",
@@ -215,8 +254,8 @@ const ProductsManagement = () => {
       material: product.material || "",
       fits: product.fits || "regular",
       description: product.description || "",
-      price: product.price || "",
-      originalPrice: product.originalPrice || "",
+      price: priceValue || "",
+      originalPrice: originalPriceValue || "",
       category: product.category?._id || "",
       subcategory: product.subcategory || "",
       sizes: product.sizes || [],
@@ -232,8 +271,8 @@ const ProductsManagement = () => {
         piecesPerSize: product.bulkConfig.piecesPerSize || 1,
         minColorsToSelect: product.bulkConfig.minColorsToSelect || 1,
         maxColorsToSelect: product.bulkConfig.maxColorsToSelect || null,
-        pricePerSet: product.bulkConfig.pricePerSet || product.price,
-        originalPricePerSet: product.bulkConfig.originalPricePerSet || product.originalPrice,
+        pricePerSet: product.bulkConfig.pricePerSet || priceValue,
+        originalPricePerSet: product.bulkConfig.originalPricePerSet || originalPriceValue,
       })
     }
 
@@ -524,14 +563,14 @@ const ProductsManagement = () => {
 
       {/* Modal */}
       {showModal && (
-        <div className="fixed inset-0 z-50 w-full h-full overflow-y-auto bg-gray-600 bg-opacity-50 ms-10">
+        <div className="fixed inset-0 z-50 w-full h-full overflow-y-auto bg-gray-600 bg-opacity-50">
           <div className="relative w-11/12 max-w-4xl p-5 mx-auto bg-white border rounded-md shadow-lg top-20">
             <div className="mt-3">
               <h3 className="mb-4 text-lg font-medium text-gray-900">
                 {editingProduct ? "Edit Product" : "Add New Product"}
               </h3>
               <form onSubmit={handleSubmit} className="space-y-4">
-                {/* 🆕 Product Type Selection */}
+                {/* Product Type Selection */}
                 <div className="p-4 bg-gray-50 rounded-lg">
                   <label className="block mb-2 text-sm font-medium text-gray-700">Product Type</label>
                   <div className="flex gap-4">
@@ -560,7 +599,7 @@ const ProductsManagement = () => {
                   </div>
                 </div>
 
-                {/* Regular Fields (existing code) */}
+                {/* Regular Fields */}
                 <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
                   <div>
                     <label className="block mb-1 text-sm font-medium text-gray-700">Product Name</label>
@@ -648,7 +687,7 @@ const ProductsManagement = () => {
                   <textarea value={formData.productDetails} onChange={(e) => setFormData({ ...formData, productDetails: e.target.value })} rows={3} className="w-full px-3 py-2 border rounded-md" />
                 </div>
 
-                {/* 🆕 Bulk Configuration (shown only when bulk is selected) */}
+                {/* Bulk Configuration */}
                 {productType === "bulk" && (
                   <div className="p-4 border border-purple-200 rounded-lg bg-purple-50">
                     <h4 className="mb-3 text-sm font-semibold text-purple-800 flex items-center gap-2">
@@ -759,7 +798,7 @@ const ProductsManagement = () => {
 
                 <div className="flex justify-end pt-4 space-x-3">
                   <button type="button" onClick={() => { setShowModal(false); resetForm() }} className="px-4 py-2 text-gray-700 border rounded-md">Cancel</button>
-                  <button type="submit" disabled={loading} className="px-4 py-2 text-white bg-blue-600 rounded-md hover:bg-blue-700 disabled:opacity-50">
+                  <button type="submit" disabled={loading || isSubmitting} className="px-4 py-2 text-white bg-blue-600 rounded-md hover:bg-blue-700 disabled:opacity-50">
                     {loading ? "Saving..." : editingProduct ? "Update Product" : "Create Product"}
                   </button>
                 </div>

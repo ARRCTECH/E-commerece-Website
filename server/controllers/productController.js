@@ -507,13 +507,39 @@ const createProduct = async (req, res) => {
   }
 };
 
-// ===============================
-// Update product (Admin only) - Updated for Bulk
-// ===============================
 const updateProduct = async (req, res) => {
   try {
     const { id } = req.params;
     let updateData = req.body;
+
+    console.log("📝 UPDATE PRODUCT - Request received");
+    console.log("Product ID:", id);
+    console.log("Update data:", JSON.stringify(updateData, null, 2));
+
+    // ========== SAFE HANDLE - Convert array values to single value ==========
+    if (Array.isArray(updateData.price)) {
+      updateData.price = updateData.price[0];
+      console.log("✅ Converted price from array to:", updateData.price);
+    }
+    if (Array.isArray(updateData.originalPrice)) {
+      updateData.originalPrice = updateData.originalPrice[0];
+      console.log("✅ Converted originalPrice from array to:", updateData.originalPrice);
+    }
+    
+    // Ensure numeric values
+    if (updateData.price !== undefined && updateData.price !== null && updateData.price !== "") {
+      updateData.price = Number(updateData.price);
+    }
+    if (updateData.originalPrice !== undefined && updateData.originalPrice !== null && updateData.originalPrice !== "") {
+      updateData.originalPrice = Number(updateData.originalPrice);
+    }
+    if (updateData.stock !== undefined && updateData.stock !== null && updateData.stock !== "") {
+      updateData.stock = Number(updateData.stock);
+    }
+    if (updateData.weight !== undefined && updateData.weight !== null && updateData.weight !== "") {
+      updateData.weight = Number(updateData.weight);
+    }
+    // ========== END SAFE HANDLE ==========
 
     const existingProduct = await Product.findById(id);
     if (!existingProduct) {
@@ -524,6 +550,13 @@ const updateProduct = async (req, res) => {
     }
 
     updateData = prepareUpdateData(updateData, existingProduct);
+
+    // ========== 🆕 FIX: Sync price for bulk products ==========
+    if (existingProduct.isBulkProduct && updateData.bulkConfig?.pricePerSet) {
+      updateData.price = updateData.bulkConfig.pricePerSet;
+      console.log("✅ Synced price with bulkConfig.pricePerSet:", updateData.price);
+    }
+    // ========== END FIX ==========
 
     const currentName = existingProduct.name ? existingProduct.name.trim() : "";
     const newName = updateData.name ? updateData.name.trim() : "";
@@ -648,12 +681,6 @@ const updateProduct = async (req, res) => {
     });
   }
 };
-
-// ===============================
-// 🆕 Get Bulk Product by ID (or use existing getProduct)
-// ===============================
-// Note: Existing getProduct already works for both regular and bulk
-
 // ===============================
 // Delete product (Admin only)
 // ===============================
