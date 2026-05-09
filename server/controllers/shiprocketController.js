@@ -28,7 +28,7 @@ const sendStatusUpdateEmail = async (order, newStatus) => {
 
     const emailHtml = `
       <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto;">
-        <h2 style="color: #ec4899;">Order Status Update - Ksaunibliss</h2>
+        <h2 style="color: #ec4899;">Order Status Update - Factory Sale</h2>
         <p>Dear ${user.name || "Customer"},</p>
         <p>${statusMessages[newStatus] || `Your order status has been updated to: ${newStatus}`}</p>
         
@@ -48,7 +48,7 @@ const sendStatusUpdateEmail = async (order, newStatus) => {
           }
         </div>
         
-        <p>Thank you for shopping with Ksaunibliss!</p>
+        <p>Thank you for shopping with Factory Sale!</p>
       </div>
     `
 

@@ -1,7 +1,7 @@
 {
   "name": "server",
   "version": "1.0.0",
-  "description": "Ksaunibliss E-commerce Backend",
+  "description": "Factory Sale E-commerce Backend",
   "main": "index.js",
   "scripts": {
     "start": "node src/index.js",
@@ -38,6 +38,6 @@
     "express",
     "mongodb"
   ],
-  "author": "Ksaunibliss Team",
+  "author": "Factory Sale Team",
   "license": "MIT"
 }

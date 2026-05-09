@@ -19,6 +19,7 @@ import PartialCodSetting from "../../components/admin/PartialCodSetting";
 import { clearError, clearSuccess } from "../../store/slices/adminSlice";
 // ✅ Import your ToastProvider
 import ToastProvider from "../../components/ToastProvider";
+import ReferralDiscountManager from "../../components/admin/ReferralManagement";
 const AdminDashboard = () => {
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const location = useLocation();
@@ -88,6 +89,7 @@ const AdminDashboard = () => {
               <Route path="banners" element={<BannersManagement />} />
               <Route path="innovations" element={<InnovationManagement />} />
               <Route path="ksaunitshirtstyle" element={<KsauniTshirtManagement />} />
+              <Route path="referral" element = {<ReferralDiscountManager/>} />
               <Route path="partial-cod" element={<PartialCodSetting />} />
               {user.role === "admin" && (
                 <>

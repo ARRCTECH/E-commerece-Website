@@ -13,6 +13,7 @@ import {
   SparklesIcon, 
 
 } from "@heroicons/react/24/outline";
+import { UserPlus } from "lucide-react";
 const AdminSidebar = ({ sidebarOpen, setSidebarOpen, userRole }) => {
   const location = useLocation();
   const navigation = [
