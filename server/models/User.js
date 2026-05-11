@@ -1,6 +1,5 @@
 const mongoose = require("mongoose");
 
-// 🛒 Cart Item Sub-Schema
 const cartItemSchema = new mongoose.Schema({
   product: {
     type: mongoose.Schema.Types.ObjectId,
@@ -14,6 +13,32 @@ const cartItemSchema = new mongoose.Schema({
   },
   size: String,
   color: String,
+  
+  // 🆕 Bulk Product Specific Fields
+  isBulkProduct: {
+    type: Boolean,
+    default: false,
+  },
+  selectedColors: [{
+    type: String,
+  }],
+  totalPieces: {
+    type: Number,
+    default: 0,
+  },
+  totalSets: {
+    type: Number,
+    default: 0,
+  },
+  piecesPerSet: {
+    type: Number,
+    default: 0,
+  },
+  pricePerSet: {
+    type: Number,
+    default: 0,
+  },
+  
   addedAt: {
     type: Date,
     default: Date.now,
@@ -119,6 +144,8 @@ const tempOrderDataSchema = new mongoose.Schema({
     }, default: () => ({ awbStatus: "PENDING" }) },
 });
 
+
+
 // 👤 Main User Schema
 const userSchema = new mongoose.Schema(
   {
@@ -127,6 +154,18 @@ const userSchema = new mongoose.Schema(
       unique: true,
       sparse: true,
       index: true,
+    },
+    expireReferralDate:{
+       type:Date,
+       default: null
+    },
+    referredBy: {
+      type:String,
+      default:null
+    },
+    myreferralCode: {
+      type:String,
+      default:null
     },
     name: {
       type: String,

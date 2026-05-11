@@ -36,6 +36,12 @@ const LoginPage = () => {
     return 'login'
   }
 
+  const referredCode = () => {
+    const params = new URLSearchParams(window.location.search);
+    const ref = params.get("ref");
+     return ref ? String(ref) : null;
+  };
+
   const [mode, setMode] = useState(getModeFromPath())
   const [showPassword, setShowPassword] = useState(false)
   const [showForgotPassword, setShowForgotPassword] = useState(false)
@@ -45,6 +51,7 @@ const LoginPage = () => {
     password: "",
     name: "",
     confirmPassword: "",
+    referredBy: referredCode(),
   })
 
   const [forgotEmail, setForgotEmail] = useState("")
@@ -68,12 +75,12 @@ const LoginPage = () => {
     const pathMode = getModeFromPath()
     if (pathMode !== mode) {
       setMode(pathMode)
-      setEmailForm({ email: "", password: "", name: "", confirmPassword: "" })
+      setEmailForm({ email: "", password: "", name: "", confirmPassword: "", referredBy: referredCode() })
       setInvalidCredentials(false)
       setInvalidCredentialsMessage("")
       dispatch(clearPhoneAuthState())
     }
-  }, [location.pathname])
+  }, [dispatch, getModeFromPath, location.pathname, mode])
 
   const isInvalidCredentialsError = (err) => {
     if (!err) return false
@@ -126,6 +133,7 @@ const LoginPage = () => {
         email: emailForm.email,
         password: emailForm.password,
         name: emailForm.name,
+        referredBy: emailForm.referredBy,
       }))
     } else {
       setInvalidCredentials(false)
@@ -151,7 +159,7 @@ const LoginPage = () => {
   const handleModeChange = (newMode) => {
     setMode(newMode)
     dispatch(clearPhoneAuthState())
-    setEmailForm({ email: "", password: "", name: "", confirmPassword: "" })
+    setEmailForm({ email: "", password: "", name: "", confirmPassword: "", referredBy: referredCode() })
     setInvalidCredentials(false)
     setInvalidCredentialsMessage("")
     
@@ -207,24 +215,7 @@ const LoginPage = () => {
               <p className="text-red-100 text-sm leading-relaxed">
                 Discover premium menswear at factory prices. Quality meets affordability.
               </p>
-              
-              {/* Features */}
-              {/* <div className="space-y-2 pt-4">
-                <div className="flex items-center space-x-2">
-                  <div className="w-1.5 h-1.5 bg-red-300 rounded-full"></div>
-                  <span className="text-red-100 text-xs">Premium Quality</span>
-                </div>
-                <div className="flex items-center space-x-2">
-                  <div className="w-1.5 h-1.5 bg-red-300 rounded-full"></div>
-                  <span className="text-red-100 text-xs">Factory Direct Prices</span>
-                </div>
-                <div className="flex items-center space-x-2">
-                  <div className="w-1.5 h-1.5 bg-red-300 rounded-full"></div>
-                  <span className="text-red-100 text-xs">Free Shipping $50+</span>
-                </div>
-              </div> */}
             </div>
-
             {/* Trust Badges */}
             <div className="flex justify-between text-red-200 text-[10px] tracking-wide">
               <span>✓ SECURE</span>
@@ -307,8 +298,7 @@ const LoginPage = () => {
                       />
                     </div>
                   </motion.div>
-                )}
-                
+                )}                
                 <div>
                   <label className="block mb-1 text-xs font-medium text-gray-700">Email Address</label>
                   <div className="relative">
@@ -364,6 +354,27 @@ const LoginPage = () => {
                         onChange={(e) => setEmailForm({ ...emailForm, confirmPassword: e.target.value })}
                         className="w-full py-2.5 pl-9 pr-3 text-sm border border-gray-200 rounded-lg focus:ring-2 focus:ring-red-500/20 focus:border-red-500 outline-none transition-all"
                         placeholder="••••••••"
+                        required
+                      />
+                    </div>
+                  </motion.div>
+                )}
+
+                {mode === "register" && (
+                  <motion.div
+                    initial={{ opacity: 0, y: -10 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    transition={{ duration: 0.2 }}
+                  >
+                    <label className="block mb-1 text-xs font-medium text-gray-700">Referral Code</label>
+                    <div className="relative">
+                      <User className="absolute w-4 h-4 text-gray-400 transform -translate-y-1/2 left-3 top-1/2" />
+                      <input
+                        type="text"
+                        value={emailForm.referredBy}
+                        onChange={(e) => setEmailForm({ ...emailForm, referredBy: e.target.value })}
+                        className="w-full py-2.5 pl-9 pr-3 text-sm border border-gray-200 rounded-lg focus:ring-2 focus:ring-red-500/20 focus:border-red-500 outline-none transition-all"
+                        placeholder="ABC123 (optional)"
                         required
                       />
                     </div>
@@ -493,7 +504,7 @@ const LoginPage = () => {
       </AnimatePresence>
 
       {/* Custom Scrollbar Styles */}
-      <style jsx>{`
+      <style>{`
         .custom-scrollbar::-webkit-scrollbar {
           width: 4px;
         }

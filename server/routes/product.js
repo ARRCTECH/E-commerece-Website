@@ -14,14 +14,22 @@ const {
   getProductsByCategory,
   getProductsByCategorySlug,
   getProductBySlug,
+  getBulkProducts,        // 🆕 Add this import
+  getRegularProducts,     // 🆕 Add this import
 } = require("../controllers/productController");
 
 // ===============================
 // Product Routes
 // ===============================
 
-// GET all products with filters
+// GET all products with filters (regular + bulk both)
 router.get("/", getProducts);
+
+// 🆕 GET only bulk products
+router.get("/bulk", getBulkProducts);
+
+// 🆕 GET only regular products
+router.get("/regular", getRegularProducts);
 
 // GET searched products
 router.get("/search", getSearchedProducts);
@@ -32,8 +40,9 @@ router.get("/trending", getTrendingProducts);
 // GET new arrivals
 router.get("/new", getNewArrivals);
 
-//get only orisized products
+// GET only oversized products
 router.get("/oversized", getOversizedProducts);
+
 // GET products by category
 router.get("/category/:categoryId", getProductsByCategory);
 
@@ -59,8 +68,7 @@ router.delete("/:id", deleteProduct);
 // TODO: add auth middleware when integrating
 router.post("/:id/review", addReview);
 
-// routes/product.js
+// GET products by category slug
 router.get("/category/slug/:slug", getProductsByCategorySlug);
-
 
 module.exports = router;

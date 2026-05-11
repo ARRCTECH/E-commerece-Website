@@ -77,6 +77,7 @@ api.interceptors.response.use(
       // Clear local storage
       localStorage.removeItem("user");
       localStorage.removeItem("authToken");
+      localStorage.removeItem("tokenExpiry");
       // Redirect to login if not already there
       if (window.location.pathname !== "/login" && window.location.pathname !== "/register") {
         window.location.href = "/login";
@@ -373,7 +374,7 @@ export const uploadAvatar = createAsyncThunk("auth/uploadAvatar", async (formDat
 // Email Authentication Thunks
 export const registerWithEmail = createAsyncThunk(
   "auth/registerWithEmail",
-  async ({ email, password, name }, { rejectWithValue }) => {
+  async ({ email, password, name, referredBy }, { rejectWithValue }) => {
     try {
       // Create user with Firebase
       const userCredential = await createUserWithEmailAndPassword(auth, email, password);
@@ -384,11 +385,12 @@ export const registerWithEmail = createAsyncThunk(
       });
       // Send email verification
       await sendEmailVerification(firebaseUser);
-      // Register user in backend
+      // Register user in backend 
       const response = await axios.post(`${API_BASE_URL}/auth/register/email`, {
         email,
         password,
         name,
+        referredBy,
       });
       // Store user data
       localStorage.setItem("user", JSON.stringify(response.data.user));
@@ -1258,7 +1260,6 @@ const authSlice = createSlice({
   },
 });
 
-// Export actions
 export const { 
   clearError, 
   clearSuccess, 
@@ -1267,7 +1268,8 @@ export const {
   setFirebaseUser, 
   logout, 
   clearPhoneAuthState,
-  resetGoogleRedirecting 
+  resetGoogleRedirecting ,
+   extraReducers
 } = authSlice.actions;
 
 // Export reducer

@@ -6,6 +6,11 @@ const { sendEmail } = require("../utils/emailService")
 // Rate limiting storage (in production, use Redis)
 const rateLimitStore = new Map()
 
+
+const randomReferralCode = () => {
+  return Math.random().toString(36).substring(2, 8).toUpperCase()
+}
+
 // Helper function to check rate limits
 const checkRateLimit = (identifier, maxAttempts = 5, windowMs = 15 * 60 * 1000) => {
   const now = Date.now()
@@ -181,7 +186,7 @@ const googleSignIn = async (req, res) => {
 // Email Registration - FIXED VERSION
 const registerWithEmail = async (req, res) => {
   try {
-    const { email, password, name } = req.body
+    const { email, password, name, referredBy } = req.body
 
     // Validation
     if (!email || !password || !name) {
@@ -258,6 +263,9 @@ const registerWithEmail = async (req, res) => {
         isVerified: true,
         role: "user",
         createdAt: new Date(),
+        expireReferralDate: null,
+        referredBy: referredBy || null,
+        myreferralCode: randomReferralCode(),
       })
 
       await user.save()
@@ -304,6 +312,9 @@ const registerWithEmail = async (req, res) => {
           authMethod: user.authMethod,
           isVerified: user.isVerified,
           createdAt: user.createdAt,
+          expireReferralDate: user.expireReferralDate,
+          referredBy: user.referredBy,
+          myrteferralCode: user.myreferralCode,
         },
         customToken,
         jwtToken,
@@ -442,6 +453,9 @@ const loginWithEmail = async (req, res) => {
             isVerified: newUser.isVerified,
             lastLogin: new Date(),
             createdAt: newUser.createdAt,
+            expireReferralDate: newUser.expireReferralDate,
+            referredBy: newUser.referredBy,
+            myreferralCode: newUser.myreferralCode,
           },
         })
       }
@@ -481,6 +495,9 @@ const loginWithEmail = async (req, res) => {
           isVerified: user.isVerified,
           lastLogin: user.lastLogin,
           createdAt: user.createdAt,
+          expireReferralDate: user.expireReferralDate,
+          referredBy: user.referredBy,
+          myreferralCode: user.myreferralCode,
         },
       })
     } catch (firebaseError) {
@@ -701,6 +718,9 @@ const verifyPhoneOTP = async (req, res) => {
           avatar: user.avatar,
           createdAt: user.createdAt,
           lastLogin: user.lastLogin,
+          expireReferralDate: user.expireReferralDate,
+          referredBy: user.referredBy,
+          myreferralCode: user.myreferralCode,
         },
         customToken,
         jwtToken,
@@ -776,6 +796,9 @@ const verifyFirebaseToken = async (req, res) => {
         isVerified: firebaseUser.emailVerified || !!firebaseUser.phoneNumber,
         role: "user",
         createdAt: new Date(),
+        expireReferralDate: user.expireReferralDate,
+        referredBy: user.referredBy,
+        myreferralCode: user.myreferralCode,
       })
 
       await user.save()
@@ -829,6 +852,9 @@ const verifyFirebaseToken = async (req, res) => {
         avatar: user.avatar,
         createdAt: user.createdAt,
         lastLogin: user.lastLogin,
+        expireReferralDate: user.expireReferralDate,
+        referredBy: user.referredBy,
+        myreferralCode: user.myreferralCode,
       },
       jwtToken,
     })
@@ -947,6 +973,9 @@ const getProfile = async (req, res) => {
         addresses: user.addresses,
         createdAt: user.createdAt,
         lastLogin: user.lastLogin,
+        expireReferralDate: user.expireReferralDate,
+        referredBy: user.referredBy,
+        myreferralCode: user.myreferralCode,
       },
     })
   } catch (error) {
@@ -1009,6 +1038,9 @@ const updateProfile = async (req, res) => {
         addresses: user.addresses,
         createdAt: user.createdAt,
         lastLogin: user.lastLogin,
+        expireReferralDate: user.expireReferralDate,
+        referredBy: user.referredBy,
+        myreferralCode: user.myreferralCode,
       },
     })
   } catch (error) {
