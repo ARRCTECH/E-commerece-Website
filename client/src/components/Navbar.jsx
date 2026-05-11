@@ -167,7 +167,7 @@ const Navbar = () => {
   return (
     <>
       <motion.nav
-        initial={{ y: -100 }}
+        initial={{ y: -50 }}
         animate={{ y: 0 }}
         transition={{ duration: 0.5 }}
         className="sticky top-0 z-50 bg-white shadow-md"
