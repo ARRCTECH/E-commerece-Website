@@ -1,13 +1,17 @@
 "use client";
-import { useEffect } from "react";
+
+import { useEffect, useState } from "react";
 import { useDispatch, useSelector } from "react-redux";
 import { Link } from "react-router-dom";
+import { motion } from "framer-motion";
+import { ArrowUpRight } from "lucide-react";
 import LoadingSpinner from "./LoadingSpinner";
 import { fetchCategories } from "../store/slices/categorySlice";
 
 const FeaturedCategories = () => {
   const dispatch = useDispatch();
   const { categories, isLoading } = useSelector((state) => state.categories);
+  const [hoveredId, setHoveredId] = useState(null);
 
   useEffect(() => {
     dispatch(fetchCategories({ showOnHomepage: true }));
@@ -19,114 +23,80 @@ const FeaturedCategories = () => {
     categories?.filter((cat) => cat.showOnHomepage)?.slice(0, 6) || [];
 
   return (
-    <section className="relative z-20 py-1 bg-white">
-      <div
-        className="w-full mx-auto"
-        style={{
-          maxWidth: "1800px", // Match KsauniTshirtStyle max width
-        }}
-      >
-        {/* ✅ Responsive Padding Wrapper */}
-        <div className="px-2 sm:px-4 md:px-6 lg:px-8 xl:px-12 2xl:px-16 3xl:px-24">
+    <section className="relative z-20 py-14 sm:py-20 bg-gradient-to-b from-[#fafaf7] via-white to-[#fafaf7] overflow-hidden">
+      {/* Decorative ambient blobs */}
+      <div className="pointer-events-none absolute -top-32 -left-32 h-96 w-96 rounded-full bg-rose-100/40 blur-3xl" />
+      <div className="pointer-events-none absolute -bottom-32 -right-32 h-96 w-96 rounded-full bg-amber-100/40 blur-3xl" />
+
+      <div className="relative w-full mx-auto" style={{ maxWidth: "1800px" }}>
+        <div className="px-4 sm:px-6 md:px-8 lg:px-12 xl:px-16 2xl:px-20">
           {/* Header */}
-          <div className="text-center mb-4">
-            <h1 className="text-xl mx-5 sm:text-2xl font-black italic">
-              <span className="text-red-600">TOP</span>{" "}
-              <span className="text-black">CATEGORY</span>
-            </h1>
-            <p className="text-gray-600 text-sm sm:text-base font-small mt-1">
-              Style for Every Mood, Every Day
-            </p>
+          <div className="flex flex-col items-center text-center mb-10 sm:mb-14">
+            <div className="inline-flex items-center gap-2 px-4 py-1.5 rounded-full border border-neutral-200 bg-white/70 backdrop-blur-sm shadow-sm mb-5">
+              <span className="h-1.5 w-1.5 rounded-full bg-rose-500 animate-pulse" />
+              <span className="text-[10px] tracking-[0.3em] uppercase text-neutral-700 font-medium">
+                Curated Edit
+              </span>
+            </div>
+
+            <h2 className="text-3xl sm:text-5xl lg:text-6xl font-extralight tracking-tight text-neutral-900">
+              Top{" "}
+              <span className="italic font-serif bg-gradient-to-r from-rose-600 via-neutral-900 to-neutral-900 bg-clip-text text-transparent">
+                Category
+              </span>
+            </h2>
+
+            <div className="mt-4 flex items-center gap-3">
+              <span className="h-px w-10 bg-neutral-300" />
+              <p className="text-xs sm:text-sm text-neutral-500 font-light tracking-wide">
+                Style for every mood, every day
+              </p>
+              <span className="h-px w-10 bg-neutral-300" />
+            </div>
           </div>
 
-          {/* MOBILE: Horizontal scroll */}
-          <div className="sm:hidden overflow-x-auto scrollbar-hide">
-            <div
-              className="flex gap-4 snap-x snap-mandatory"
-              style={{ minWidth: "100%" }}
-            >
-              {Array.from({ length: Math.ceil(featuredCategories.length / 4) }).map((_, groupIndex) => {
-                const groupItems = featuredCategories.slice(groupIndex * 4, groupIndex * 4 + 4);
-                while (groupItems.length < 4) {
-                  groupItems.push(null);
-                }
-                return (
-                  <div
-                    key={groupIndex}
-                    className="grid grid-cols-2 gap-4 flex-shrink-0 snap-center"
-                    style={{ width: "100%" }}
-                  >
-                    {groupItems.map((category, index) =>
-                      category ? (
-                        <div
-                          key={category._id}
-                          className="relative overflow-hidden border border-gray-400 rounded group transition-transform duration-300 transform hover:scale-105"
-                        >
-                          {/* ✅ Pass category as query param */}
-                          <Link to={`/products?category=${category.slug}`}>
-                            <div className="relative w-full aspect-[20/15] overflow-hidden">
-                              <img
-                                src={
-                                  category.image?.url ||
-                                  "/placeholder.svg?height=500&width=400&query=category image"
-                                }
-                                alt={category.image?.alt || category.name}
-                                className="object-cover object-center w-full h-full transition-transform duration-300 group-hover:scale-110"
-                              />
-                            </div>
-                            <div className="p-1 text-start">
-                              <h3 className="text-sm uppercase pl-1">
-                                {category.name}
-                              </h3>
-                            </div>
-                          </Link>
-                        </div>
-                      ) : (
-                        <div
-                          key={`placeholder-${index}`}
-                          className="aspect-[20/10]"
-                        />
-                      )
-                    )}
-                  </div>
-                );
-              })}
+          {/* MOBILE: horizontal scroll */}
+          <div className="sm:hidden -mx-4 px-4 overflow-x-auto scrollbar-hide">
+            <div className="flex gap-3 snap-x snap-mandatory pb-2">
+              {featuredCategories.map((category, idx) => (
+                <motion.div
+                  key={category._id}
+                  initial={{ opacity: 0, y: 20 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  transition={{ delay: idx * 0.05, duration: 0.5 }}
+                  className="snap-center flex-shrink-0 w-[46%]"
+                >
+                  <CategoryCard category={category} />
+                </motion.div>
+              ))}
             </div>
           </div>
 
           {/* TABLET & DESKTOP */}
           <div
-            className="hidden sm:grid gap-4 justify-center w-full"
+            className="hidden sm:grid gap-5 lg:gap-6"
             style={{
-              gridAutoFlow: "column",
-              gridAutoColumns: "minmax(180px, 1fr)",
-              alignItems: "start",
+              gridTemplateColumns: `repeat(${Math.min(
+                featuredCategories.length || 1,
+                6
+              )}, minmax(0, 1fr))`,
             }}
           >
-            {featuredCategories.map((category) => (
-              <div
+            {featuredCategories.map((category, idx) => (
+              <motion.div
                 key={category._id}
-                className="relative overflow-hidden border border-gray-200 rounded group transition-transform duration-300 transform hover:scale-105"
+                initial={{ opacity: 0, y: 30 }}
+                whileInView={{ opacity: 1, y: 0 }}
+                viewport={{ once: true, margin: "-50px" }}
+                transition={{ delay: idx * 0.08, duration: 0.7, ease: [0.22, 1, 0.36, 1] }}
+                onMouseEnter={() => setHoveredId(category._id)}
+                onMouseLeave={() => setHoveredId(null)}
               >
-                {/* ✅ Pass category as query param */}
-                <Link to={`/products?category=${category.slug}`}>
-                  <div className="relative w-full aspect-[10/10] overflow-hidden">
-                    <img
-                      src={
-                        category.image?.url ||
-                        "/placeholder.svg?height=500&width=400&query=category image"
-                      }
-                      alt={category.image?.alt || category.name}
-                      className="object-cover object-center w-full h-full transition-transform duration-300 group-hover:scale-110"
-                    />
-                  </div>
-                  <div className="p-1 text-start">
-                    <h3 className="pl-1 text-lg text-gray-900 uppercase">
-                      {category.name}
-                    </h3>
-                  </div>
-                </Link>
-              </div>
+                <CategoryCard
+                  category={category}
+                  isHovered={hoveredId === category._id}
+                />
+              </motion.div>
             ))}
           </div>
         </div>
@@ -134,5 +104,43 @@ const FeaturedCategories = () => {
     </section>
   );
 };
+
+/* ---------- Card ---------- */
+const CategoryCard = ({ category, isHovered }) => (
+  <Link to={`/products?category=${category.slug}`} className="group block">
+    <div className="relative overflow-hidden rounded-2xl bg-white ring-1 ring-neutral-200/70 shadow-[0_1px_2px_rgba(0,0,0,0.04)] hover:shadow-[0_20px_50px_-15px_rgba(0,0,0,0.25)] transition-all duration-700">
+      {/* Image */}
+      <div className="relative w-full aspect-square overflow-hidden bg-neutral-100">
+        <img
+          src={
+            category.image?.url ||
+            "/placeholder.svg?height=500&width=400&query=category image"
+          }
+          alt={category.image?.alt || category.name}
+          className="object-cover object-center w-full h-full transition-transform duration-[1200ms] ease-out group-hover:scale-110"
+        />
+
+        {/* Bottom gradient veil */}
+        <div className="absolute inset-x-0 bottom-0 h-1/2 bg-gradient-to-t from-black/70 via-black/20 to-transparent opacity-90" />
+
+        {/* Top-right CTA chip */}
+        <div className="absolute top-3 right-3 flex h-9 w-9 items-center justify-center rounded-full bg-white/90 backdrop-blur-sm shadow-md translate-y-2 opacity-0 group-hover:translate-y-0 group-hover:opacity-100 transition-all duration-500">
+          <ArrowUpRight className="h-4 w-4 text-neutral-900" strokeWidth={1.6} />
+        </div>
+
+        {/* Title — overlaid on image bottom */}
+        <div className="absolute inset-x-0 bottom-0 p-4 sm:p-5">
+          <p className="text-[9px] sm:text-[10px] tracking-[0.3em] uppercase text-white/70 font-light mb-1">
+            Shop
+          </p>
+          <h3 className="text-sm sm:text-lg lg:text-xl font-medium text-white uppercase tracking-wide leading-tight">
+            {category.name}
+          </h3>
+          <div className="mt-2 h-px w-8 bg-white/70 group-hover:w-full transition-all duration-700" />
+        </div>
+      </div>
+    </div>
+  </Link>
+);
 
 export default FeaturedCategories;

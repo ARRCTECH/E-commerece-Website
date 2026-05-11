@@ -128,7 +128,7 @@ const HomePage = () => {
   return (
     <div className="min-h-screen bg-white flex flex-col">
       <PromoBanners />
-      <FlatDiscount />
+      {/* <FlatDiscount /> */}
       <HeroBanner />
       <KsauniTshirtStyle />
       <PriceSelection />

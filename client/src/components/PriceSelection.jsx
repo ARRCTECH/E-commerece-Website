@@ -1,112 +1,196 @@
 "use client";
+
 import { useState } from "react";
 import { motion } from "framer-motion";
 import { useNavigate } from "react-router-dom";
 import { useDispatch } from "react-redux";
-import { ArrowRight } from "lucide-react";
-// Redux
+import { ArrowUpRight } from "lucide-react";
 import { setFilters } from "../store/slices/productSlice";
 
 const PriceSelection = ({ selectedPrice }) => {
   const [selectedOption, setSelectedOption] = useState(selectedPrice || null);
+  const [hoveredId, setHoveredId] = useState(null);
   const navigate = useNavigate();
   const dispatch = useDispatch();
 
   const priceOptions = [
-    { id: "under649", label: "UNDER", sublabel: "₹649", value: 649 },
-    { id: "under799", label: "UNDER", sublabel: "₹799", value: 799 },
-    { id: "under999", label: "UNDER", sublabel: "₹999", value: 999 },
-    { id: "under1499", label: "UNDER", sublabel: "₹1499", value: 1499 },
+    { id: "under649",  label: "Essentials", sublabel: "₹649",  value: 649,  tag: "01 / Daily",    desc: "Everyday icons" },
+    { id: "under799",  label: "Smart Buys", sublabel: "₹799",  value: 799,  tag: "02 / Trend",    desc: "Of-the-moment" },
+    { id: "under999",  label: "Premium",    sublabel: "₹999",  value: 999,  tag: "03 / Signature",desc: "Refined edits" },
+    { id: "under1499", label: "Luxe",       sublabel: "₹1499", value: 1499, tag: "04 / Atelier",  desc: "The finale" },
   ];
 
   const handleOptionClick = (option) => {
     setSelectedOption(option.id);
-    // ✅ Update global Redux filters
-    dispatch(
-      setFilters({
-        minPrice: "", // reset min
-        maxPrice: option.value,
-      })
-    );
-    // ✅ Navigate with query param for persistence
+    dispatch(setFilters({ minPrice: "", maxPrice: option.value }));
     navigate(`/products?maxPrice=${option.value}`);
   };
 
   return (
-    <section className="relative w-full mt-4 px-2 sm:px-4 md:px-6 lg:px-8 xl:px-12 2xl:px-16">
-      {/* ✅ Limit width only on extra-large screens (like PromoBanners) */}
+    <section
+      className="relative w-full mt-10 px-3 sm:px-6 md:px-10 lg:px-16 py-12 sm:py-16"
+      style={{ fontFamily: "'Inter', sans-serif" }}
+    >
+      {/* Ambient backdrop */}
+      <div className="absolute inset-0 -z-10 bg-[#0a0a0a]" />
       <div
-        className="relative w-full mx-auto"
+        className="absolute inset-0 -z-10 opacity-[0.04]"
         style={{
-          maxWidth: "1600px", // only affects xl+ screens
+          backgroundImage:
+            "radial-gradient(circle at 1px 1px, rgba(255,255,255,0.6) 1px, transparent 0)",
+          backgroundSize: "32px 32px",
         }}
-      >
-        {/* Header */}
-        <div className="mb-2 text-center">
-          <h3 className="text-xl italic font-black sm:text-2xl md:text-3xl uppercase">
-            <span className="text-red-600">PRICE</span>{" "}
-            <span className="text-black">SELECTION</span>
-          </h3>
-          <p className="text-sm text-gray-600 sm:text-base">
-            Styles ab Budget mee
+      />
+      <div className="absolute top-1/3 left-1/4 -z-10 w-[500px] h-[500px] rounded-full bg-rose-600/10 blur-[120px]" />
+      <div className="absolute bottom-0 right-1/4 -z-10 w-[400px] h-[400px] rounded-full bg-amber-500/5 blur-[120px]" />
+
+      <div className="relative w-full mx-auto" style={{ maxWidth: "1600px" }}>
+        {/* Editorial Header */}
+        <div className="mb-12 sm:mb-16 flex flex-col sm:flex-row sm:items-end sm:justify-between gap-6 border-b border-white/10 pb-8">
+          <div>
+            <div className="flex items-center gap-3 mb-5">
+              <div className="h-px w-10 bg-rose-500" />
+              <span className="text-[10px] tracking-[0.4em] uppercase text-rose-400 font-medium">
+                The Edit · Vol. 04
+              </span>
+            </div>
+            <h3
+              className="text-5xl sm:text-6xl md:text-7xl text-white leading-[0.95] tracking-tight"
+              style={{ fontFamily: "'Playfair Display', Georgia, serif", fontWeight: 400 }}
+            >
+              Shop by <em className="italic text-rose-400/90 font-light">price</em>.
+              <br />
+              <span className="text-white/60">Curated for you.</span>
+            </h3>
+          </div>
+          <p className="text-sm text-white/50 max-w-xs leading-relaxed sm:text-right">
+            Four tiers. Endless possibilities. Every price point handpicked
+            to deliver an unmistakably premium experience.
           </p>
         </div>
 
-        {/* Price Options */}
-        <div className="grid grid-cols-4 gap-3 sm:gap-6">
-          {priceOptions.map((option) => (
-            <motion.button
-              key={option.id}
-              whileHover={{ scale: 1.05, y: -2 }}
-              whileTap={{ scale: 0.98 }}
-              onClick={() => handleOptionClick(option)}
-              className={`relative w-full text-xl cursor-pointer transition-all duration-300 ${
-                selectedOption === option.id ? "ring-4 ring-red-800" : ""
-              }`}
-            >
-              <div className="relative bg-red-600 text-white aspect-[4/5] flex flex-col items-center justify-center font-black text-center overflow-hidden hover:bg-red-700 transition-colors rounded-xl shadow-md">
-                {/* White border inside */}
-                <div className="absolute inset-[6%] border-2 border-white rounded-xl z-10"></div>
+        {/* Cards Grid */}
+        <div className="grid grid-cols-2 lg:grid-cols-4 gap-px bg-white/[0.06] rounded-3xl overflow-hidden border border-white/[0.08]">
+          {priceOptions.map((option, idx) => {
+            const isSelected = selectedOption === option.id;
+            const isHovered = hoveredId === option.id;
+            return (
+              <motion.button
+                key={option.id}
+                initial={{ opacity: 0, y: 30 }}
+                whileInView={{ opacity: 1, y: 0 }}
+                viewport={{ once: true }}
+                transition={{ delay: idx * 0.1, duration: 0.7, ease: [0.22, 1, 0.36, 1] }}
+                onHoverStart={() => setHoveredId(option.id)}
+                onHoverEnd={() => setHoveredId(null)}
+                onClick={() => handleOptionClick(option)}
+                className="group relative text-left focus:outline-none bg-[#0d0d0d] overflow-hidden"
+              >
+                {/* Hover fill */}
+                <motion.div
+                  initial={false}
+                  animate={{ scaleY: isHovered || isSelected ? 1 : 0 }}
+                  transition={{ duration: 0.6, ease: [0.22, 1, 0.36, 1] }}
+                  className="absolute inset-0 origin-bottom bg-gradient-to-t from-rose-950 via-rose-900/40 to-transparent"
+                />
 
-                {/* Zigzag Left */}
-                <div className="absolute inset-y-0 left-0 w-3 overflow-hidden z-0">
-                  <svg
-                    xmlns="http://www.w3.org/2000/svg"
-                    viewBox="0 0 10 100"
-                    preserveAspectRatio="none"
-                    className="h-full w-full fill-white opacity-40"
-                  >
-                    <path d="M0 0 L10 10 L0 20 L10 30 L0 40 L10 50 L0 60 L10 70 L0 80 L10 90 L0 100 Z" />
-                  </svg>
-                </div>
-
-                {/* Zigzag Right */}
-                <div className="absolute inset-y-0 right-0 w-3 overflow-hidden z-0">
-                  <svg
-                    xmlns="http://www.w3.org/2000/svg"
-                    viewBox="0 0 10 100"
-                    preserveAspectRatio="none"
-                    className="h-full w-full fill-white opacity-40"
-                  >
-                    <path d="M10 0 L0 10 L10 20 L0 30 L10 40 L0 50 L10 60 L0 70 L10 80 L0 90 L10 100 Z" />
-                  </svg>
-                </div>
+                {/* Selected accent line */}
+                {isSelected && (
+                  <motion.div
+                    layoutId="selected-line"
+                    className="absolute top-0 left-0 right-0 h-[2px] bg-gradient-to-r from-rose-500 via-orange-400 to-amber-300 z-20"
+                  />
+                )}
 
                 {/* Content */}
-                <div className="z-20">
-                  <div className="mb-1 text-sm sm:text-lg md:text-2xl font-semibold leading-tight uppercase">
-                    {option.label}
+                <div className="relative aspect-[3/4] sm:aspect-[4/5] p-5 sm:p-7 flex flex-col justify-between z-10">
+                  {/* Top */}
+                  <div className="flex items-start justify-between">
+                    <span className="text-[10px] tracking-[0.25em] uppercase text-white/40 font-medium">
+                      {option.tag}
+                    </span>
+                    <motion.div
+                      animate={{
+                        rotate: isHovered ? 45 : 0,
+                        backgroundColor: isHovered ? "#fff" : "rgba(255,255,255,0.06)",
+                        color: isHovered ? "#0a0a0a" : "#fff",
+                      }}
+                      transition={{ duration: 0.4, ease: "easeOut" }}
+                      className="w-10 h-10 rounded-full flex items-center justify-center border border-white/10"
+                    >
+                      <ArrowUpRight className="w-4 h-4" strokeWidth={1.5} />
+                    </motion.div>
                   </div>
-                  <div className="mb-1 text-[20px] sm:text-base md:text-lg font-small">
-                    {option.sublabel}
+
+                  {/* Center decorative */}
+                  <div className="flex-1 flex items-center justify-center my-4">
+                    <motion.div
+                      animate={{
+                        scale: isHovered ? 1.05 : 1,
+                        opacity: isHovered ? 1 : 0.85,
+                      }}
+                      transition={{ duration: 0.5 }}
+                      className="text-center"
+                    >
+                      <div className="text-[10px] tracking-[0.4em] uppercase text-white/30 mb-2">
+                        Under
+                      </div>
+                      <div
+                        className="text-5xl sm:text-6xl md:text-7xl text-white leading-none tracking-tight"
+                        style={{ fontFamily: "'Playfair Display', Georgia, serif", fontWeight: 300 }}
+                      >
+                        {option.sublabel}
+                      </div>
+                    </motion.div>
                   </div>
-                  <div className="flex items-center justify-center w-5 h-5 bg-white rounded-full sm:w-6 sm:h-6 mx-auto">
-                    <ArrowRight className="w-3 h-3 sm:w-4 sm:h-4 text-red-800" />
+
+                  {/* Bottom */}
+                  <div>
+                    <div className="overflow-hidden mb-1">
+                      <motion.div
+                        animate={{ y: isHovered ? -2 : 0 }}
+                        transition={{ duration: 0.4 }}
+                      >
+                        <div className="text-base sm:text-lg text-white font-medium tracking-tight">
+                          {option.label}
+                        </div>
+                        <div className="text-xs text-white/40 mt-0.5">
+                          {option.desc}
+                        </div>
+                      </motion.div>
+                    </div>
+
+                    <div className="mt-4 h-px w-full bg-white/10 overflow-hidden">
+                      <motion.div
+                        initial={{ scaleX: 0 }}
+                        animate={{ scaleX: isHovered || isSelected ? 1 : 0 }}
+                        transition={{ duration: 0.6, ease: [0.22, 1, 0.36, 1] }}
+                        className="h-full bg-gradient-to-r from-rose-400 to-amber-300 origin-left"
+                      />
+                    </div>
+
+                    <motion.div
+                      initial={false}
+                      animate={{
+                        opacity: isHovered ? 1 : 0,
+                        y: isHovered ? 0 : 6,
+                      }}
+                      transition={{ duration: 0.3 }}
+                      className="mt-3 text-[11px] tracking-[0.2em] uppercase text-rose-300 font-medium"
+                    >
+                      Explore →
+                    </motion.div>
                   </div>
                 </div>
-              </div>
-            </motion.button>
-          ))}
+              </motion.button>
+            );
+          })}
+        </div>
+
+        {/* Footer caption */}
+        <div className="mt-8 flex items-center justify-between text-[10px] tracking-[0.3em] uppercase text-white/30">
+          <span>Made with intent</span>
+          <span>Free shipping · Easy returns</span>
         </div>
       </div>
     </section>
