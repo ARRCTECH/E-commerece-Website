@@ -6,27 +6,37 @@ const {
   getUserOrders,
   getOrderDetails,
   cancelOrder,
-  trackOrder,
-  getShippingRates,
-  fetchAndSetTrackingInfo
+  createPartialCodOrder,        // ✅ Make sure this is imported
+  verifyPartialCodPayment,      // ✅ Make sure this is imported
+  getPaymentMethodsHandler,     // ✅ Make sure this is imported
 } = require("../controllers/orderController");
 const { protect, optionalProtect } = require("../middleware/auth");
 
 const router = express.Router();
 
-// Shipping rates route - supports guest checkout
-router.post('/shipping-rates', optionalProtect, getShippingRates)
-router.post('/trackingOrder', optionalProtect, fetchAndSetTrackingInfo)
+// ===============================
+// Payment Methods
+// ===============================
+router.get("/payment-methods", optionalProtect, getPaymentMethodsHandler);
 
-// Order creation routes - support guest checkout
+// ===============================
+// Partial COD Routes
+// ===============================
+router.post("/create-partial-cod-order", optionalProtect, createPartialCodOrder);  // ✅ ADD THIS ROUTE
+router.post("/verify-partial-cod-payment", optionalProtect, verifyPartialCodPayment);  // ✅ ADD THIS ROUTE
+
+// ===============================
+// Order Creation Routes
+// ===============================
 router.post("/create-razorpay-order", optionalProtect, createRazorpayOrder);
 router.post("/cod", optionalProtect, placeCodOrder);
 router.post("/verify-payment", optionalProtect, verifyPaymentAndCreateOrder);
 
-// Order management routes - require authentication
+// ===============================
+// Order Management Routes
+// ===============================
 router.get("/my-orders", protect, getUserOrders);
 router.get("/:orderId", optionalProtect, getOrderDetails);
-router.get("/:orderId/track", optionalProtect, trackOrder);
 router.put("/:orderId/cancel", protect, cancelOrder);
 
 module.exports = router;
