@@ -185,7 +185,7 @@ const ProductsPage = () => {
       <div className="px-4 py-2 pt-2 mx-auto md:pt-8">
         <div className="flex flex-col gap-6 md:flex-row">
           {/* Desktop Filters Sidebar */}
-          <aside className="hidden md:block md:w-56 lg:w-64 sticky top-[100px] h-[calc(90vh-180px)] rounded-md">
+          <aside className="hidden md:block md:w-64 lg:w- top-[100px] h-[calc(80vh-10px)] rounded-md">
             <ProductFilters
               key={categorySlug || "all"}
               filters={filters}

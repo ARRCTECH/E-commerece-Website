@@ -35,7 +35,7 @@ const ProductDetailPage = () => {
   const isAddingToCart = useSelector(selectIsAddingToCart)
   const isAddingToWishlist = useSelector(selectIsAddingToWishlist)
   const isRemovingFromWishlist = useSelector(selectIsRemovingFromWishlist)
-  const [selectedImage, setSelectedImage] = useState(0)
+  const [selectedMediaIndex, setSelectedMediaIndex] = useState(0) // unified index for images+videos
   const [selectedSize, setSelectedSize] = useState("")
   const [selectedColor, setSelectedColor] = useState("")
   const [quantity, setQuantity] = useState(1)
@@ -45,7 +45,7 @@ const ProductDetailPage = () => {
   const [showBuyNowSizeModal, setShowBuyNowSizeModal] = useState(false)
   const [showAddToCartSizeModal, setShowAddToCartSizeModal] = useState(false)
   const [showFullDescription, setShowFullDescription] = useState(false)
-  
+
   // Bulk product states
   const [showBulkModal, setShowBulkModal] = useState(false)
   const [selectedColors, setSelectedColors] = useState([])
@@ -55,16 +55,22 @@ const ProductDetailPage = () => {
   const isBulkProduct = currentProduct?.isBulkProduct === true
 
   // Bulk calculations
-  const piecesPerSet = isBulkProduct 
+  const piecesPerSet = isBulkProduct
     ? (currentProduct?.sizes?.length || 0) * (currentProduct?.bulkConfig?.piecesPerSize || 1)
     : 0
   const totalColors = isBulkProduct ? currentProduct?.colors?.length || 0 : 0
   const minColors = isBulkProduct ? currentProduct?.bulkConfig?.minColorsToSelect || 1 : 1
   const maxColors = isBulkProduct ? currentProduct?.bulkConfig?.maxColorsToSelect || totalColors : totalColors
-  
+
   const totalSets = selectedColors.length * bulkQuantity
   const totalPieces = piecesPerSet * totalSets
   const totalPrice = (currentProduct?.bulkConfig?.pricePerSet || currentProduct?.price) * totalSets
+
+  // Build unified media array (images first, then videos – you can reorder as needed)
+  const mediaItems = [
+    ...(currentProduct?.images?.map(img => ({ type: 'image', url: img.url, alt: currentProduct.name, id: img._id })) || []),
+    ...(currentProduct?.videos?.map(vid => ({ type: 'video', url: vid.url, alt: currentProduct.name, id: vid._id })) || [])
+  ];
 
   const formatDescription = (description) => {
     if (!description) return "";
@@ -167,7 +173,7 @@ const ProductDetailPage = () => {
         quantity: totalSets
       }
 
-      dispatch(optimisticAddToCart({ 
+      dispatch(optimisticAddToCart({
         product: currentProduct,
         isBulkProduct: true,
         selectedColors: selectedColors,
@@ -216,56 +222,57 @@ const ProductDetailPage = () => {
       setTimeout(() => { if (bag) bag.style.transform = "scale(1)" }, 200)
     }
   }
-const handleBuyNowClick = () => {
-  // For bulk product - directly proceed to checkout with selected colors
-  if (isBulkProduct) {
-    if (selectedColors.length < minColors) {
-      toast.error(`Please select at least ${minColors} color(s)`);
+  
+  const handleBuyNowClick = () => {
+    // For bulk product - directly proceed to checkout with selected colors
+    if (isBulkProduct) {
+      if (selectedColors.length < minColors) {
+        toast.error(`Please select at least ${minColors} color(s)`);
+        return;
+      }
+
+      // Navigate to checkout with bulk product data
+      navigate("/checkout", {
+        state: {
+          buyNow: true,
+          isBulkProduct: true,
+          buyNowProduct: {
+            product: currentProduct,
+            quantity: bulkQuantity,
+            selectedColors: selectedColors,
+            totalSets: selectedColors.length * bulkQuantity,
+            totalPieces: piecesPerSet * selectedColors.length * bulkQuantity,
+            totalPrice: (currentProduct?.bulkConfig?.pricePerSet || currentProduct?.price) * selectedColors.length * bulkQuantity,
+            isBulkProduct: true,
+            bulkConfig: currentProduct?.bulkConfig,
+            availableSizes: currentProduct?.sizes,
+            availableColors: currentProduct?.colors,
+            pricePerSet: currentProduct?.bulkConfig?.pricePerSet || currentProduct?.price
+          }
+        }
+      });
       return;
     }
-    
-    // Navigate to checkout with bulk product data
-    navigate("/checkout", {
-      state: {
-        buyNow: true,
-        isBulkProduct: true,
-        buyNowProduct: {
-          product: currentProduct,
-          quantity: bulkQuantity,
-          selectedColors: selectedColors,
-          totalSets: selectedColors.length * bulkQuantity,
-          totalPieces: piecesPerSet * selectedColors.length * bulkQuantity,
-          totalPrice: (currentProduct?.bulkConfig?.pricePerSet || currentProduct?.price) * selectedColors.length * bulkQuantity,
-          isBulkProduct: true,
-          bulkConfig: currentProduct?.bulkConfig,
-          availableSizes: currentProduct?.sizes,
-          availableColors: currentProduct?.colors,
-          pricePerSet: currentProduct?.bulkConfig?.pricePerSet || currentProduct?.price
-        }
-      }
-    });
-    return;
-  }
 
-  // Regular product buy now logic (existing)
-  if (currentProduct.sizes?.length > 0 && !selectedSize) {
-    setShowBuyNowSizeModal(true);
-    return;
-  }
+    // Regular product buy now logic (existing)
+    if (currentProduct.sizes?.length > 0 && !selectedSize) {
+      setShowBuyNowSizeModal(true);
+      return;
+    }
 
-  if (currentProduct.colors?.length && !selectedColor) {
-    toast.error("Please select a color");
-    return;
-  }
+    if (currentProduct.colors?.length && !selectedColor) {
+      toast.error("Please select a color");
+      return;
+    }
 
-  const sizeStock = getSelectedSizeStock();
-  if (quantity > sizeStock) {
-    toast.error(`Only ${sizeStock} items available in stock`);
-    return;
-  }
+    const sizeStock = getSelectedSizeStock();
+    if (quantity > sizeStock) {
+      toast.error(`Only ${sizeStock} items available in stock`);
+      return;
+    }
 
-  handleProceedToCheckout();
-};
+    handleProceedToCheckout();
+  };
 
   const handleProceedToCheckout = () => {
     navigate("/checkout", {
@@ -370,10 +377,10 @@ const handleBuyNowClick = () => {
   }
 
   // Bulk product price display
-  const displayPrice = isBulkProduct 
+  const displayPrice = isBulkProduct
     ? (currentProduct?.bulkConfig?.pricePerSet || currentProduct?.price)
     : currentProduct?.price
-  
+
   const displayOriginalPrice = isBulkProduct
     ? currentProduct?.bulkConfig?.originalPricePerSet
     : currentProduct?.originalPrice
@@ -396,12 +403,12 @@ const handleBuyNowClick = () => {
           </nav>
         </div>
       </div>
-      
+
       {/* Main Content */}
       <div className="">
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 p-4 sm:p-4">
-          
-          {/* LEFT COLUMN - IMAGES (VERTICAL THUMBNAILS FOR DESKTOP) */}
+
+          {/* LEFT COLUMN - IMAGES+VIDEOS (MOBILE SWIPER) */}
           <div className="lg:hidden relative -mx-4 rounded-xl">
             <button
               onClick={handleWishlistToggle}
@@ -410,23 +417,33 @@ const handleBuyNowClick = () => {
             >
               <Heart id="wish" className={`w-5 h-5 ${isInWishlist ? "fill-current" : ""}`} />
             </button>
-            
+
             <Swiper spaceBetween={0} pagination={{ clickable: true, dynamicBullets: true }} modules={[Pagination]} className="rounded-xl">
-              {currentProduct.images.map((img, idx) => (
+              {mediaItems.map((item, idx) => (
                 <SwiperSlide key={idx}>
                   <div className="relative">
-                    <img
-                      src={img.url || "/placeholder.svg"}
-                      alt={currentProduct.name}
-                      className="w-full h-auto aspect-square object-cover -mb-8"
-                      loading="lazy"
-                      onClick={() => { setSelectedImage(idx); setShowImageModal(true) }}
-                    />
+                    {item.type === 'image' ? (
+                      <img
+                        src={item.url}
+                        alt={item.alt}
+                        className="w-full h-auto aspect-square object-cover -mb-8"
+                        loading="lazy"
+                        onClick={() => { setSelectedMediaIndex(idx); setShowImageModal(true); }}
+                      />
+                    ) : (
+                      <video
+                        src={item.url}
+                        controls
+                        className="w-full h-auto aspect-square object-cover -mb-8"
+                        poster={currentProduct.images?.[0]?.url || ''}
+                        onClick={(e) => e.stopPropagation()}
+                      />
+                    )}
                   </div>
                 </SwiperSlide>
               ))}
             </Swiper>
-            
+
             <div className="px-2">
               <p className="text-lg font-bold text-gray-900">{currentProduct.brand || "Ksauni Bliss"}</p>
               <p className="text-sm text-gray-600 mt-1">{currentProduct.name}</p>
@@ -443,42 +460,66 @@ const handleBuyNowClick = () => {
             </div>
           </div>
 
-          {/* DESKTOP IMAGES - VERTICAL THUMBNAILS */}
+          {/* DESKTOP MEDIA - VERTICAL THUMBNAILS + MAIN VIEW */}
           <div className="hidden lg:block">
             <div className="flex gap-4">
               {/* Vertical Thumbnails */}
               <div className="flex flex-col gap-2 w-20">
-                {currentProduct.images.map((img, idx) => (
+                {mediaItems.map((item, idx) => (
                   <button
                     key={idx}
-                    onClick={() => setSelectedImage(idx)}
-                    className={`w-20 h-20 rounded-lg overflow-hidden border-2 transition ${
-                      selectedImage === idx ? "border-primary ring-2 ring-primary/30" : "border-gray-200 hover:border-gray-400"
-                    }`}
+                    onClick={() => setSelectedMediaIndex(idx)}
+                    className={`w-20 h-20 rounded-lg overflow-hidden border-2 transition ${selectedMediaIndex === idx ? "border-primary ring-2 ring-primary/30" : "border-gray-200 hover:border-gray-400"}`}
                   >
-                    <img
-                      src={img.url || "/placeholder.svg"}
-                      alt={`${currentProduct.name} ${idx + 1}`}
-                      className="w-full h-full object-cover"
-                    />
+                    {item.type === 'image' ? (
+                      <img
+                        src={item.url}
+                        alt={`${item.alt} ${idx + 1}`}
+                        className="w-full h-full object-cover"
+                      />
+                    ) : (
+                      <div className="relative w-full h-full bg-gray-900 flex items-center justify-center">
+                        <video
+                          src={item.url}
+                          className="w-full h-full object-cover"
+                          muted
+                          preload="metadata"
+                        />
+                        <div className="absolute inset-0 flex items-center justify-center bg-black/30">
+                          <svg className="w-8 h-8 text-white" fill="currentColor" viewBox="0 0 24 24">
+                            <path d="M8 5v14l11-7z" />
+                          </svg>
+                        </div>
+                      </div>
+                    )}
                   </button>
                 ))}
               </div>
-              
-              {/* Main Image */}
+
+              {/* Main Media Display */}
               <div className="flex-1">
                 <div className="relative bg-gray-50 rounded-xl overflow-hidden group">
-                  <motion.img
-                    src={currentProduct.images[selectedImage]?.url}
-                    alt={currentProduct.name}
-                    className="w-full h-auto max-w-full object-contain cursor-zoom-in"
-                    onClick={() => setShowImageModal(true)}
-                    initial={{ opacity: 0 }}
-                    animate={{ opacity: 1 }}
-                    transition={{ duration: 0.4 }}
-                    loading="lazy"
-                  />
-                  {getSelectedSizeStock() === 0 && (
+                  {mediaItems[selectedMediaIndex]?.type === 'image' ? (
+                    <motion.img
+                      src={mediaItems[selectedMediaIndex].url}
+                      alt={currentProduct.name}
+                      className="w-full h-auto max-w-full object-contain cursor-zoom-in"
+                      onClick={() => setShowImageModal(true)}
+                      initial={{ opacity: 0 }}
+                      animate={{ opacity: 1 }}
+                      transition={{ duration: 0.4 }}
+                      loading="lazy"
+                    />
+                  ) : (
+                    <video
+                      src={mediaItems[selectedMediaIndex].url}
+                      controls
+                      className="w-full h-auto max-w-full object-contain"
+                      poster={currentProduct.images?.[0]?.url || ''}
+                      autoPlay={false}
+                    />
+                  )}
+                  {getSelectedSizeStock() === 0 && !isBulkProduct && (
                     <div className="absolute inset-0 flex items-center justify-center bg-black bg-opacity-30">
                       <span className="bg-white text-gray-800 px-4 py-2 rounded-full font-medium">Out of Stock</span>
                     </div>
@@ -488,7 +529,7 @@ const handleBuyNowClick = () => {
             </div>
           </div>
 
-          {/* RIGHT COLUMN - PRODUCT INFO (COMPLETELY ORIGINAL - NO CHANGES) */}
+          {/* RIGHT COLUMN - PRODUCT INFO (unchanged functionality, only variable names updated) */}
           <div className="lg:hidden space-y-4 px-2 mt-24">
             {/* Description - Mobile */}
             <div>
@@ -674,7 +715,7 @@ const handleBuyNowClick = () => {
             </div>
           </div>
 
-          {/* DESKTOP RIGHT COLUMN (COMPLETELY ORIGINAL) */}
+          {/* DESKTOP RIGHT COLUMN - unchanged except variable name consistency */}
           <div className="hidden lg:block space-y-1">
             <div className="flex items-start justify-between">
               <div className="hidden lg:block mb-1">
@@ -894,11 +935,10 @@ const handleBuyNowClick = () => {
                 <button
                   onClick={handleAddToCartClick}
                   disabled={isAddingToCart || (!isBulkProduct && selectedSize && getSelectedSizeStock() === 0) || (isBulkProduct && selectedColors.length < minColors)}
-                  className={`flex-1 flex items-center justify-center gap-2 px-4 py-1 border-2 font-semibold rounded-xl transition-colors disabled:cursor-not-allowed ${
-                    ((!isBulkProduct && selectedSize && getSelectedSizeStock() === 0) || (isBulkProduct && selectedColors.length < minColors))
+                  className={`flex-1 flex items-center justify-center gap-2 px-4 py-1 border-2 font-semibold rounded-xl transition-colors disabled:cursor-not-allowed ${((!isBulkProduct && selectedSize && getSelectedSizeStock() === 0) || (isBulkProduct && selectedColors.length < minColors))
                       ? "bg-gray-100 border-gray-300 text-gray-400"
                       : "bg-white border-gray-300 text-gray-800 hover:border-gray-400 hover:bg-gray-50"
-                  } ${isAddingToCart ? "opacity-50" : ""}`}
+                    } ${isAddingToCart ? "opacity-50" : ""}`}
                 >
                   <ShoppingCart className="w-5 h-5" />
                   ADD TO CART
@@ -906,11 +946,10 @@ const handleBuyNowClick = () => {
                 <button
                   onClick={handleBuyNowClick}
                   disabled={isAddingToCart || (!isBulkProduct && selectedSize && getSelectedSizeStock() === 0) || (isBulkProduct && selectedColors.length < minColors)}
-                  className={`flex-1 flex items-center justify-center gap-2 px-4 py-1 font-semibold rounded-xl transition-colors disabled:cursor-not-allowed ${
-                    ((!isBulkProduct && selectedSize && getSelectedSizeStock() === 0) || (isBulkProduct && selectedColors.length < minColors))
+                  className={`flex-1 flex items-center justify-center gap-2 px-4 py-1 font-semibold rounded-xl transition-colors disabled:cursor-not-allowed ${((!isBulkProduct && selectedSize && getSelectedSizeStock() === 0) || (isBulkProduct && selectedColors.length < minColors))
                       ? "bg-gray-400 text-gray-200"
                       : "bg-red-600 text-white hover:bg-red-700"
-                  } ${isAddingToCart ? "opacity-50" : ""}`}
+                    } ${isAddingToCart ? "opacity-50" : ""}`}
                 >
                   <img src="/buynow1.svg" className="w-8 h-8" />
                   BUY NOW
@@ -944,7 +983,8 @@ const handleBuyNowClick = () => {
         </div>
       </div>
 
-      {/* All Modals - Same as original */}
+      {/* All Modals - unchanged except closures and function names updated */}
+      
       {/* Bulk Modal */}
       <AnimatePresence>
         {showBulkModal && isBulkProduct && (
@@ -1172,9 +1212,9 @@ const handleBuyNowClick = () => {
         )}
       </AnimatePresence>
 
-      {/* Image Modal */}
+      {/* Image Modal (only for images) */}
       <AnimatePresence>
-        {showImageModal && (
+        {showImageModal && mediaItems[selectedMediaIndex]?.type === 'image' && (
           <motion.div
             className="fixed inset-0 bg-black z-50 flex items-center justify-center"
             initial={{ opacity: 0 }}
@@ -1186,7 +1226,7 @@ const handleBuyNowClick = () => {
               <X className="w-6 h-6" />
             </button>
             <div className="w-full h-full flex items-center justify-center">
-              <img src={currentProduct.images[selectedImage]?.url || "/placeholder.svg"} alt={currentProduct.name} className="w-full h-auto max-h-screen object-contain" />
+              <img src={mediaItems[selectedMediaIndex]?.url} alt={currentProduct.name} className="w-full h-auto max-h-screen object-contain" />
             </div>
           </motion.div>
         )}
@@ -1229,11 +1269,10 @@ const handleBuyNowClick = () => {
           <button
             onClick={handleAddToCartClick}
             disabled={isAddingToCart || (!isBulkProduct && selectedSize && getSelectedSizeStock() === 0) || (isBulkProduct && selectedColors.length < minColors)}
-            className={`flex-1 flex items-center justify-center gap-2 px-4 py-3 rounded-xl font-semibold text-sm ${
-              ((!isBulkProduct && selectedSize && getSelectedSizeStock() === 0) || (isBulkProduct && selectedColors.length < minColors))
+            className={`flex-1 flex items-center justify-center gap-2 px-4 py-3 rounded-xl font-semibold text-sm ${((!isBulkProduct && selectedSize && getSelectedSizeStock() === 0) || (isBulkProduct && selectedColors.length < minColors))
                 ? "bg-gray-100 text-gray-400"
                 : "bg-white border border-gray-300 text-gray-800"
-            }`}
+              }`}
           >
             <ShoppingCart className="w-5 h-5" />
             ADD TO CART
@@ -1241,11 +1280,10 @@ const handleBuyNowClick = () => {
           <button
             onClick={handleBuyNowClick}
             disabled={isAddingToCart || (!isBulkProduct && selectedSize && getSelectedSizeStock() === 0) || (isBulkProduct && selectedColors.length < minColors)}
-            className={`flex-1 flex items-center justify-center gap-2 px-4 py-3 rounded-xl font-semibold text-sm ${
-              ((!isBulkProduct && selectedSize && getSelectedSizeStock() === 0) || (isBulkProduct && selectedColors.length < minColors))
+            className={`flex-1 flex items-center justify-center gap-2 px-4 py-3 rounded-xl font-semibold text-sm ${((!isBulkProduct && selectedSize && getSelectedSizeStock() === 0) || (isBulkProduct && selectedColors.length < minColors))
                 ? "bg-gray-400 text-gray-200"
                 : "bg-red-600 text-white"
-            }`}
+              }`}
           >
             <img src="/buynow1.svg" className="w-6 h-6" />
             BUY NOW

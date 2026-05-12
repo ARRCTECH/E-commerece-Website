@@ -36,6 +36,12 @@ const productSchema = new mongoose.Schema(
         alt: String,
       },
     ],
+    videos: [
+      {
+        url: String,
+        alt: String,
+      },
+    ],
     category: {
       type: mongoose.Schema.Types.ObjectId,
       ref: "Category",
