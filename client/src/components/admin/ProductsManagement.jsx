@@ -1,3 +1,4 @@
+/* eslint-disable react-hooks/exhaustive-deps */
 "use client"
 
 import { useState, useEffect } from "react"
@@ -14,7 +15,7 @@ const ProductsManagement = () => {
   const [showModal, setShowModal] = useState(false)
   const [editingProduct, setEditingProduct] = useState(null)
   const [searchTerm, setSearchTerm] = useState("")
-  const [productType, setProductType] = useState("regular") 
+  const [productType, setProductType] = useState("regular")
   const [filters, setFilters] = useState({
     category: "",
     minPrice: "",
@@ -59,6 +60,7 @@ const ProductsManagement = () => {
   })
 
   const [images, setImages] = useState([])
+  const [videos, setVideos] = useState([])
 
   useEffect(() => {
     fetchProducts()
@@ -95,15 +97,15 @@ const ProductsManagement = () => {
 
   const handleSubmit = async (e) => {
     e.preventDefault()
-    
+
     // ✅ Prevent double submit
     if (isSubmitting) {
       console.log("Already submitting, please wait...")
       return
     }
-    
+
     setIsSubmitting(true)
-    
+
     try {
       setLoading(true)
       const formDataToSend = new FormData()
@@ -146,18 +148,39 @@ const ProductsManagement = () => {
       }
 
       const newImages = images.filter((img) => !img.isExisting && img.file)
+      const newVideos = videos.filter((vid) => !vid.isExisting && vid.file)
+
       const existingImageIds = images
         .filter((img) => img.isExisting)
         .map((img) => img.imageId)
+        .filter(Boolean)
+
+      const existingVideoIds = videos
+        .filter((vid) => vid.isExisting)
+        .map((vid) => vid.videoId)
         .filter(Boolean)
 
       newImages.forEach((img) => {
         formDataToSend.append("images", img.file)
       })
 
+      newVideos.forEach((vid) => {
+        formDataToSend.append("videos", vid.file)
+      })
+
       if (existingImageIds.length > 0) {
         formDataToSend.append("existingImages", JSON.stringify(existingImageIds))
       }
+
+      if (existingVideoIds.length > 0) {
+        formDataToSend.append("existingVideos", JSON.stringify(existingVideoIds))
+      }
+
+      const videoOrder = videos.map((vid, index) => ({
+        type: vid.isExisting ? "existing" : "new",
+        id: vid.isExisting ? vid.videoId : vid.name,
+        order: index,
+      }))
 
       const imageOrder = images.map((img, index) => ({
         type: img.isExisting ? "existing" : "new",
@@ -165,6 +188,7 @@ const ProductsManagement = () => {
         order: index,
       }))
       formDataToSend.append("imageOrder", JSON.stringify(imageOrder))
+      formDataToSend.append("videoOrder", JSON.stringify(videoOrder))
 
       if (editingProduct) {
         await adminAPI.updateProduct(editingProduct._id, formDataToSend)
@@ -227,26 +251,27 @@ const ProductsManagement = () => {
     })
     setProductType("regular")
     setImages([])
+    setVideos([])
     setEditingProduct(null)
   }
 
   const openEditModal = (product) => {
     setEditingProduct(product)
     const isBulk = product.isBulkProduct === true
-    
+
     setProductType(isBulk ? "bulk" : "regular")
-    
+
     // ✅ Ensure price and originalPrice are single values
     let priceValue = product.price
     let originalPriceValue = product.originalPrice
-    
+
     if (Array.isArray(priceValue)) {
       priceValue = priceValue[0]
     }
     if (Array.isArray(originalPriceValue)) {
       originalPriceValue = originalPriceValue[0]
     }
-    
+
     setFormData({
       name: product.name || "",
       brand: product.brand || "Factory Sale",
@@ -290,6 +315,20 @@ const ProductsManagement = () => {
       setImages([])
     }
 
+    if (product.videos && product.videos.length > 0) {
+      const existingVideos = product.videos.map((video, index) => ({
+        file: null,
+        name: `existing-video-${index}`,
+        preview: video.url,
+        sizeKB: 0,
+        isExisting: true,
+        videoId: video._id || video.id,
+      }))
+      setVideos(existingVideos)
+    } else {
+      setVideos([])
+    }
+
     setShowModal(true)
   }
 
@@ -303,6 +342,45 @@ const ProductsManagement = () => {
     }))
     setImages((prev) => [...prev, ...wrapped])
   }
+
+  const handleVideoChange = async (e) => {
+    const files = Array.from(e.target.files || []);
+    const validVideos = [];
+    for (const file of files) {
+      if (file.size > 50 * 1024 * 1024) {
+        alert(`❌ "${file.name}" exceeds 50 MB limit.`);
+        continue;
+      }
+      const isValidDuration = await checkVideoDuration(file);
+      if (!isValidDuration) {
+        alert(`❌ "${file.name}" is longer than 30 seconds. Only the first 30 sec will be used, but please upload a shorter video.`);
+        continue;
+      }
+      validVideos.push({
+        file,
+        name: file.name,
+        preview: URL.createObjectURL(file),
+        sizeKB: Math.round(file.size / 1024),
+      });
+    }
+    setVideos((prev) => [...prev, ...validVideos]);
+  };
+
+  const checkVideoDuration = (file) => {
+    return new Promise((resolve) => {
+      const video = document.createElement('video');
+      video.preload = 'metadata';
+      video.onloadedmetadata = () => {
+        window.URL.revokeObjectURL(video.src);
+        resolve(video.duration <= 31);
+      };
+      video.onerror = () => {
+        window.URL.revokeObjectURL(video.src);
+        resolve(false);
+      };
+      video.src = URL.createObjectURL(file);
+    });
+  };
 
   const addSize = () => {
     setFormData({
@@ -368,7 +446,44 @@ const ProductsManagement = () => {
       const [removed] = next.splice(index, 1)
       try {
         if (removed?.preview) URL.revokeObjectURL(removed.preview)
-      } catch {}
+      } catch (e) {
+        return `Error occurred while revoking object URL: ${e.message}`
+      }
+      return next
+    })
+  }
+
+  const moveVideo = (index, direction) => {
+    setVideos((prev) => {
+      const next = [...prev]
+      const target = index + direction
+      if (target < 0 || target >= next.length) return prev
+      const tmp = next[index]
+      next[index] = next[target]
+      next[target] = tmp
+      return next
+    })
+  }
+
+  const setAsFirstVideo = (index) => {
+    setVideos((prev) => {
+      if (index <= 0) return prev
+      const next = [...prev]
+      const [item] = next.splice(index, 1)
+      next.unshift(item)
+      return next
+    })
+  }
+
+  const removeVideo = (index) => {
+    setVideos((prev) => {
+      const next = [...prev]
+      const [removed] = next.splice(index, 1)
+      try {
+        if (removed?.preview) URL.revokeObjectURL(removed.preview)
+      } catch (e) {
+        return `Error occurred while revoking object URL: ${e.message}`
+      }
       return next
     })
   }
@@ -378,7 +493,9 @@ const ProductsManagement = () => {
       images.forEach((img) => {
         try {
           if (img?.preview) URL.revokeObjectURL(img.preview)
-        } catch {}
+        } catch (e) {
+          console.log(e)
+        }
       })
     }
   }, [])
@@ -545,11 +662,10 @@ const ProductsManagement = () => {
                     <button
                       key={page}
                       onClick={() => setPagination({ ...pagination, current: page })}
-                      className={`relative inline-flex items-center px-4 py-2 border text-sm font-medium ${
-                        page === pagination.current
-                          ? "z-10 bg-blue-50 border-blue-500 text-blue-600"
-                          : "bg-white border-gray-300 text-gray-500 hover:bg-gray-50"
-                      }`}
+                      className={`relative inline-flex items-center px-4 py-2 border text-sm font-medium ${page === pagination.current
+                        ? "z-10 bg-blue-50 border-blue-500 text-blue-600"
+                        : "bg-white border-gray-300 text-gray-500 hover:bg-gray-50"
+                        }`}
                     >
                       {page}
                     </button>
@@ -613,7 +729,7 @@ const ProductsManagement = () => {
                     </select>
                     {editingProduct && <p className="mt-1 text-sm text-gray-500">Category cannot be changed when updating</p>}
                   </div>
-                  
+
                   {/* Price fields - Different for bulk */}
                   {productType === "bulk" ? (
                     <>
@@ -638,7 +754,7 @@ const ProductsManagement = () => {
                       </div>
                     </>
                   )}
-                  
+
                   <div>
                     <label className="block mb-1 text-sm font-medium text-gray-700">Stock</label>
                     <input type="number" value={formData.stock} onChange={(e) => setFormData({ ...formData, stock: e.target.value })} className="w-full px-3 py-2 border rounded-md" required />
@@ -717,9 +833,23 @@ const ProductsManagement = () => {
 
                 {/* Images Section */}
                 <div>
-                  <label className="block mb-1 text-sm font-medium text-gray-700">Product Images</label>
-                  <input type="file" multiple accept="image/*" onChange={handleImageChange} className="w-full px-3 py-2 border rounded-md" />
-                  <p className="mt-1 text-sm text-gray-500">Select multiple images for the product</p>
+                  <div className="flex flex-row justify-around">
+                    <div className="w-full">
+                      <label className="block mb-1 text-sm font-medium text-gray-700">Product Images</label>
+                      <input type="file" multiple accept="image/*" onChange={handleImageChange} className="w-full px-3 py-2 border rounded-md" />
+                    </div>
+                    <div className="w-full">
+                      <label className="block mb-1 text-sm font-medium text-gray-700">Product Videos</label>
+                      <input
+                        type="file"
+                        multiple
+                        accept="video/*"
+                        onChange={handleVideoChange}
+                        className="w-full px-3 py-2 border rounded-md"
+                      />
+                    </div>
+                  </div>
+                  <p className="mt-1 text-sm text-gray-500">Select multiple images and video for the product</p>
                   {images.length > 0 && (
                     <div className="mt-4">
                       <div className="mb-2 text-sm font-medium text-gray-700">Arrange images (first will be the cover)</div>
@@ -737,6 +867,30 @@ const ProductsManagement = () => {
                               <button type="button" onClick={() => moveImage(index, 1)} className="inline-flex items-center justify-center w-7 h-7 rounded border text-gray-700 hover:bg-gray-50 disabled:opacity-40" disabled={index === images.length - 1}><ArrowDown className="w-4 h-4" /></button>
                               <button type="button" onClick={() => setAsFirst(index)} className="inline-flex items-center justify-center px-2 h-7 rounded border text-gray-700 hover:bg-gray-50">First</button>
                               <button type="button" onClick={() => removeImage(index)} className="inline-flex items-center justify-center px-2 h-7 rounded border text-red-600 hover:bg-red-50"><Trash2 className="w-4 h-4" /></button>
+                            </div>
+                            <div className="mt-1 text-xs text-gray-500">#{index + 1}</div>
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+                  )}
+                  {videos.length > 0 && (
+                    <div className="mt-4">
+                      <div className="mb-2 text-sm font-medium text-gray-700">Arrange videos</div>
+                      <div className="flex items-stretch overflow-x-auto gap-3 p-2 -m-2">
+                        {videos.map((video, index) => (
+                          <div key={video.name + index} className="flex flex-col items-center justify-between p-2 border rounded-md min-w-[110px] max-w-[110px] bg-white">
+                            <div className="relative w-[96px] h-[96px] overflow-hidden rounded">
+                              <img src={video.preview || "/placeholder.svg"} alt={`preview ${index + 1}`} className="object-cover w-full h-full" draggable={false} />
+                              {index === 0 && <span className="absolute top-1 left-1 inline-flex items-center gap-1 px-1.5 py-0.5 text-[10px] font-semibold rounded bg-blue-600 text-white"><Star className="w-3 h-3" /> Cover</span>}
+                              {video.isExisting && <span className="absolute top-1 right-1 inline-flex items-center px-1.5 py-0.5 text-[10px] font-semibold rounded bg-green-600 text-white">Current</span>}
+                            </div>
+                            <div className="mt-1 text-xs text-gray-600 font-medium">{video.isExisting ? "Current" : `${video.sizeKB} KB`}</div>
+                            <div className="flex items-center gap-1 mt-2">
+                              <button type="button" onClick={() => moveVideo(index, -1)} className="inline-flex items-center justify-center w-7 h-7 rounded border text-gray-700 hover:bg-gray-50 disabled:opacity-40" disabled={index === 0}><ArrowUp className="w-4 h-4" /></button>
+                              <button type="button" onClick={() => moveVideo(index, 1)} className="inline-flex items-center justify-center w-7 h-7 rounded border text-gray-700 hover:bg-gray-50 disabled:opacity-40" disabled={index === videos.length - 1}><ArrowDown className="w-4 h-4" /></button>
+                              <button type="button" onClick={() => setAsFirstVideo(index)} className="inline-flex items-center justify-center px-2 h-7 rounded border text-gray-700 hover:bg-gray-50">First</button>
+                              <button type="button" onClick={() => removeVideo(index)} className="inline-flex items-center justify-center px-2 h-7 rounded border text-red-600 hover:bg-red-50"><Trash2 className="w-4 h-4" /></button>
                             </div>
                             <div className="mt-1 text-xs text-gray-500">#{index + 1}</div>
                           </div>

@@ -116,7 +116,7 @@ function AppContent() {
     <div className="App">
       <ToastProvider />
       <NetworkStatus />
-      <main className="pt-2 main-content">
+      <main className="main-content">
         <div className={isCartPage ? "hidden md:block" : ""}>
           <div className={isCheckoutPage ? "hidden md:block" : ""}>
             <Navbar />

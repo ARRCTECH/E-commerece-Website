@@ -1,7 +1,7 @@
 const Product = require("../models/Product");
 const Category = require("../models/Category");
 const Counter = require('../models/Counter');
-const { uploadToCloudinary } = require("../utils/cloudinary");
+const { uploadToCloudinary, uploadToCloudinaryVideo } = require("../utils/cloudinary");
 const mongoose = require("mongoose");
 
 // Helper to parse JSON fields safely
@@ -157,7 +157,7 @@ const getProducts = async (req, res) => {
     }
 
     if (tag) query.tags = { $in: [tag] };
-    
+
     // 🆕 Price filter - handle regular and bulk differently
     if (minPrice || maxPrice) {
       if (type === 'bulk') {
@@ -170,7 +170,7 @@ const getProducts = async (req, res) => {
         if (maxPrice) query.price.$lte = Number(maxPrice);
       }
     }
-    
+
     if (search) {
       query.$or = [
         { name: { $regex: search, $options: "i" } },
@@ -409,7 +409,7 @@ const createProduct = async (req, res) => {
       material,
       fits,
       isBulkProduct,      // 🆕
-      bulkConfig,         // 🆕
+      bulkConfig,      // 🆕
     } = req.body;
 
     const getNextSequence = async (seqName) => {
@@ -435,11 +435,22 @@ const createProduct = async (req, res) => {
       });
     }
 
+    // Images
     const images = [];
-    if (req.files && req.files.length) {
-      for (const file of req.files) {
-        const result = await uploadToCloudinary(file.buffer, "products");
-        images.push({ url: result.secure_url, alt: name });
+    if (req.files['images'] && req.files['images'].length) {
+      for (const file of req.files['images']) {
+        const result = await uploadToCloudinary(file.buffer, "productsimage");
+        images.push({ url: result.secure_url }); // use actual product name
+      }
+    }
+
+    // Videos
+    const videos = [];
+    if (req.files['videos'] && req.files['videos'].length) {
+      for (const file of req.files['videos']) {
+        // Use a separate function that trims first 30 seconds
+        const result = await uploadToCloudinaryVideo(file.buffer, "productsvideo");
+        videos.push({ url: result.secure_url });
       }
     }
 
@@ -450,6 +461,7 @@ const createProduct = async (req, res) => {
       price: isBulk ? (parsedBulkConfig.pricePerSet || Number(price)) : Number(price),
       originalPrice: isBulk ? (parsedBulkConfig.originalPricePerSet || Number(originalPrice)) : (originalPrice ? Number(originalPrice) : undefined),
       images,
+      videos,
       category,
       subcategory: subcategory ? subcategory.trim() : "",
       sizes: sizesWithIds,
@@ -525,7 +537,7 @@ const updateProduct = async (req, res) => {
       updateData.originalPrice = updateData.originalPrice[0];
       console.log("✅ Converted originalPrice from array to:", updateData.originalPrice);
     }
-    
+
     // Ensure numeric values
     if (updateData.price !== undefined && updateData.price !== null && updateData.price !== "") {
       updateData.price = Number(updateData.price);
@@ -964,6 +976,6 @@ module.exports = {
   getProductsByCategory,
   getProductsByCategorySlug,
   getProductBySlug,
-  getBulkProducts,     
-  getRegularProducts,   
+  getBulkProducts,
+  getRegularProducts,
 };

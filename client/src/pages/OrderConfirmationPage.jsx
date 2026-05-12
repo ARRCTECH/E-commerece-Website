@@ -13,6 +13,12 @@ import {
   Calendar,
   ArrowRight,
   Clock,
+  ShieldCheck,
+  ShoppingBag,
+  Home,
+  Phone,
+  Mail,
+  AlertCircle,
 } from "lucide-react";
 import { fetchOrderDetails } from "../store/slices/orderSlice";
 import LoadingSpinner from "../components/LoadingSpinner";
@@ -98,22 +104,41 @@ const OrderConfirmationPage = () => {
     return { isPartialCod: false };
   }, [currentOrder]);
 
+  // Order timeline steps
+  const getOrderSteps = () => {
+    const status = String(currentOrder?.status || "").toLowerCase();
+    const normalized = status === "placed" ? "confirmed" : status;
+    const steps = [
+      { key: "confirmed", label: "Confirmed", icon: CheckCircle },
+      { key: "processing", label: "Processing", icon: Package },
+      { key: "shipped", label: "Shipped", icon: Truck },
+      { key: "delivered", label: "Delivered", icon: Home },
+    ];
+    let currentIndex = steps.findIndex(s => s.key === normalized);
+    if (currentIndex === -1 && normalized === "cancelled") currentIndex = -2;
+    return steps.map((step, idx) => ({
+      ...step,
+      completed: idx <= currentIndex && currentIndex !== -2,
+      active: idx === currentIndex && currentIndex !== -2,
+    }));
+  };
+
   const getStatusColor = (status) => {
     const s = String(status || "").toLowerCase();
     const normalized = s === "placed" ? "confirmed" : s;
     switch (normalized) {
       case "confirmed":
-        return "text-green-600 bg-green-100";
+        return "text-red-700 bg-red-50 border-red-200";
       case "processing":
-        return "text-blue-600 bg-blue-100";
+        return "text-red-700 bg-red-50 border-red-200";
       case "shipped":
-        return "text-purple-600 bg-purple-100";
+        return "text-red-700 bg-red-50 border-red-200";
       case "delivered":
-        return "text-green-600 bg-green-100";
+        return "text-green-700 bg-green-50 border-green-200";
       case "cancelled":
-        return "text-red-600 bg-red-100";
+        return "text-gray-500 bg-gray-100 border-gray-200";
       default:
-        return "text-gray-600 bg-gray-100";
+        return "text-gray-600 bg-gray-100 border-gray-200";
     }
   };
 
@@ -122,7 +147,7 @@ const OrderConfirmationPage = () => {
     const normalized = s === "placed" ? "confirmed" : s;
     switch (normalized) {
       case "confirmed":
-        return "Order Confirmed";
+        return "Confirmed";
       case "processing":
         return "Processing";
       case "shipped":
@@ -151,7 +176,7 @@ const OrderConfirmationPage = () => {
 
   if (loading?.fetching) {
     return (
-      <div className="flex items-center justify-center min-h-screen">
+      <div className="flex min-h-screen items-center justify-center bg-white">
         <LoadingSpinner size="lg" />
       </div>
     );
@@ -159,15 +184,18 @@ const OrderConfirmationPage = () => {
 
   if (!currentOrder) {
     return (
-      <div className="flex items-center justify-center min-h-screen">
+      <div className="flex min-h-screen items-center justify-center bg-white">
         <div className="text-center">
-          <h2 className="mb-2 text-2xl font-bold text-gray-800">Order not found</h2>
-          <p className="mb-4 text-gray-600">
+          <div className="mx-auto mb-4 flex h-16 w-16 items-center justify-center rounded-full bg-red-100">
+            <AlertCircle className="h-8 w-8 text-red-600" />
+          </div>
+          <h2 className="mb-2 text-xl font-semibold text-gray-800">Order not found</h2>
+          <p className="mb-4 text-sm text-gray-500">
             The order you're looking for doesn't exist
           </p>
           <button
             onClick={() => navigate("/")}
-            className="px-6 py-2 text-white transition-colors bg-red-600 rounded-lg hover:bg-red-700"
+            className="rounded-lg bg-red-600 px-5 py-2 text-sm font-medium text-white shadow-sm hover:bg-red-700 transition-colors"
           >
             Go Home
           </button>
@@ -180,108 +208,175 @@ const OrderConfirmationPage = () => {
   const isCOD = paymentMethod === "COD";
   const isPartialCOD = paymentMethod === "PARTIAL_COD";
   const isOnline = paymentMethod === "RAZORPAY";
+  const orderSteps = getOrderSteps();
 
   return (
-    <div className="min-h-screen py-8 bg-gray-50">
-      <div className="container px-4 mx-auto">
-        <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} className="max-w-4xl mx-auto">
-          {/* Success Header */}
+    <div className="min-h-screen bg-white py-6">
+      <div className="container mx-auto px-4">
+        <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} className="mx-auto max-w-4xl">
+          {/* Success Header - White/Red */}
           <motion.div
-            initial={{ scale: 0.8, opacity: 0 }}
+            initial={{ scale: 0.95, opacity: 0 }}
             animate={{ scale: 1, opacity: 1 }}
-            transition={{ delay: 0.2 }}
-            className="mb-8 text-center"
+            transition={{ delay: 0.1, type: "spring" }}
+            className="relative mb-6 text-center"
           >
-            <div className="inline-flex items-center justify-center w-20 h-20 mb-4 bg-green-100 rounded-full">
-              <CheckCircle className="w-10 h-10 text-green-600" />
+            <div className="mx-auto mb-3 flex h-16 w-16 items-center justify-center rounded-full bg-red-100">
+              <CheckCircle className="h-8 w-8 text-red-600" />
             </div>
-            <h1 className="mb-2 text-3xl font-bold text-gray-800">Order Confirmed!</h1>
-            <p className="text-gray-600">
+            <h1 className="mb-1 text-2xl font-bold text-gray-900">Order Confirmed!</h1>
+            <p className="text-sm text-gray-500">
               Thank you for your purchase. Your order has been successfully placed.
             </p>
           </motion.div>
 
-          {/* Order Details Card */}
+          {/* Order Summary Card */}
           <motion.div
-            initial={{ opacity: 0, y: 20 }}
+            initial={{ opacity: 0, y: 10 }}
             animate={{ opacity: 1, y: 0 }}
-            transition={{ delay: 0.3 }}
-            className="p-6 mb-6 bg-white rounded-lg shadow-md"
+            transition={{ delay: 0.2 }}
+            className="mb-4 rounded-lg border border-gray-200 bg-white p-4 shadow-sm"
           >
-            <div className="flex flex-col mb-6 md:flex-row md:items-center md:justify-between">
+            <div className="flex flex-wrap items-center justify-between gap-2">
               <div>
-                <h2 className="mb-1 text-xl font-semibold">
-                  Order #{currentOrder.orderNumber}
-                </h2>
-                <p className="text-gray-600">
+                <div className="flex flex-wrap items-center gap-2">
+                  <h2 className="text-base font-semibold text-gray-900">
+                    Order #{currentOrder.orderNumber}
+                  </h2>
+                  <span
+                    className={`rounded-full border px-2 py-0.5 text-xs font-medium ${getStatusColor(
+                      currentOrder.status
+                    )}`}
+                  >
+                    {getStatusText(currentOrder.status)}
+                  </span>
+                </div>
+                <p className="mt-1 flex items-center text-xs text-gray-500">
+                  <Calendar className="mr-1 h-3 w-3" />
                   Placed on{" "}
                   {new Date(currentOrder.createdAt || Date.now()).toLocaleDateString("en-IN", {
                     year: "numeric",
-                    month: "long",
+                    month: "short",
                     day: "numeric",
                   })}
                 </p>
               </div>
-              <div className="mt-4 md:mt-0">
-                <span
-                  className={`px-3 py-1 rounded-full text-sm font-medium ${getStatusColor(
-                    currentOrder.status
-                  )}`}
-                >
-                  {getStatusText(currentOrder.status)}
-                </span>
-              </div>
+              <button
+                onClick={() => navigate("/orders")}
+                className="text-xs font-medium text-red-600 hover:text-red-700 inline-flex items-center"
+              >
+                View All Orders
+                <ArrowRight className="ml-1 h-3 w-3" />
+              </button>
             </div>
+          </motion.div>
 
-            {/* Order Items */}
-            <div className="pt-6 border-t">
-              <h3 className="flex items-center mb-4 font-semibold">
-                <Package className="w-5 h-5 mr-2 text-red-600" />
-                Items Ordered ({currentOrder.items?.length || 0})
-              </h3>
-              <div className="space-y-4">
-                {(currentOrder.items || []).map((item, index) => {
-                  const img =
-                    item.image ||
-                    item?.product?.images?.[0]?.url ||
-                    "/placeholder.svg";
-                  return (
-                    <div key={index} className="flex items-center p-4 space-x-4 rounded-lg bg-gray-50">
-                      <img src={img} alt={item.name || item?.product?.name || "Item"} className="object-cover w-16 h-16 rounded-lg" />
-                      <div className="flex-1">
-                        <h4 className="font-medium">{item.name || item?.product?.name}</h4>
-                        <p className="text-sm text-gray-600">
-                          {item.size && `Size: ${item.size} | `}
-                          {item.color && `Color: ${item.color} | `}
-                          Quantity: {item.quantity}
-                        </p>
-                        <p className="font-semibold">₹{Number(item.price || 0)}</p>
-                      </div>
-                      <div className="text-right">
-                        <p className="font-semibold">
-                          ₹{(item.itemTotal != null ? item.itemTotal : Number(item.price || 0) * Number(item.quantity || 0))}
-                        </p>
-                      </div>
+          {/* Order Timeline - Compact */}
+          <motion.div
+            initial={{ opacity: 0, y: 10 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ delay: 0.25 }}
+            className="mb-4 rounded-lg border border-gray-200 bg-white p-4 shadow-sm"
+          >
+            <h3 className="mb-3 flex items-center text-sm font-semibold text-gray-800">
+              <Clock className="mr-1.5 h-4 w-4 text-red-600" />
+              Order Progress
+            </h3>
+            <div className="relative">
+              <div className="absolute left-0 right-0 top-4 h-0.5 bg-gray-200"></div>
+              <div className="relative flex justify-between">
+                {orderSteps.map((step, idx) => (
+                  <div key={step.key} className="flex flex-col items-center flex-1 text-center">
+                    <div
+                      className={`relative z-10 flex h-8 w-8 items-center justify-center rounded-full transition-all ${
+                        step.completed
+                          ? "bg-red-600 text-white shadow-sm"
+                          : step.active
+                          ? "bg-red-100 text-red-600 border-2 border-red-600"
+                          : "bg-gray-100 text-gray-400 border border-gray-200"
+                      }`}
+                    >
+                      <step.icon className="h-4 w-4" />
                     </div>
-                  );
-                })}
+                    <p
+                      className={`mt-1 text-[11px] font-medium ${
+                        step.completed || step.active ? "text-red-700" : "text-gray-500"
+                      }`}
+                    >
+                      {step.label}
+                    </p>
+                  </div>
+                ))}
               </div>
             </div>
           </motion.div>
 
-          <div className="grid gap-6 md:grid-cols-2">
+          {/* Order Items */}
+          <motion.div
+            initial={{ opacity: 0, y: 10 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ delay: 0.3 }}
+            className="mb-4 rounded-lg border border-gray-200 bg-white p-4 shadow-sm"
+          >
+            <h3 className="mb-3 flex items-center text-sm font-semibold text-gray-800">
+              <ShoppingBag className="mr-1.5 h-4 w-4 text-red-600" />
+              Items Ordered ({currentOrder.items?.length || 0})
+            </h3>
+            <div className="space-y-3">
+              {(currentOrder.items || []).map((item, index) => {
+                const img =
+                  item.image ||
+                  item?.product?.images?.[0]?.url ||
+                  "/placeholder.svg";
+                return (
+                  <div
+                    key={index}
+                    className="flex flex-col gap-2 rounded-md border border-gray-100 bg-gray-50 p-3 sm:flex-row sm:items-center"
+                  >
+                    <img
+                      src={img}
+                      alt={item.name || item?.product?.name || "Item"}
+                      className="h-14 w-14 rounded-md object-cover"
+                    />
+                    <div className="flex-1">
+                      <h4 className="text-sm font-medium text-gray-800">
+                        {item.name || item?.product?.name}
+                      </h4>
+                      <div className="mt-0.5 flex flex-wrap gap-2 text-xs text-gray-500">
+                        {item.size && <span>Size: {item.size}</span>}
+                        {item.color && <span>Color: {item.color}</span>}
+                        <span>Qty: {item.quantity}</span>
+                      </div>
+                    </div>
+                    <div className="text-right">
+                      <p className="text-base font-semibold text-red-600">
+                        ₹
+                        {item.itemTotal != null
+                          ? item.itemTotal
+                          : Number(item.price || 0) * Number(item.quantity || 0)}
+                      </p>
+                      <p className="text-xs text-gray-500">₹{Number(item.price || 0)} each</p>
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+          </motion.div>
+
+          {/* Two Column Layout for Shipping & Payment - Compact */}
+          <div className="mb-4 grid gap-4 md:grid-cols-2">
             {/* Shipping Information */}
             <motion.div
-              initial={{ opacity: 0, x: -20 }}
+              initial={{ opacity: 0, x: -10 }}
               animate={{ opacity: 1, x: 0 }}
               transition={{ delay: 0.4 }}
-              className="p-6 bg-white rounded-lg shadow-md"
+              className="rounded-lg border border-gray-200 bg-white p-4 shadow-sm"
             >
-              <h3 className="flex items-center mb-4 font-semibold">
-                <MapPin className="w-5 h-5 mr-2 text-red-600" />
+              <h3 className="mb-3 flex items-center border-b border-gray-100 pb-2 text-sm font-semibold text-gray-800">
+                <MapPin className="mr-1.5 h-4 w-4 text-red-600" />
                 Shipping Address
               </h3>
-              <div className="text-gray-700">
+              <div className="space-y-1 text-sm text-gray-700">
                 <p className="font-medium">{currentOrder?.shippingAddress?.fullName}</p>
                 <p>{currentOrder?.shippingAddress?.addressLine1}</p>
                 {currentOrder?.shippingAddress?.addressLine2 && <p>{currentOrder.shippingAddress.addressLine2}</p>}
@@ -289,97 +384,108 @@ const OrderConfirmationPage = () => {
                   {currentOrder?.shippingAddress?.city}, {currentOrder?.shippingAddress?.state} -{" "}
                   {currentOrder?.shippingAddress?.pinCode}
                 </p>
-                <p className="mt-2">Phone: {currentOrder?.shippingAddress?.phoneNumber}</p>
-                <p>Email: {currentOrder?.shippingAddress?.email}</p>
-              </div>
-              <div className="p-3 mt-4 rounded-lg bg-blue-50">
-                <div className="flex items-center text-blue-700">
-                  <Truck className="w-4 h-4 mr-2" />
-                  <span className="text-sm font-medium">Estimated Delivery</span>
-                </div>
-                <p className="font-semibold text-blue-800">
-                  {estimatedDeliveryDate.toLocaleDateString("en-IN", { year: "numeric", month: "long", day: "numeric" })}
+                <p className="flex items-center gap-1 text-xs">
+                  <Phone className="h-3 w-3 text-gray-400" />
+                  {currentOrder?.shippingAddress?.phoneNumber}
                 </p>
-                <p className="text-xs text-blue-600">5-7 business days</p>
+                <p className="flex items-center gap-1 text-xs">
+                  <Mail className="h-3 w-3 text-gray-400" />
+                  {currentOrder?.shippingAddress?.email}
+                </p>
+              </div>
+              <div className="mt-3 rounded-md bg-red-50 p-3">
+                <div className="flex items-center text-red-700">
+                  <Truck className="mr-1.5 h-4 w-4" />
+                  <span className="text-xs font-medium">Estimated Delivery</span>
+                </div>
+                <p className="mt-0.5 text-sm font-bold text-red-800">
+                  {estimatedDeliveryDate.toLocaleDateString("en-IN", { year: "numeric", month: "short", day: "numeric" })}
+                </p>
+                <p className="text-[11px] text-red-600">5-7 business days</p>
               </div>
             </motion.div>
 
             {/* Payment & Pricing */}
             <motion.div
-              initial={{ opacity: 0, x: 20 }}
+              initial={{ opacity: 0, x: 10 }}
               animate={{ opacity: 1, x: 0 }}
               transition={{ delay: 0.5 }}
-              className="p-6 bg-white rounded-lg shadow-md"
+              className="rounded-lg border border-gray-200 bg-white p-4 shadow-sm"
             >
-              <h3 className="flex items-center mb-4 font-semibold">
-                <CreditCard className="w-5 h-5 mr-2 text-red-600" />
-                Payment Details
+              <h3 className="mb-3 flex items-center border-b border-gray-100 pb-2 text-sm font-semibold text-gray-800">
+                <CreditCard className="mr-1.5 h-4 w-4 text-red-600" />
+                Payment Summary
               </h3>
-              <div className="mb-4 space-y-2">
-                <div className="flex justify-between text-sm">
-                  <span>Subtotal</span>
-                  <span>₹{safePricing.subtotal}</span>
+              <div className="space-y-2 text-sm">
+                <div className="flex justify-between">
+                  <span className="text-gray-500">Subtotal</span>
+                  <span className="font-medium text-gray-800">₹{safePricing.subtotal}</span>
                 </div>
-                <div className="flex justify-between text-sm">
-                  <span>Shipping</span>
-                  <span className={Number(safePricing.shippingCharges) === 0 ? "text-green-600" : ""}>
+                <div className="flex justify-between">
+                  <span className="text-gray-500">Shipping</span>
+                  <span className={Number(safePricing.shippingCharges) === 0 ? "text-green-600 font-medium" : "text-gray-800"}>
                     {Number(safePricing.shippingCharges) === 0 ? "FREE" : `₹${safePricing.shippingCharges}`}
                   </span>
                 </div>
                 {Number(safePricing.discount) > 0 && (
-                  <div className="flex justify-between text-sm text-green-600">
+                  <div className="flex justify-between text-green-600">
                     <span>Coupon Discount</span>
                     <span>-₹{safePricing.discount}</span>
                   </div>
                 )}
                 {Number(safePricing.freediscount) > 0 && (
-                  <div className="flex justify-between text-sm text-blue-600">
+                  <div className="flex justify-between text-blue-600">
                     <span>Special Discount</span>
                     <span>-₹{Math.round(safePricing.freediscount)}</span>
                   </div>
                 )}
-                <div className="flex justify-between pt-2 font-semibold border-t">
+                <div className="flex justify-between border-t border-gray-100 pt-2 text-base font-bold">
                   <span>Total</span>
-                  <span>₹{safePricing.total}</span>
+                  <span className="text-red-600">₹{safePricing.total}</span>
                 </div>
               </div>
 
-              {/* Payment Status Card */}
-              <div className="p-3 rounded-lg bg-green-50">
+              {/* Payment Status */}
+              <div className="mt-3 rounded-md bg-gray-50 p-3">
                 {isCOD && (
-                  <div>
-                    <p className="text-sm font-medium text-green-800">
-                      💰 Payment Method: Cash on Delivery
-                    </p>
-                    <p className="text-xs text-green-600 mt-1">
-                      Pay ₹{safePricing.total} when you receive the order
-                    </p>
+                  <div className="flex items-start gap-2">
+                    <ShieldCheck className="mt-0.5 h-4 w-4 text-emerald-600" />
+                    <div>
+                      <p className="text-sm font-medium text-gray-800">Cash on Delivery</p>
+                      <p className="text-xs text-gray-600">Pay ₹{safePricing.total} when you receive the order</p>
+                    </div>
                   </div>
                 )}
                 {isOnline && (
-                  <div>
-                    <p className="text-sm font-medium text-green-800">
-                      ✅ Payment Successful (Online)
-                    </p>
-                    <p className="text-xs text-green-600 mt-1">
-                      Amount ₹{safePricing.total} paid via Razorpay
-                    </p>
+                  <div className="flex items-start gap-2">
+                    <CheckCircle className="mt-0.5 h-4 w-4 text-emerald-600" />
+                    <div>
+                      <p className="text-sm font-medium text-gray-800">Payment Successful</p>
+                      <p className="text-xs text-gray-600">Amount ₹{safePricing.total} paid via Razorpay</p>
+                    </div>
                   </div>
                 )}
                 {isPartialCOD && partialCodInfo.isPartialCod && (
-                  <div>
-                    <p className="text-sm font-medium text-orange-800">
-                      🔄 Payment: Partial COD
-                    </p>
-                    <div className="mt-2 space-y-1 text-xs">
-                      <p className="text-green-700">
-                        ✅ Online Payment: ₹{partialCodInfo.onlineAmount} ({partialCodInfo.percentage}%)
+                  <div className="space-y-2">
+                    <div className="flex items-start gap-2">
+                      <div className="mt-0.5 rounded-full bg-orange-100 p-0.5">
+                        <AlertCircle className="h-3 w-3 text-orange-600" />
+                      </div>
+                      <div>
+                        <p className="text-sm font-medium text-gray-800">Partial COD</p>
+                        <p className="text-xs text-gray-600">
+                          {partialCodInfo.percentage}% paid online, remaining on delivery
+                        </p>
+                      </div>
+                    </div>
+                    <div className="pl-6 text-xs space-y-1">
+                      <p className="flex justify-between">
+                        <span className="text-gray-500">Online Payment:</span>
+                        <span className="font-medium text-emerald-600">₹{partialCodInfo.onlineAmount}</span>
                       </p>
-                      <p className="text-orange-700">
-                        💰 Cash on Delivery: ₹{partialCodInfo.codAmount} ({100 - partialCodInfo.percentage}%)
-                      </p>
-                      <p className="text-gray-600 mt-1">
-                        Total: ₹{safePricing.total} ({partialCodInfo.percentage}% paid online, remaining on delivery)
+                      <p className="flex justify-between">
+                        <span className="text-gray-500">Cash on Delivery:</span>
+                        <span className="font-medium text-orange-600">₹{partialCodInfo.codAmount}</span>
                       </p>
                     </div>
                   </div>
@@ -390,46 +496,48 @@ const OrderConfirmationPage = () => {
 
           {/* Action Buttons */}
           <motion.div
-            initial={{ opacity: 0, y: 20 }}
+            initial={{ opacity: 0, y: 10 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ delay: 0.6 }}
-            className="flex flex-col justify-center gap-4 mt-8 sm:flex-row"
+            className="flex flex-wrap justify-center gap-3"
           >
             {user && (
               <button
                 onClick={() => navigate("/orders")}
-                className="flex items-center justify-center px-6 py-3 text-white transition-colors bg-red-600 rounded-lg hover:bg-red-700"
+                className="inline-flex items-center rounded-md bg-red-600 px-4 py-2 text-sm font-medium text-white shadow-sm hover:bg-red-700 transition-colors"
               >
-                <Calendar className="w-5 h-5 mr-2" />
+                <Calendar className="mr-1.5 h-4 w-4" />
                 View All Orders
               </button>
             )}
             <button
               onClick={() => navigate("/")}
-              className="flex items-center justify-center px-6 py-3 text-red-600 transition-colors border border-red-600 rounded-xl hover:bg-red-50"
+              className="inline-flex items-center rounded-md border border-red-200 bg-red-50 px-4 py-2 text-sm font-medium text-red-700 hover:bg-red-100 transition-colors"
             >
               Continue Shopping
-              <ArrowRight className="w-5 h-5 ml-2" />
+              <ArrowRight className="ml-1.5 h-4 w-4" />
             </button>
           </motion.div>
 
-          {/* Support Info */}
+          {/* Support Footer */}
           <motion.div
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
             transition={{ delay: 0.7 }}
-            className="p-6 mt-8 text-center bg-white rounded-lg shadow-md"
+            className="mt-6 rounded-lg border border-gray-200 bg-gray-50 p-4 text-center"
           >
-            <h3 className="mb-2 font-semibold">Need Help?</h3>
-            <p className="mb-4 text-sm text-gray-600">
+            <h3 className="mb-1 text-sm font-semibold text-gray-800">Need Help?</h3>
+            <p className="mb-2 text-xs text-gray-500">
               If you have any questions about your order, feel free to contact us.
             </p>
-            <div className="flex flex-col justify-center gap-4 text-sm sm:flex-row">
-              <a href="mailto:support@Factory Sale.com" className="text-red-600 hover:text-red-700">
-                Email: support@Factory Sale.com
+            <div className="flex flex-col justify-center gap-2 text-xs sm:flex-row">
+              <a href="mailto:support@Factory Sale.com" className="text-red-600 hover:text-red-700 inline-flex items-center">
+                <Mail className="mr-1 h-3 w-3" />
+                support@Factory Sale.com
               </a>
-              <a href="tel:+9211891719" className="text-red-600 hover:text-red-700">
-                Phone: +91 9211891719
+              <a href="tel:+9211891719" className="text-red-600 hover:text-red-700 inline-flex items-center">
+                <Phone className="mr-1 h-3 w-3" />
+                +91 9211891719
               </a>
             </div>
           </motion.div>

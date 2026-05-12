@@ -30,7 +30,31 @@ const uploadToCloudinary = (buffer, folder, transformations = {}) => {
         }
       }
     );
+    stream.end(buffer);
+  });
+};
 
+const uploadToCloudinaryVideo = (buffer, folder, extraOptions = {}) => {
+  return new Promise((resolve, reject) => {
+    const stream = cloudinary.uploader.upload_stream(
+      {
+        resource_type: "video",
+        folder: `Factory Sale/${folder}`,
+        quality: "auto",
+        start_offset: 0,
+        duration: 30,
+        fetch_format: "auto",
+        ...extraOptions,
+      },
+      (error, result) => {
+        if (error) {
+          console.error("Cloudinary upload error:", error);
+          reject(error);
+        } else {
+          resolve(result);
+        }
+      }
+    );
     stream.end(buffer);
   });
 };
@@ -49,4 +73,4 @@ const deleteFromCloudinary = (publicId) => {
   });
 };
 
-module.exports = { uploadToCloudinary, deleteFromCloudinary };
+module.exports = { uploadToCloudinary, deleteFromCloudinary ,uploadToCloudinaryVideo};
