@@ -4,7 +4,7 @@ import { useState } from "react";
 import { motion } from "framer-motion";
 import { useNavigate } from "react-router-dom";
 import { useDispatch } from "react-redux";
-import { ArrowUpRight } from "lucide-react";
+import { ArrowUpRight, Sparkles } from "lucide-react";
 import { setFilters } from "../store/slices/productSlice";
 
 const PriceSelection = ({ selectedPrice }) => {
@@ -14,10 +14,10 @@ const PriceSelection = ({ selectedPrice }) => {
   const dispatch = useDispatch();
 
   const priceOptions = [
-    { id: "under649",  label: "Essentials", sublabel: "₹649",  value: 649,  tag: "01 / Daily",    desc: "Everyday icons" },
-    { id: "under799",  label: "Smart Buys", sublabel: "₹799",  value: 799,  tag: "02 / Trend",    desc: "Of-the-moment" },
-    { id: "under999",  label: "Premium",    sublabel: "₹999",  value: 999,  tag: "03 / Signature",desc: "Refined edits" },
-    { id: "under1499", label: "Luxe",       sublabel: "₹1499", value: 1499, tag: "04 / Atelier",  desc: "The finale" },
+    { id: "under649",  label: "Essentials", sublabel: "₹649",  value: 649,  tag: "Daily picks" },
+    { id: "under799",  label: "Smart Buys", sublabel: "₹799",  value: 799,  tag: "Trending" },
+    { id: "under999",  label: "Premium",    sublabel: "₹999",  value: 999,  tag: "Best value" },
+    { id: "under1499", label: "Luxe",       sublabel: "₹1499", value: 1499, tag: "Top tier" },
   ];
 
   const handleOptionClick = (option) => {
@@ -27,170 +27,120 @@ const PriceSelection = ({ selectedPrice }) => {
   };
 
   return (
-    <section
-      className="relative w-full mt-10 px-3 sm:px-6 md:px-10 lg:px-16 py-12 sm:py-16"
-      style={{ fontFamily: "'Inter', sans-serif" }}
-    >
-      {/* Ambient backdrop */}
-      <div className="absolute inset-0 -z-10 bg-[#0a0a0a]" />
-      <div
-        className="absolute inset-0 -z-10 opacity-[0.04]"
-        style={{
-          backgroundImage:
-            "radial-gradient(circle at 1px 1px, rgba(255,255,255,0.6) 1px, transparent 0)",
-          backgroundSize: "32px 32px",
-        }}
-      />
-      <div className="absolute top-1/3 left-1/4 -z-10 w-[500px] h-[500px] rounded-full bg-rose-600/10 blur-[120px]" />
-      <div className="absolute bottom-0 right-1/4 -z-10 w-[400px] h-[400px] rounded-full bg-amber-500/5 blur-[120px]" />
-
+    <section className="relative w-full mt-6 px-3 sm:px-6 md:px-8 lg:px-12 xl:px-16">
       <div className="relative w-full mx-auto" style={{ maxWidth: "1600px" }}>
-        {/* Editorial Header */}
-        <div className="mb-12 sm:mb-16 flex flex-col sm:flex-row sm:items-end sm:justify-between gap-6 border-b border-white/10 pb-8">
-          <div>
-            <div className="flex items-center gap-3 mb-5">
-              <div className="h-px w-10 bg-rose-500" />
-              <span className="text-[10px] tracking-[0.4em] uppercase text-rose-400 font-medium">
-                The Edit · Vol. 04
-              </span>
-            </div>
-            <h3
-              className="text-5xl sm:text-6xl md:text-7xl text-white leading-[0.95] tracking-tight"
-              style={{ fontFamily: "'Playfair Display', Georgia, serif", fontWeight: 400 }}
-            >
-              Shop by <em className="italic text-rose-400/90 font-light">price</em>.
-              <br />
-              <span className="text-white/60">Curated for you.</span>
-            </h3>
+        {/* Header */}
+        <div className="mb-6 flex flex-col items-center text-center">
+          <div className="inline-flex items-center gap-2 px-3 py-1 mb-3 rounded-full bg-neutral-900/5 backdrop-blur border border-neutral-900/10">
+            <Sparkles className="w-3.5 h-3.5 text-rose-600" />
+            <span className="text-[11px] tracking-[0.2em] uppercase text-neutral-700 font-semibold">
+              Shop by budget
+            </span>
           </div>
-          <p className="text-sm text-white/50 max-w-xs leading-relaxed sm:text-right">
-            Four tiers. Endless possibilities. Every price point handpicked
-            to deliver an unmistakably premium experience.
+          <h3 className="text-3xl sm:text-4xl md:text-5xl font-black tracking-tight text-neutral-900">
+            Price{" "}
+            <span className="bg-gradient-to-r from-rose-600 via-red-500 to-orange-500 bg-clip-text text-transparent">
+              Selection
+            </span>
+          </h3>
+          <p className="mt-2 text-sm sm:text-base text-neutral-500 max-w-md">
+            Curated styles tailored to every budget — no compromise on quality.
           </p>
         </div>
 
-        {/* Cards Grid */}
-        <div className="grid grid-cols-2 lg:grid-cols-4 gap-px bg-white/[0.06] rounded-3xl overflow-hidden border border-white/[0.08]">
+        {/* Cards */}
+        <div className="grid grid-cols-2 md:grid-cols-4 gap-3 sm:gap-5">
           {priceOptions.map((option, idx) => {
             const isSelected = selectedOption === option.id;
             const isHovered = hoveredId === option.id;
             return (
               <motion.button
                 key={option.id}
-                initial={{ opacity: 0, y: 30 }}
-                whileInView={{ opacity: 1, y: 0 }}
-                viewport={{ once: true }}
-                transition={{ delay: idx * 0.1, duration: 0.7, ease: [0.22, 1, 0.36, 1] }}
+                initial={{ opacity: 0, y: 20 }}
+                animate={{ opacity: 1, y: 0 }}
+                transition={{ delay: idx * 0.08, duration: 0.5, ease: "easeOut" }}
+                whileHover={{ y: -6 }}
+                whileTap={{ scale: 0.98 }}
                 onHoverStart={() => setHoveredId(option.id)}
                 onHoverEnd={() => setHoveredId(null)}
                 onClick={() => handleOptionClick(option)}
-                className="group relative text-left focus:outline-none bg-[#0d0d0d] overflow-hidden"
+                className={`group relative w-full text-left rounded-2xl overflow-hidden focus:outline-none transition-all duration-500 ${
+                  isSelected ? "ring-2 ring-rose-500 ring-offset-2 ring-offset-white" : ""
+                }`}
               >
-                {/* Hover fill */}
-                <motion.div
-                  initial={false}
-                  animate={{ scaleY: isHovered || isSelected ? 1 : 0 }}
-                  transition={{ duration: 0.6, ease: [0.22, 1, 0.36, 1] }}
-                  className="absolute inset-0 origin-bottom bg-gradient-to-t from-rose-950 via-rose-900/40 to-transparent"
+                {/* Background gradient */}
+                <div className="absolute inset-0 bg-gradient-to-br from-neutral-900 via-neutral-800 to-black" />
+
+                {/* Animated red glow */}
+                <div
+                  className={`absolute -inset-px bg-gradient-to-br from-rose-600/40 via-red-500/20 to-transparent transition-opacity duration-500 ${
+                    isHovered || isSelected ? "opacity-100" : "opacity-0"
+                  }`}
                 />
 
-                {/* Selected accent line */}
-                {isSelected && (
-                  <motion.div
-                    layoutId="selected-line"
-                    className="absolute top-0 left-0 right-0 h-[2px] bg-gradient-to-r from-rose-500 via-orange-400 to-amber-300 z-20"
-                  />
-                )}
+                {/* Grid pattern */}
+                <div
+                  className="absolute inset-0 opacity-[0.07]"
+                  style={{
+                    backgroundImage:
+                      "linear-gradient(rgba(255,255,255,0.5) 1px, transparent 1px), linear-gradient(90deg, rgba(255,255,255,0.5) 1px, transparent 1px)",
+                    backgroundSize: "24px 24px",
+                  }}
+                />
+
+                {/* Shimmer sweep */}
+                <motion.div
+                  initial={{ x: "-150%" }}
+                  animate={isHovered ? { x: "150%" } : { x: "-150%" }}
+                  transition={{ duration: 1.1, ease: "easeInOut" }}
+                  className="absolute inset-y-0 w-1/2 bg-gradient-to-r from-transparent via-white/10 to-transparent skew-x-12 pointer-events-none"
+                />
+
+                {/* Glow blob */}
+                <div className="absolute -top-12 -right-12 w-40 h-40 rounded-full bg-rose-500/30 blur-3xl group-hover:bg-rose-500/50 transition-colors duration-500" />
 
                 {/* Content */}
-                <div className="relative aspect-[3/4] sm:aspect-[4/5] p-5 sm:p-7 flex flex-col justify-between z-10">
-                  {/* Top */}
-                  <div className="flex items-start justify-between">
-                    <span className="text-[10px] tracking-[0.25em] uppercase text-white/40 font-medium">
+                <div className="relative aspect-[4/5] p-4 sm:p-5 flex flex-col justify-between">
+                  {/* Top: tag */}
+                  <div className="flex items-center justify-between">
+                    <span className="inline-flex items-center px-2 py-0.5 rounded-full bg-white/10 backdrop-blur border border-white/15 text-[10px] sm:text-[11px] uppercase tracking-wider text-white/80 font-medium">
                       {option.tag}
                     </span>
                     <motion.div
-                      animate={{
-                        rotate: isHovered ? 45 : 0,
-                        backgroundColor: isHovered ? "#fff" : "rgba(255,255,255,0.06)",
-                        color: isHovered ? "#0a0a0a" : "#fff",
-                      }}
-                      transition={{ duration: 0.4, ease: "easeOut" }}
-                      className="w-10 h-10 rounded-full flex items-center justify-center border border-white/10"
+                      animate={{ rotate: isHovered ? 45 : 0 }}
+                      transition={{ duration: 0.3 }}
+                      className="w-8 h-8 sm:w-9 sm:h-9 rounded-full bg-white text-neutral-900 flex items-center justify-center shadow-lg"
                     >
-                      <ArrowUpRight className="w-4 h-4" strokeWidth={1.5} />
+                      <ArrowUpRight className="w-4 h-4" strokeWidth={2.5} />
                     </motion.div>
                   </div>
 
-                  {/* Center decorative */}
-                  <div className="flex-1 flex items-center justify-center my-4">
-                    <motion.div
-                      animate={{
-                        scale: isHovered ? 1.05 : 1,
-                        opacity: isHovered ? 1 : 0.85,
-                      }}
-                      transition={{ duration: 0.5 }}
-                      className="text-center"
-                    >
-                      <div className="text-[10px] tracking-[0.4em] uppercase text-white/30 mb-2">
-                        Under
-                      </div>
-                      <div
-                        className="text-5xl sm:text-6xl md:text-7xl text-white leading-none tracking-tight"
-                        style={{ fontFamily: "'Playfair Display', Georgia, serif", fontWeight: 300 }}
-                      >
-                        {option.sublabel}
-                      </div>
-                    </motion.div>
-                  </div>
-
-                  {/* Bottom */}
+                  {/* Bottom: price */}
                   <div>
-                    <div className="overflow-hidden mb-1">
-                      <motion.div
-                        animate={{ y: isHovered ? -2 : 0 }}
-                        transition={{ duration: 0.4 }}
-                      >
-                        <div className="text-base sm:text-lg text-white font-medium tracking-tight">
-                          {option.label}
-                        </div>
-                        <div className="text-xs text-white/40 mt-0.5">
-                          {option.desc}
-                        </div>
-                      </motion.div>
+                    <div className="text-[10px] sm:text-xs uppercase tracking-[0.25em] text-white/50 mb-1">
+                      Under
+                    </div>
+                    <div className="text-3xl sm:text-4xl md:text-5xl font-black text-white leading-none tracking-tight">
+                      {option.sublabel}
+                    </div>
+                    <div className="mt-3 sm:mt-4 text-sm sm:text-base text-white/70 font-medium">
+                      {option.label}
                     </div>
 
-                    <div className="mt-4 h-px w-full bg-white/10 overflow-hidden">
+                    {/* Animated underline */}
+                    <div className="mt-3 h-px w-full bg-white/10 overflow-hidden">
                       <motion.div
                         initial={{ scaleX: 0 }}
                         animate={{ scaleX: isHovered || isSelected ? 1 : 0 }}
-                        transition={{ duration: 0.6, ease: [0.22, 1, 0.36, 1] }}
-                        className="h-full bg-gradient-to-r from-rose-400 to-amber-300 origin-left"
+                        transition={{ duration: 0.4, ease: "easeOut" }}
+                        className="h-full bg-gradient-to-r from-rose-500 to-orange-400 origin-left"
                       />
                     </div>
-
-                    <motion.div
-                      initial={false}
-                      animate={{
-                        opacity: isHovered ? 1 : 0,
-                        y: isHovered ? 0 : 6,
-                      }}
-                      transition={{ duration: 0.3 }}
-                      className="mt-3 text-[11px] tracking-[0.2em] uppercase text-rose-300 font-medium"
-                    >
-                      Explore →
-                    </motion.div>
                   </div>
                 </div>
               </motion.button>
             );
           })}
-        </div>
-
-        {/* Footer caption */}
-        <div className="mt-8 flex items-center justify-between text-[10px] tracking-[0.3em] uppercase text-white/30">
-          <span>Made with intent</span>
-          <span>Free shipping · Easy returns</span>
         </div>
       </div>
     </section>

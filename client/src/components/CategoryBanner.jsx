@@ -1,124 +1,204 @@
 "use client";
+
 import { useState, useEffect } from "react";
 import { useDispatch, useSelector } from "react-redux";
-import { fetchCategoryBanners } from "../store/slices/bannerSlice"; // ✅ Adjust this path as needed
 import { useNavigate } from "react-router-dom";
+import { ArrowUpRight, Sparkles } from "lucide-react";
+import { fetchCategoryBanners } from "../store/slices/bannerSlice";
 
+/**
+ * Premium CategoryBanner — dynamic Redux version.
+ * Drop into your project; logic is identical to your original.
+ */
 const CategoryBanner = () => {
   const dispatch = useDispatch();
   const navigate = useNavigate();
-  // Redux state
-  const { categoryBanners, loadingCategory, error } = useSelector((state) => state.banners);
-  // State for rotating banners
-  const [currentBanner, setCurrentBanner] = useState(0);
-  
-  // 🔁 Fetch banners on component mount
+  const { categoryBanners, loadingCategory, error } = useSelector(
+    (state) => state.banners
+  );
+  const [current, setCurrent] = useState(0);
+
   useEffect(() => {
     dispatch(fetchCategoryBanners());
   }, [dispatch]);
-  
-  // 🔁 Auto-rotate banner every 5 seconds
+
   useEffect(() => {
     if (categoryBanners.length > 1) {
-      const timer = setInterval(() => {
-        setCurrentBanner((prev) => (prev + 1) % categoryBanners.length);
-      }, 5000);
-      return () => clearInterval(timer);
+      const t = setInterval(
+        () => setCurrent((p) => (p + 1) % categoryBanners.length),
+        6000
+      );
+      return () => clearInterval(t);
     }
   }, [categoryBanners.length]);
-  
-  // Handle banner click to redirect
-  const handleBannerClick = () => {
-    const current = categoryBanners[currentBanner];
-    if (current?.bannerLink) {
-      // Check if it's an external URL or internal route
-      if (current?.bannerLink.startsWith('http') || current?.bannerLink.startsWith('www')) {
-        window.open(current?.bannerLink, "_self");
+
+  const handleClick = () => {
+    const c = categoryBanners[current];
+    if (c?.bannerLink) {
+      if (c.bannerLink.startsWith("http") || c.bannerLink.startsWith("www")) {
+        window.open(c.bannerLink, "_self");
       } else {
-        // Internal routes use React Router navigation
-        navigate(current?.bannerLink);
+        navigate(c.bannerLink);
       }
     }
   };
-  
-  // ⛔ Show nothing or fallback if loading fails
-  if (loadingCategory || error) {
+
+  if (loadingCategory || error || !categoryBanners?.length) {
     return (
-      <section className="relative w-full px-0 mx-auto mt-0 mb-3 sm:px-6">
-        <div className="relative w-full mx-auto overflow-hidden shadow-lg rounded-2xl">
-          <img
-            src="/placeholder-wgz1d.png"
-            alt="Loading category banner..."
-            className="object-cover w-screen h-24 max-w-full sm:h-48 md:h-56 lg:h-64 rounded-2xl"
-          />
+      <section className="relative w-full bg-[#0a0a0a] px-3 py-6 sm:px-6 sm:py-10">
+        <div className="mx-auto max-w-screen-2xl">
+          <div className="aspect-[21/9] w-full animate-pulse rounded-[2px] bg-white/5 sm:aspect-[24/9] md:aspect-[28/9]" />
         </div>
       </section>
     );
   }
-  
-  // ❓ Fallback if no banners are available
-  if (!categoryBanners.length) {
-    return (
-      <section className="relative w-full px-0 mx-auto mt-0 mb-2 sm:px-6">
-        <div
-          className="relative w-full mx-auto overflow-hidden shadow-lg rounded-2xl"
-          style={{ border: "3px solid #be7a21ff" }}
-        >
-          <img
-            src="/placeholder-wgz1d.png"
-            alt="No category banners"
-            className="object-cover w-screen h-24 max-w-full sm:h-48 md:h-56 lg:h-64 rounded-2xl"
-          />
-        </div>
-      </section>
-    );
-  }
-  
-  const current = categoryBanners[currentBanner];
-  
+
+  const item = categoryBanners[current];
+  const imgSrc =
+    item?.image?.url ||
+    item?.image ||
+    item?.imageUrl ||
+    `/api/uploads/${item?.image}` ||
+    "/fallback-banner.png";
+
   return (
-    <section className="relative w-full px-0 mx-auto mt-0 mb-4 sm:px-6">
-      <div
-        className="relative w-full mx-auto overflow-hidden shadow-lg cursor-pointer rounded-2xl group"
-        style={{ border: "3px solid #be7a21ff" }}
-        onClick={handleBannerClick}
-      >
-        <img
-          src={
-            current?.image?.url ||
-            current?.image ||
-            current?.imageUrl ||
-            `/api/uploads/${current?.image}` ||
-            "/fallback-banner.png"
-          }
-          alt={current?.title || "Category promotional banner"}
-          className="object-cover w-screen h-24 max-w-full transition-transform duration-500 sm:h-48 md:h-56 lg:h-64 group-hover:scale-105 rounded-2xl"
-          onError={(e) => {
-            e.target.src = "/fallback-banner.png";
-          }}
-          onLoad={() => {
-          }}
-        />
-        {categoryBanners.length > 1 && (
-          <div className="absolute z-30 flex space-x-2 transform -translate-x-1/2 bottom-4 left-1/2">
-            {categoryBanners.map((_, index) => (
-              <button
-                key={index}
-                onClick={(e) => {
-                  e.stopPropagation(); // Prevent triggering the banner click
-                  setCurrentBanner(index);
-                }}
-                className={`transition-all duration-300 ${
-                  index === currentBanner
-                    ? "w-6 h-2 bg-red-600 rounded-full shadow-lg"
-                    : "w-2 h-2 bg-white/70 hover:bg-white rounded-full shadow-md"
-                }`}
-                aria-label={`Go to banner ${index + 1}`}
-              />
-            ))}
-          </div>
-        )}
+    <section className="relative w-full bg-[#0a0a0a] px-3 py-6 sm:px-6 sm:py-10">
+      <div className="pointer-events-none absolute inset-0 overflow-hidden">
+        <div className="absolute -top-24 left-1/3 h-[300px] w-[600px] rounded-full bg-amber-500/10 blur-[120px]" />
       </div>
+
+      <div className="relative mx-auto max-w-screen-2xl">
+        <div
+          onClick={handleClick}
+          className="group relative w-full cursor-pointer overflow-hidden rounded-[2px]"
+          style={{
+            boxShadow:
+              "0 30px 80px -20px rgba(0,0,0,0.7), 0 0 0 1px rgba(201,161,74,0.15)",
+          }}
+        >
+          <div className="relative aspect-[21/9] w-full sm:aspect-[24/9] md:aspect-[28/9]">
+            {categoryBanners.map((b, i) => {
+              const url =
+                b?.image?.url ||
+                b?.image ||
+                b?.imageUrl ||
+                "/fallback-banner.png";
+              return (
+                <img
+                  key={b._id || i}
+                  src={url}
+                  alt={b?.title || "Category banner"}
+                  loading={i === 0 ? "eager" : "lazy"}
+                  onError={(e) => {
+                    e.currentTarget.src = "/fallback-banner.png";
+                  }}
+                  className={`absolute inset-0 h-full w-full object-cover transition-all duration-[1600ms] ease-out ${
+                    i === current ? "scale-100 opacity-100" : "scale-105 opacity-0"
+                  } group-hover:scale-[1.04]`}
+                />
+              );
+            })}
+
+            <div
+              className="absolute inset-0"
+              style={{
+                background:
+                  "linear-gradient(90deg, rgba(0,0,0,0.85) 0%, rgba(0,0,0,0.55) 40%, rgba(0,0,0,0.1) 75%, rgba(0,0,0,0) 100%)",
+              }}
+            />
+            <div
+              className="absolute inset-0 hidden md:block"
+              style={{
+                background:
+                  "radial-gradient(ellipse at 80% 50%, rgba(201,161,74,0.18), transparent 60%)",
+              }}
+            />
+
+            <span className="absolute left-4 top-4 h-6 w-6 border-l border-t border-amber-300/60 sm:left-6 sm:top-6 sm:h-8 sm:w-8" />
+            <span className="absolute right-4 top-4 h-6 w-6 border-r border-t border-amber-300/60 sm:right-6 sm:top-6 sm:h-8 sm:w-8" />
+            <span className="absolute bottom-4 left-4 h-6 w-6 border-b border-l border-amber-300/60 sm:bottom-6 sm:left-6 sm:h-8 sm:w-8" />
+            <span className="absolute bottom-4 right-4 h-6 w-6 border-b border-r border-amber-300/60 sm:bottom-6 sm:right-6 sm:h-8 sm:w-8" />
+
+            <div className="absolute inset-0 flex items-center">
+              <div
+                key={item?._id || current}
+                className="max-w-2xl px-6 sm:px-12 md:px-16"
+                style={{ animation: "cb-fade .9s cubic-bezier(.22,1,.36,1) both" }}
+              >
+                <div className="mb-3 inline-flex items-center gap-2 border-b border-amber-300/40 pb-1.5 text-[10px] font-medium uppercase tracking-[0.3em] text-amber-200 sm:text-[11px]">
+                  <Sparkles className="h-3 w-3" />
+                  <span>{item?.tag || "Exclusive Collection"}</span>
+                </div>
+                <h2
+                  className="text-2xl font-light leading-[1.05] text-white sm:text-4xl md:text-5xl lg:text-6xl"
+                  style={{ fontFamily: "'Cormorant Garamond', Georgia, serif" }}
+                >
+                  <span
+                    className="italic"
+                    style={{
+                      background:
+                        "linear-gradient(135deg, #f5d68a 0%, #c9a14a 100%)",
+                      WebkitBackgroundClip: "text",
+                      WebkitTextFillColor: "transparent",
+                      backgroundClip: "text",
+                    }}
+                  >
+                    {item?.title || "Curated For You"}
+                  </span>
+                </h2>
+                {item?.subtitle && (
+                  <p className="mt-2 hidden max-w-md text-sm leading-relaxed text-white/70 sm:mt-4 sm:block md:text-base">
+                    {item.subtitle}
+                  </p>
+                )}
+                <div className="mt-4 hidden items-center gap-3 sm:mt-6 sm:inline-flex">
+                  <span className="text-[11px] font-medium uppercase tracking-[0.3em] text-white">
+                    {item?.cta || "Explore Now"}
+                  </span>
+                  <span className="flex h-9 w-9 items-center justify-center rounded-full border border-white/40 text-white transition-all duration-500 group-hover:border-amber-300 group-hover:bg-amber-300 group-hover:text-black">
+                    <ArrowUpRight className="h-4 w-4 transition-transform group-hover:rotate-45" />
+                  </span>
+                </div>
+              </div>
+            </div>
+
+            <div className="absolute right-6 top-1/2 hidden -translate-y-1/2 flex-col items-end gap-1 text-[10px] uppercase tracking-[0.3em] text-white/60 md:flex">
+              <span className="text-amber-300">
+                {String(current + 1).padStart(2, "0")}
+              </span>
+              <span className="h-10 w-px bg-white/20" />
+              <span>{String(categoryBanners.length).padStart(2, "0")}</span>
+            </div>
+
+            {categoryBanners.length > 1 && (
+              <div className="absolute bottom-4 left-1/2 z-30 flex -translate-x-1/2 items-center gap-2 sm:bottom-6">
+                {categoryBanners.map((_, i) => (
+                  <button
+                    key={i}
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      setCurrent(i);
+                    }}
+                    aria-label={`Go to slide ${i + 1}`}
+                    className={`h-[2px] transition-all duration-500 ${
+                      i === current
+                        ? "w-10 bg-amber-300"
+                        : "w-5 bg-white/30 hover:bg-white/60"
+                    }`}
+                  />
+                ))}
+              </div>
+            )}
+          </div>
+        </div>
+      </div>
+
+      <style>{`
+        @keyframes cb-fade {
+          from { opacity: 0; transform: translateY(14px); }
+          to { opacity: 1; transform: translateY(0); }
+        }
+      `}</style>
     </section>
   );
 };

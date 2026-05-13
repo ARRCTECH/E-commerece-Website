@@ -47,7 +47,7 @@ const PromoBanners = () => {
     image: {
       url: "https://images.pexels.com/photos/2529148/pexels-photo-2529148.jpeg?auto=compress&cs=tinysrgb&w=1920&h=1200&fit=crop",
     },
-    buttonText: "Explore Collection",
+    buttonText: "Shop Now",
     buttonLink: "/products?deal=true",
   };
 
@@ -101,7 +101,7 @@ const PromoBanners = () => {
           <div>
             <div className="flex items-center gap-2 text-[10px] sm:text-[11px] tracking-[0.5em] uppercase text-amber-200/70">
               <span className="w-8 h-px bg-amber-200/40" />
-              Maison Edit · Vol. 01
+              Factory Sale 
             </div>
             <h3
               className="mt-3 text-2xl sm:text-3xl text-white/90 italic font-light"
@@ -127,8 +127,8 @@ const PromoBanners = () => {
           </div>
 
           {/* Ambient glows */}
-          <div className="pointer-events-none absolute -top-40 -right-40 w-[700px] h-[700px] rounded-full bg-amber-500/10 blur-3xl" />
-          <div className="pointer-events-none absolute -bottom-40 -left-40 w-[700px] h-[700px] rounded-full bg-rose-900/20 blur-3xl" />
+          {/* <div className="pointer-events-none absolute -top-40 -right-40 w-[700px] h-[700px] rounded-full bg-amber-500/10 blur-3xl" /> */}
+          {/* <div className="pointer-events-none absolute -bottom-40 -left-40 w-[700px] h-[700px] rounded-full bg-rose-900/20 blur-3xl" /> */}
 
           {/* Film grain */}
           <div
@@ -194,7 +194,7 @@ const PromoBanners = () => {
               {/* Vertical caption */}
               <div className="hidden lg:flex absolute bottom-8 left-8 items-center gap-3 -rotate-90 origin-bottom-left translate-y-[-100%] text-[10px] tracking-[0.5em] uppercase text-white/40">
                 <span className="w-10 h-px bg-white/30" />
-                Photographed in Milan · MMXXV
+                factory sale brand of india
               </div>
             </div>
 
@@ -253,9 +253,7 @@ const PromoBanners = () => {
                   <span className="absolute inset-0 bg-white/30 -translate-x-full group-hover/btn:translate-x-full transition-transform duration-1000" />
                 </button>
 
-                <div className="text-[10px] tracking-[0.4em] uppercase text-white/35">
-                  Members Only
-                </div>
+                
               </div>
 
               {/* Countdown */}

@@ -15,7 +15,7 @@ import KsauniTshirtStyle from "../components/admin/KsauniTshirtStyle";
 import FeaturedHighlight from "../components/FeaturedHighlight";
 import Testimonials from "../components/Testimonials";
 import Popup from "../components/Popup";
-import BrandIndia from "../components/BrandIndia";
+// import BrandIndia from "../components/BrandIndia";
 import TopPicksShowcase from "../components/TopPicksShowCase";
 import FlatDiscount from "../components/FlatDiscount";
 import {
@@ -31,6 +31,7 @@ import {
   fetchCategoryBanners,
 } from "../store/slices/bannerSlice";
 import { fetchPopupSetting } from "../store/slices/popupSlice";
+import ReferralProgram from "../components/Referral-program";
 
 const HomePage = () => {
   const dispatch = useDispatch();
@@ -129,25 +130,29 @@ const HomePage = () => {
     <div className="min-h-screen bg-white flex flex-col">
       <PromoBanners />
       {/* <FlatDiscount /> */}
+            <FeaturedCategories />
+
       <HeroBanner />
-      <KsauniTshirtStyle />
-      <PriceSelection />
-      <FeaturedCategories />
-      <TrendingProducts />
+            <TrendingProducts />
 
-      {/* <TopPicksShowcase/> */}
+      {/* <KsauniTshirtStyle /> */}
+      {/* <PriceSelection /> */}
+<NewArrivals />
+<CategoryBanner/>
 
-      <FandomShop />
-      <NewArrivals />
       <Oversized899 />
+      {/* <TopPicksShowcase/> */}
+<ReferralProgram/>
+      {/* <FandomShop /> */}
+      
       <InnovationList />
 
       {/* Brand of India Banner - moved to last position before footer */}
-      <div className="mx-auto w-full max-w-md sm:max-w-lg md:max-w-3xl lg:max-w-5xl xl:max-w-7xl 2xl:max-w-screen-2xl">
+      {/* <div className="mx-auto w-full max-w-md sm:max-w-lg md:max-w-3xl lg:max-w-5xl xl:max-w-7xl 2xl:max-w-screen-2xl">
         <div className="my-8 bg-red-600">
           <BrandIndia />
         </div>
-      </div>
+      </div> */}
 
 
 

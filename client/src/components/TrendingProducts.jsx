@@ -1,220 +1,165 @@
 "use client";
-import { useNavigate } from "react-router-dom";
-import { useSelector, useDispatch } from "react-redux";
-import { motion } from "framer-motion";
-import { ChevronLeft, ChevronRight } from "lucide-react";
-import { useEffect, useRef, useState } from "react";
-import { Link } from "react-router-dom";
 
+import { Link } from "react-router-dom";
+import { useEffect, useState } from "react";
+import { useDispatch, useSelector } from "react-redux";
+import { ArrowUpRight, Sparkles } from "lucide-react";
 import { fetchTrendingProducts } from "../store/slices/productSlice";
-import LoadingSpinner from "./LoadingSpinner";
 
 export default function TopPicksShowcase() {
   const dispatch = useDispatch();
-  const navigate = useNavigate();
-  const { trendingProducts = [], isLoading } = useSelector((state) => state.products);
-  const scrollContainerRef = useRef(null);
-  const [canScrollLeft, setCanScrollLeft] = useState(false);
-  const [canScrollRight, setCanScrollRight] = useState(true);
-  const [hasError, setHasError] = useState(false);
+  const { trendingProducts = [], loading } = useSelector((state) => state.products) || {
+    trendingProducts: [],
+    loading: false,
+  };
+  const [productsToShow, setProductsToShow] = useState([]);
 
   useEffect(() => {
-    dispatch(fetchTrendingProducts())
-      .unwrap()
-      .catch(() => {
-        setHasError(true);
-      });
+    dispatch(fetchTrendingProducts());
   }, [dispatch]);
 
-  const checkScrollPosition = () => {
-    const c = scrollContainerRef.current;
-    if (!c) return;
-    setCanScrollLeft(c.scrollLeft > 0);
-    setCanScrollRight(c.scrollLeft < c.scrollWidth - c.clientWidth - 10);
-  };
-
   useEffect(() => {
-    const c = scrollContainerRef.current;
-    if (!c) return;
-    c.addEventListener("scroll", checkScrollPosition, { passive: true });
-    checkScrollPosition();
-    return () => c.removeEventListener("scroll", checkScrollPosition);
+    if (trendingProducts && trendingProducts.length > 0) {
+      setProductsToShow(trendingProducts.slice(0, 7));
+    }
   }, [trendingProducts]);
 
-  const scrollLeft = () => {
-    if (!scrollContainerRef.current) return;
-    scrollContainerRef.current.scrollBy({ left: -320, behavior: "smooth" });
-  };
-
-  const scrollRight = () => {
-    if (!scrollContainerRef.current) return;
-    scrollContainerRef.current.scrollBy({ left: 320, behavior: "smooth" });
-  };
-
-  if (isLoading) {
+  if (loading) {
     return (
-      <div className="w-full bg-white py-1 px-1">
-        <div
-          className="w-full mx-auto"
-          style={{ maxWidth: "1800px" }}
-        >
-          <div className="px-2 sm:px-4 md:px-6 lg:px-8 xl:px-12 2xl:px-16 3xl:px-24">
-            <div className="text-center mb-8">
-              <h1 className="text-xl sm:text-2xl font-black italic">
-                TOP 7 <span className="text-red-600">PICKS</span> OF THE WEEK
-              </h1>
-              <p className="text-gray-700 text-sm sm:text-base font-medium mt-1">
-                Best Favorite Styles: Shop the Top Picks
-              </p>
-            </div>
-            <LoadingSpinner />
-          </div>
-        </div>
+      <div className="flex items-center justify-center py-10">
+        <div className="h-6 w-6 rounded-full border-2 border-neutral-300 border-t-neutral-900 animate-spin" />
       </div>
     );
   }
 
-  if (!trendingProducts.length || hasError) {
-    return (
-      <div className="w-full bg-white py-3 px-1">
-        <div
-          className="w-full mx-auto"
-          style={{ maxWidth: "1800px" }}
-        >
-          <div className="px-2 sm:px-4 md:px-6 lg:px-8 xl:px-12 2xl:px-16 3xl:px-24">
-            <div className="text-center">
-              <h1 className="text-xl sm:text-2xl font-black italic">
-                TOP 7 <span className="text-red-600">PICKS</span> OF THE WEEK
-              </h1>
-              {hasError ? (
-                <button
-                  onClick={() => {
-                    setHasError(false);
-                    dispatch(fetchTrendingProducts());
-                  }}
-                  className="mt-4 px-6 py-2 bg-red-600 text-white rounded-full hover:bg-red-700 transition-colors"
-                >
-                  Try Again
-                </button>
-              ) : (
-                <p className="text-gray-400 text-sm text-muted sm:text-base font-sm ">
-                  No trending products available at the moment.
-                </p>
-              )}
-            </div>
-          </div>
-        </div>
-      </div>
-    );
-  }
-
-  const topPicks = trendingProducts.slice(0, 7);
+  if (!productsToShow || productsToShow.length === 0) return null;
 
   return (
-    <div className="w-full bg-white pt-1 pb-2 px-1">
-      <div
-        className="w-full mx-auto"
-        style={{ maxWidth: "1800px" }}
-      >
-        <div className="px-2 sm:px-4 md:px-6 lg:px-8 xl:px-12 2xl:px-16 3xl:px-24">
-          <div className="flex items-center mb-3 ">
-            <div className="text-center flex-1">
-              <h1 className="text-xl sm:text-2xl font-black">
-                TOP 7 <span className="text-red-600 italic">PICKS</span> OF THE WEEK
-              </h1>
-              <p className=" text-gray-600 text-sm sm:text-base mt-1">
-                Best Favorite Styles: Shop the Top Picks
-              </p>
+    <section className="relative bg-gradient-to-b from-neutral-50 via-white to-neutral-50 py-8 sm:py-12 overflow-hidden">
+      {/* Decorative blurs */}
+      <div className="pointer-events-none absolute -top-24 -left-20 h-64 w-64 rounded-full bg-amber-200/30 blur-3xl" />
+      <div className="pointer-events-none absolute -bottom-24 -right-20 h-72 w-72 rounded-full bg-rose-200/30 blur-3xl" />
+
+      <div className="relative px-4 sm:px-6 lg:px-10">
+        {/* Heading */}
+        <div className="flex items-end justify-between mb-6 sm:mb-8">
+          <div>
+            <div className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-neutral-900 text-white text-[10px] font-medium tracking-[0.18em] uppercase mb-3">
+              <Sparkles className="w-3 h-3" />
+              Trending Now
             </div>
-            <div className="hidden md:flex space-x-2 ml-6">
-              <button
-                onClick={scrollLeft}
-                disabled={!canScrollLeft}
-                className="p-2 border rounded-full disabled:opacity-50"
-              >
-                <ChevronLeft className="w-5 h-5" />
-              </button>
-              <button
-                onClick={scrollRight}
-                disabled={!canScrollRight}
-                className="p-2 border rounded-full disabled:opacity-50"
-              >
-                <ChevronRight className="w-5 h-5" />
-              </button>
-            </div>
+            <h2 className="text-2xl sm:text-4xl lg:text-5xl font-serif font-semibold text-neutral-900 tracking-tight leading-none">
+              Top <span className="italic font-light text-neutral-500">Picks</span>
+            </h2>
+            <div className="mt-3 h-px w-16 bg-gradient-to-r from-neutral-900 to-transparent" />
           </div>
 
-          <div className="relative">
-            <div ref={scrollContainerRef} className="flex gap-4 overflow-x-auto scrollbar-hide">
-              {topPicks.map((product, index) => {
-                const categoryName = product.category?.name || "";
-                return (
-                  <motion.div
-                    key={product._id}
-                    initial={{ opacity: 0, x: 40 }}
-                    whileInView={{ opacity: 1, x: 0 }}
-                    transition={{ duration: 0.5, delay: index * 0.05 }}
-                    viewport={{ once: true }}
-                    className="flex-shrink-0 w-[48%] sm:w-[18%] border border-gray-300 rounded-lg bg-white relative overflow-hidden"
-                  >
-                    {/* Counter at top right */}
-                    <div
-                      className="absolute right-[-5px] top-[-10px] z-30 font-black text-gray-200"
-                      style={{
-                        fontSize: "4rem",
-                        WebkitTextStroke: "1.5px black",
-                        textStroke: "1.5px black",
-                        lineHeight: 1,
-                      }}
-                    >
-                      {index + 1}
-                    </div>
+          <Link
+            to="/products"
+            className="group hidden sm:inline-flex items-center gap-2 text-xs font-medium uppercase tracking-[0.18em] text-neutral-900 hover:text-neutral-600 transition-colors"
+          >
+            View All
+            <span className="flex h-8 w-8 items-center justify-center rounded-full border border-neutral-900 group-hover:bg-neutral-900 group-hover:text-white transition-all duration-300">
+              <ArrowUpRight className="w-3.5 h-3.5 group-hover:rotate-45 transition-transform duration-300" />
+            </span>
+          </Link>
+        </div>
 
-                    {/* Inner content */}
-                    <div className="pt-1 px-1 flex flex-col h-auto border-t">
-                      <div className="relative aspect-[3/4] overflow-hidden rounded-xl bg-gray-100">
-                        <Link to={`/product/${product.slug}`}>
-                          <img
-                            src={`${product.images?.[0]?.url || "/placeholder.svg"}?t=${new Date(
-                              product.updatedAt
-                            ).getTime()}`}
-                            alt={product.name}
-                            className="object-cover w-full h-full"
-                          />
-                        </Link>
-                        {categoryName && (
-                          <div
-                            className="absolute bottom-2 right-1 px-1 py-0.5 text-[9px] font-semibold text-white rounded"
-                            style={{
-                              background: "linear-gradient(90deg, #000, #555)",
-                            }}
-                          >
-                            {categoryName}
-                          </div>
-                        )}
-                      </div>
+        {/* Products Scroll */}
+        <div className="relative -mx-4 sm:mx-0">
+          <div className="flex overflow-x-auto gap-3 sm:gap-5 pb-3 px-4 sm:px-0 scrollbar-hide snap-x snap-mandatory">
+            {productsToShow.map((product, idx) => {
+              const discountPercentage =
+                product.originalPrice && product.originalPrice > product.price
+                  ? Math.round(
+                      ((product.originalPrice - product.price) / product.originalPrice) * 100
+                    )
+                  : 0;
 
-                      <Link to={`/product/${product.slug}`} className="flex-grow">
-                        <h3 className="text-[11px] text-black mt-1 mx-1 line-clamp-2 uppercase">
-                          {product.name}
-                        </h3>
-                      </Link>
-                      <div className="flex items-center justify-between mt-0.5">
-                        <span className="text-xs font-bold">₹{product.price}</span>
-                        {product.originalPrice && product.originalPrice > product.price && (
-                          <span className="text-[10px] text-red-500 line-through">
-                            ₹{product.originalPrice}
-                          </span>
-                        )}
+              return (
+                <div
+                  key={product._id}
+                  className="
+                    group relative flex-shrink-0 snap-start
+                    w-[46%] sm:w-[31%] md:w-[23%] lg:w-[19%]
+                    bg-white rounded-2xl overflow-hidden
+                    border border-neutral-200/80 hover:border-neutral-900/40
+                    transition-all duration-500
+                  "
+                >
+                  {/* Index badge */}
+                  <span className="absolute top-3 left-3 z-20 text-[10px] font-mono tracking-widest text-neutral-900/70 bg-white/80 backdrop-blur px-2 py-0.5 rounded-full">
+                    {String(idx + 1).padStart(2, "0")}
+                  </span>
+
+                  {discountPercentage > 0 && (
+                    <span className="absolute top-3 right-3 z-20 text-[10px] font-semibold tracking-wide text-white bg-neutral-900 px-2 py-0.5 rounded-full">
+                      -{discountPercentage}%
+                    </span>
+                  )}
+
+                  {/* Image */}
+                  <Link to={`/product/${product.slug}`} className="block">
+                    <div className="relative w-full aspect-[3/4] bg-gradient-to-br from-neutral-100 to-neutral-200 overflow-hidden">
+                      <img
+                        src={product.images?.[0]?.url || "/placeholder.svg"}
+                        alt={product.name}
+                        className="w-full h-full object-cover transition-transform duration-700 group-hover:scale-110"
+                      />
+                      {/* Hover veil */}
+                      <div className="absolute inset-0 bg-gradient-to-t from-neutral-900/30 via-transparent to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-500" />
+
+                      {/* Quick CTA */}
+                      <div className="absolute bottom-3 left-3 right-3 flex items-center justify-between translate-y-4 opacity-0 group-hover:translate-y-0 group-hover:opacity-100 transition-all duration-500">
+                        <span className="text-[10px] uppercase tracking-[0.18em] text-white font-medium">
+                          View
+                        </span>
+                        <span className="flex h-7 w-7 items-center justify-center rounded-full bg-white text-neutral-900">
+                          <ArrowUpRight className="w-3.5 h-3.5" />
+                        </span>
                       </div>
                     </div>
-                  </motion.div>
-                );
-              })}
-            </div>
+                  </Link>
+
+                  {/* Info */}
+                  <div className="p-3 sm:p-4">
+                    <p className="text-[9px] font-semibold tracking-[0.18em] text-neutral-500 uppercase mb-1">
+                      {product.brand || product.category?.name || "TOP PICK"}
+                    </p>
+                    <Link to={`/product/${product.slug}`}>
+                      <h3 className="text-[12px] sm:text-[13px] font-medium text-neutral-900 leading-snug line-clamp-2 mb-2 group-hover:text-neutral-700 transition-colors">
+                        {product.name}
+                      </h3>
+                    </Link>
+
+                    <div className="flex items-baseline gap-1.5 flex-wrap">
+                      <span className="text-[15px] font-semibold text-neutral-900">
+                        ₹{product.price}
+                      </span>
+                      {discountPercentage > 0 && (
+                        <span className="text-[11px] text-neutral-400 line-through">
+                          ₹{product.originalPrice}
+                        </span>
+                      )}
+                    </div>
+                  </div>
+                </div>
+              );
+            })}
           </div>
         </div>
+
+        {/* Mobile view all */}
+        <div className="mt-6 sm:hidden flex justify-center">
+          <Link
+            to="/products"
+            className="inline-flex items-center gap-2 text-[11px] font-medium uppercase tracking-[0.18em] text-neutral-900 border-b border-neutral-900 pb-1"
+          >
+            View All Picks
+            <ArrowUpRight className="w-3.5 h-3.5" />
+          </Link>
+        </div>
       </div>
-    </div>
+    </section>
   );
 }
