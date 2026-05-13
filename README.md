@@ -1,4 +1,3 @@
-<<<<<<< HEAD
 # Factory Sale - Simple CI/CD Setup
 
 ## 🚀 Simple Deployment
