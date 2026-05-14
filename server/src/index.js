@@ -162,6 +162,8 @@ app.use('/api/referral-config', referralRoutes);
 
 app.use("/api/partial-cod", require("../routes/partialCodRoutes"));
 app.use("/api/orders", require("../routes/order"));
+app.use('/api/webhooks/shipmozo', require("../services/shipmozoWebhook"));
+
 // app.use("/api/topten", require("../routes/topten"))
 app.use((err, req, res, next) => {
   console.error("❌ Server Error:", err)
