@@ -26,6 +26,7 @@
     "concurrently": "^8.2.2",
     "cross-env": "^7.0.3",
     "dotenv": "^17.4.2",
+    "jspdf-autotable": "^5.0.7",
     "pre-commit": "^1.2.2",
     "react-icons": "^5.5.0",
     "redux-persist": "^6.0.0",

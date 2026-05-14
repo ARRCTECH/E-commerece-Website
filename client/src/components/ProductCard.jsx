@@ -1,14 +1,21 @@
 "use client";
+
 import { memo, useState, useCallback, useEffect, useRef } from "react";
+
 import { motion, AnimatePresence } from "framer-motion";
+
 import { 
   Heart, Star, Package, ShoppingCart, X, Minus, Plus, 
   AlertCircle, Check, Shield, Truck, Sparkles, Loader2, 
-  Layers, Tag, Zap, Cpu, Battery, Wifi 
+  Layers, Tag, Zap, Cpu, Battery, Wifi, ArrowUpRight
 } from "lucide-react";
+
 import { Link } from "react-router-dom";
+
 import { useDispatch } from "react-redux";
+
 import { addToCart, optimisticAddToCart } from "../store/slices/cartSlice";
+
 import toast from "react-hot-toast";
 
 const getColorStyle = (colorName) => {
@@ -173,175 +180,137 @@ const ProductCard = ({ product, wishlistItems, user, onAddToCart, onWishlist }) 
         animate={{ opacity: 1, y: 0 }}
         transition={{ duration: 0.3 }}
         whileHover={{ y: -2 }}
-        className={`group relative bg-white rounded-xl shadow-sm hover:shadow-md transition-all duration-200 flex flex-col h-full overflow-hidden ${
-          isBulkProduct 
-            ? "border-l-4 border border-gray-100" 
-            : "border border-gray-100"
-        }`}
+        className="group relative bg-white rounded-2xl overflow-hidden border border-neutral-200/80 hover:border-neutral-900/40 transition-all duration-500 flex flex-col h-full"
       >
         <Link to={`/product/${product.slug}`} className="block relative overflow-hidden">
-          <div className="relative aspect-[4/3] bg-gray-100">
+          <div className="relative aspect-[3/4] bg-gradient-to-br from-neutral-100 to-neutral-200">
             <img
               src={productImage}
               alt={product.name}
-              className="object-cover w-full h-full transition-transform duration-500 group-hover:scale-105"
+              className="object-cover w-full h-full transition-transform duration-700 group-hover:scale-110"
               loading="lazy"
               onError={() => setImageError(true)}
             />
+            <div className="absolute inset-0 bg-gradient-to-t from-neutral-900/30 via-transparent to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-500" />
           </div>
 
-          <div className="absolute top-1 left-1 flex flex-col gap-0.5">
+          {/* Badges - Simple like NewArrivals */}
+          <div className="absolute top-3 left-3 flex flex-col gap-1">
             {isBulkProduct && (
-              <div className="flex items-center gap-0.5 px-1 py-0.5 rounded-full bg-red-600 text-white shadow-sm">
-                <Layers className="w-2 h-2" />
-                <span className="text-[8px] font-bold">BULK</span>
-              </div>
+              <span className="flex items-center gap-1 px-2 py-0.5 rounded-full bg-red-600 text-white text-[9px] font-bold shadow-sm">
+                <Layers className="w-2.5 h-2.5" />
+                BULK
+              </span>
             )}
             {hasDiscount && !isBulkProduct && (
-              <div className="flex items-center gap-0.5 px-1 py-0.5 rounded-full bg-red-600 text-white shadow-sm">
-                <Zap className="w-2 h-2" />
-                <span className="text-[8px] font-bold">{discountPercent}%</span>
-              </div>
+              <span className="flex items-center gap-1 px-2 py-0.5 rounded-full bg-neutral-900 text-white text-[9px] font-bold shadow-sm">
+                <Zap className="w-2.5 h-2.5" />
+                {discountPercent}%
+              </span>
             )}
             {!isBulkProduct && product.stock > 0 && product.stock <= 5 && (
-              <div className="flex items-center gap-0.5 px-1 py-0.5 rounded-full bg-orange-500 text-white text-[8px] shadow-sm">
-                <AlertCircle className="w-2 h-2" />
+              <span className="px-2 py-0.5 rounded-full bg-orange-500 text-white text-[9px] font-semibold shadow-sm">
                 Low stock
-              </div>
+              </span>
             )}
           </div>
 
+          {/* Wishlist Button */}
           <button
             onClick={handleWishlistClick}
-            className="absolute top-1 right-1 p-1 bg-white/90 backdrop-blur-sm rounded-full shadow-sm hover:bg-white transition"
+            className="absolute top-3 right-3 p-1.5 bg-white/90 backdrop-blur-sm rounded-full shadow-sm hover:bg-white transition"
             aria-label={inWishlist ? "Remove from wishlist" : "Add to wishlist"}
           >
-            <Heart className={`w-3 h-3 transition-all ${inWishlist ? "fill-red-500 text-red-500" : "text-gray-600 group-hover:text-red-500"}`} />
+            <Heart className={`w-3.5 h-3.5 transition-all ${inWishlist ? "fill-red-500 text-red-500" : "text-gray-600"}`} />
           </button>
+
+          {/* Quick CTA - Like NewArrivals */}
+          <div className="absolute bottom-3 left-3 right-3 flex items-center justify-between translate-y-4 opacity-0 group-hover:translate-y-0 group-hover:opacity-100 transition-all duration-500">
+            <span className="text-[10px] uppercase tracking-[0.18em] text-white font-medium">
+              View Details
+            </span>
+            <span className="flex h-7 w-7 items-center justify-center rounded-full bg-white text-neutral-900">
+              <ArrowUpRight className="w-3.5 h-3.5" />
+            </span>
+          </div>
         </Link>
 
-        <div className="p-2 flex flex-col flex-grow">
-          <Link to={`/product/${product.slug}`} className="block">
-            <h3 className="text-[9px] font-semibold text-gray-400 uppercase tracking-wider">
-              {product.brand || (isBulkProduct ? "BULK" : "KSAUNI")}
-            </h3>
-            <p className="text-[11px] font-medium text-gray-800 line-clamp-2 min-h-[2rem] group-hover:text-red-600 transition-colors">
+        <div className="p-3 flex flex-col flex-grow">
+          <p className="text-[9px] font-semibold tracking-[0.18em] text-neutral-500 uppercase mb-1">
+            {product.brand || (isBulkProduct ? "BULK COLLECTION" : "EXAMPLE BRAND")}
+          </p>
+          <Link to={`/product/${product.slug}`}>
+            <h3 className="text-[12px] font-medium text-neutral-900 leading-snug line-clamp-2 mb-2 group-hover:text-neutral-700 transition-colors">
               {product.name}
-            </p>
+            </h3>
           </Link>
 
-          {!isBulkProduct && displayFeatures.length > 0 && (
-            <div className="flex flex-wrap gap-0.5 mt-1">
-              {displayFeatures.map((feature, idx) => (
-                <span key={idx} className="inline-flex items-center gap-0.5 px-1 py-0.5 bg-gray-100 text-gray-600 text-[8px] font-medium rounded-full">
-                  {idx === 0 && <Cpu className="w-2 h-2" />}
-                  {idx === 1 && <Battery className="w-2 h-2" />}
-                  {idx === 2 && <Wifi className="w-2 h-2" />}
-                  {feature}
-                </span>
+          {/* Rating */}
+          <div className="flex items-center gap-1 mb-2">
+            <div className="flex gap-0.5">
+              {[1, 2, 3, 4, 5].map((star) => (
+                <Star
+                  key={star}
+                  className={`w-2.5 h-2.5 ${star <= Math.round(avgRating) ? "text-yellow-400 fill-current" : "text-gray-300"}`}
+                />
               ))}
             </div>
+            <span className="text-[9px] text-gray-500">({reviewCount})</span>
+          </div>
+
+          {/* Price */}
+          <div className="flex items-baseline gap-1.5 flex-wrap mt-auto">
+            {hasDiscount && !isBulkProduct && (
+              <span className="text-[10px] text-gray-400 line-through">₹{product.originalPrice?.toLocaleString()}</span>
+            )}
+            <span className="text-base font-semibold text-neutral-900">
+              ₹{product.price?.toLocaleString()}
+            </span>
+            {isBulkProduct && (
+              <span className="text-[9px] text-gray-500">/set</span>
+            )}
+          </div>
+
+          {/* Add to Cart Button - Simple like NewArrivals but functional */}
+          {!isBulkProduct && (
+            <button
+              onClick={handleAddToCartClick}
+              disabled={isAddingToCart || product.stock === 0}
+              className={`mt-3 w-full py-2 rounded-full text-xs font-semibold transition-all duration-300 ${
+                product.stock === 0
+                  ? "bg-gray-100 text-gray-400 cursor-not-allowed"
+                  : "bg-red-700 text-white hover:bg-red-600 hover:scale-[1.02]"
+              }`}
+            >
+              {isAddingToCart ? (
+                <Loader2 className="w-3.5 h-3.5 animate-spin mx-auto" />
+              ) : product.stock === 0 ? (
+                "Out of Stock"
+              ) : (
+                "Add to Cart"
+              )}
+            </button>
           )}
 
           {isBulkProduct && (
-            <div className="flex items-center gap-1 mt-1 text-[8px] bg-red-50 text-red-700 px-1 py-0.5 rounded border border-red-200 w-fit">
-              <Package className="w-2 h-2" />
-              <span>{product.sizes?.length || 0}s</span>
-              <span className="w-0.5 h-0.5 rounded-full bg-red-300" />
-              <span>{totalColors}c</span>
-              <span className="w-0.5 h-0.5 rounded-full bg-red-300" />
-              <span>{piecesPerSet}p/set</span>
-            </div>
+            <button
+              onClick={handleAddToCartClick}
+              className="mt-3 w-full py-2 rounded-full bg-red-700 text-white text-xs font-semibold hover:bg-red-600 hover:scale-[1.02] transition-all duration-300"
+            >
+              Customize Set
+            </button>
           )}
-
-          <div className="mt-1 mb-0.5">
-            {!isBulkProduct && (
-              <div className="flex items-baseline gap-1 flex-wrap">
-                {hasDiscount && (
-                  <span className="text-[9px] text-gray-400 line-through">₹{product.originalPrice?.toLocaleString()}</span>
-                )}
-                <span className="text-base font-bold text-gray-900">₹{product.price?.toLocaleString()}</span>
-                {hasDiscount && (
-                  <span className="text-[8px] font-semibold text-red-600 bg-red-50 px-1 py-0.5 rounded-full">
-                    Save ₹{(product.originalPrice - product.price).toLocaleString()}
-                  </span>
-                )}
-              </div>
-            )}
-            {isBulkProduct && (
-              <div className="flex items-baseline gap-1 flex-wrap">
-                {product.bulkConfig?.originalPricePerSet > product.bulkConfig?.pricePerSet && (
-                  <span className="text-[9px] text-gray-400 line-through">₹{product.bulkConfig.originalPricePerSet?.toLocaleString()}</span>
-                )}
-                <span className="text-base font-bold text-red-600">₹{product.bulkConfig?.pricePerSet?.toLocaleString()}</span>
-                <span className="text-[8px] text-gray-500 bg-gray-100 px-1 py-0.5 rounded-full">/set</span>
-              </div>
-            )}
-          </div>
-
-          <div className="flex items-center justify-between mt-0.5 mb-1">
-            <div className="flex items-center gap-0.5">
-              <div className="flex gap-0.5">
-                {[1, 2, 3, 4, 5].map((star) => (
-                  <Star
-                    key={star}
-                    className={`w-2 h-2 ${star <= Math.round(avgRating) ? "text-yellow-400 fill-current" : "text-gray-300"}`}
-                  />
-                ))}
-              </div>
-              <span className="text-[9px] text-gray-500">{reviewCount}</span>
-            </div>
-            <div className={`text-[9px] font-medium ${stockColor}`}>
-              {stockStatus}
-            </div>
-          </div>
-
-          {/* UPDATED BUTTONS: RED & LARGER */}
-          <div className="mt-auto flex justify-center align-middle">
-            {!isBulkProduct && (
-              <>
-                {product.stock === 0 ? (
-                  <div className="w-full  py-2 bg-gray-100 text-gray-500 text-xs font-semibold rounded-lg text-center">
-                    Out of Stock
-                  </div>
-                ) : (
-                  <button
-                    onClick={handleAddToCartClick}
-                    disabled={isAddingToCart}
-                    className="w-full py-2 bg-red-600 hover:bg-red-700 text-white font-semibold rounded-lg transition-all flex items-center justify-center gap-2 text-sm disabled:opacity-60"
-                  >
-                    {isAddingToCart ? (
-                      <Loader2 className="w-4 h-4 animate-spin" />
-                    ) : (
-                      <ShoppingCart className="w-4 h-4" />
-                    )}
-                    {isAddingToCart ? "Adding..." : "Add to Cart"}
-                  </button>
-                )}
-              </>
-            )}
-
-            {isBulkProduct && (
-              <button
-                onClick={handleAddToCartClick}
-                className="w-full py-2 bg-red-600 hover:bg-red-700 text-white font-semibold rounded-lg transition-all flex items-center justify-center gap-2 text-sm"
-              >
-                <Package className="w-4 h-4" />
-                Customize
-              </button>
-            )}
-          </div>
         </div>
       </motion.div>
 
-      {/* Bulk Modal (unchanged) */}
+      {/* Bulk Modal - Same functionality, minimal design */}
       <AnimatePresence>
         {showBulkModal && (
           <motion.div
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
             exit={{ opacity: 0 }}
-            className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/70 backdrop-blur-sm"
+            className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-red/70 backdrop-blur-sm"
             onClick={() => setShowBulkModal(false)}
           >
             <motion.div
@@ -350,10 +319,10 @@ const ProductCard = ({ product, wishlistItems, user, onAddToCart, onWishlist }) 
               animate={{ scale: 1, opacity: 1, y: 0 }}
               exit={{ scale: 0.95, opacity: 0, y: 20 }}
               transition={{ type: "spring", damping: 25, stiffness: 300 }}
-              className="relative w-full max-w-md bg-white rounded-xl shadow-2xl max-h-[90vh] overflow-hidden border-t-4 border-t-red-500"
+              className="relative w-full max-w-md bg-white rounded-xl shadow-2xl max-h-[90vh] overflow-hidden"
               onClick={(e) => e.stopPropagation()}
             >
-              <div className="sticky top-0 z-10 flex items-center justify-between p-4 bg-white/95 backdrop-blur-sm border-b border-gray-100">
+              <div className="sticky top-0 z-10 flex items-center justify-between p-4 bg-white border-b border-gray-100">
                 <div className="flex items-center gap-2">
                   <div className="p-1.5 rounded-full bg-red-100">
                     <Package className="w-4 h-4 text-red-600" />
@@ -460,8 +429,8 @@ const ProductCard = ({ product, wishlistItems, user, onAddToCart, onWishlist }) 
                   disabled={selectedColors.length < minColors}
                   className={`w-full py-2.5 rounded-xl font-semibold text-sm flex items-center justify-center gap-2 transition-all ${
                     selectedColors.length < minColors
-                      ? "bg-gray-100 text-gray-400 cursor-not-allowed"
-                      : "bg-red-600 hover:bg-red-700 text-white shadow-sm"
+                      ? "bg-red-100 text-gray-400 cursor-not-allowed"
+                      : "bg-red-700 hover:bg-red-600 text-white"
                   }`}
                 >
                   <ShoppingCart className="w-4 h-4" />

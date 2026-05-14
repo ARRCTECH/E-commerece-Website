@@ -17,7 +17,7 @@ const PriceSelection = ({ selectedPrice }) => {
     { id: "under649",  label: "Essentials", sublabel: "₹649",  value: 649,  tag: "Daily picks" },
     { id: "under799",  label: "Smart Buys", sublabel: "₹799",  value: 799,  tag: "Trending" },
     { id: "under999",  label: "Premium",    sublabel: "₹999",  value: 999,  tag: "Best value" },
-    { id: "under1499", label: "Luxe",       sublabel: "₹1499", value: 1499, tag: "Top tier" },
+    { id: "under1499", label: "Factory Sale",       sublabel: "₹1499", value: 1499, tag: "Top tier" },
   ];
 
   const handleOptionClick = (option) => {

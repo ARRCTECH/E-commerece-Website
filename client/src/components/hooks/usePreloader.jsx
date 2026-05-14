@@ -4,7 +4,7 @@ export const usePreloader = (minLoadTime = 2500) => {
   const [isLoading, setIsLoading] = useState(true);
   useEffect(() => {
     // Check if preloader has been shown in this session
-    const preloaderShown = sessionStorage.getItem("luxe-preloader-shown");
+    const preloaderShown = sessionStorage.getItem("Factory Sale-preloader-shown");
     // Skip preloader if already shown in this session
     if (preloaderShown) {
       setIsLoading(false);
@@ -17,7 +17,7 @@ export const usePreloader = (minLoadTime = 2500) => {
       setTimeout(() => {
         setIsLoading(false);
         // Mark preloader as shown for this session
-        sessionStorage.setItem("luxe-preloader-shown", "true");
+        sessionStorage.setItem("Factory Sale-preloader-shown", "true");
       }, remainingTime);
     };
     // Check if page is already loaded

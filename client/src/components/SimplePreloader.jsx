@@ -52,7 +52,7 @@ const SimplePreloader = ({ onComplete }) => {
                 ease: "easeInOut",
               }}
             >
-              LUXE
+              Factory Sale
             </motion.div>
           </motion.div>
           {/* Optional: Simple dots indicator */}

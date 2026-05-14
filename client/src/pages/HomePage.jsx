@@ -127,7 +127,7 @@ const HomePage = () => {
   }, [popupBanners, heroBanners, promoBanners, categoryBanners]);
 
   return (
-    <div className="min-h-screen bg-white flex flex-col">
+    <div className="flex flex-col">
       <PromoBanners />
       {/* <FlatDiscount /> */}
             <FeaturedCategories />
@@ -157,13 +157,13 @@ const HomePage = () => {
 
 
 
-      {popupVisible && popupBanner && (
+      {/* {popupVisible && popupBanner && (
         <Popup
           banner={popupBanner}
           visible={popupVisible}
           onClose={() => setPopupVisible(false)}
         />
-      )}
+      )} */}
     </div>
   );
 };

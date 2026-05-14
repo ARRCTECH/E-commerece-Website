@@ -1,16 +1,16 @@
 "use client"
+
 import { useEffect, useState } from "react"
 import { useDispatch, useSelector } from "react-redux"
 import { Link, useNavigate } from "react-router-dom"
 import { motion, AnimatePresence } from "framer-motion"
-import { ShoppingBag, Plus, Minus, Trash2, Heart, ArrowLeft, Truck, RotateCcw, ShoppingCart, Package, Gift } from "lucide-react"
 import {
-  fetchCart,
-  updateCartItem,
-  removeFromCart,
-  clearCart,
-  optimisticUpdateQuantity,
-  optimisticRemoveFromCart,
+  ShoppingBag, Plus, Minus, Trash2, Heart, ArrowLeft,
+  Truck, RotateCcw, ShoppingCart, Package, Gift, Sparkles, ShieldCheck,
+} from "lucide-react"
+import {
+  fetchCart, updateCartItem, removeFromCart, clearCart,
+  optimisticUpdateQuantity, optimisticRemoveFromCart,
 } from "../store/slices/cartSlice"
 import { addToWishlist, optimisticAddToWishlist } from "../store/slices/wishlistSlice"
 import toast from "react-hot-toast"
@@ -29,9 +29,7 @@ const CartPage = () => {
   }, [])
 
   useEffect(() => {
-    if (user) {
-      dispatch(fetchCart())
-    }
+    if (user) dispatch(fetchCart())
   }, [user, dispatch])
 
   const handleQuantityChange = async (itemId, newQuantity, isBulk = false, totalSets = null) => {
@@ -42,20 +40,16 @@ const CartPage = () => {
       if (newQuantity < 1 || newQuantity > 10) return
       dispatch(optimisticUpdateQuantity({ itemId, quantity: newQuantity }))
     }
-    
     setUpdatingItems((prev) => new Set(prev).add(itemId))
     try {
       const updateData = isBulk ? { totalSets } : { quantity: newQuantity }
       await dispatch(updateCartItem({ itemId, data: updateData })).unwrap()
     } catch (error) {
-      console.error("Update quantity error:", error)
       toast.error(error?.message || "Failed to update quantity")
       dispatch(fetchCart())
     } finally {
       setUpdatingItems((prev) => {
-        const newSet = new Set(prev)
-        newSet.delete(itemId)
-        return newSet
+        const newSet = new Set(prev); newSet.delete(itemId); return newSet
       })
     }
   }
@@ -64,16 +58,8 @@ const CartPage = () => {
     try {
       dispatch(optimisticRemoveFromCart(itemId))
       toast.success(`${productName} removed from cart`)
-      const bagElement = document.querySelector("#bag")
-      if (bagElement) {
-        bagElement.style.transform = "scale(1.2)"
-        setTimeout(() => {
-          bagElement.style.transform = "scale(1)"
-        }, 200)
-      }
       await dispatch(removeFromCart(itemId)).unwrap()
     } catch (error) {
-      console.error("Remove from cart error:", error)
       toast.error(error?.message || "Failed to remove from cart")
     }
   }
@@ -83,24 +69,9 @@ const CartPage = () => {
       dispatch(optimisticAddToWishlist(item.product))
       dispatch(optimisticRemoveFromCart(item._id))
       toast.success(`${item.product.name} moved to wishlist`)
-      const bagElement = document.querySelector("#bag")
-      const wishElement = document.querySelector("#wish")
-      if (bagElement) {
-        bagElement.style.transform = "scale(1.2)"
-        setTimeout(() => {
-          bagElement.style.transform = "scale(1)"
-        }, 200)
-      }
-      if (wishElement) {
-        wishElement.style.transform = "scale(1.2)"
-        setTimeout(() => {
-          wishElement.style.transform = "scale(1)"
-        }, 200)
-      }
       await dispatch(addToWishlist(item.product._id)).unwrap()
       await dispatch(removeFromCart(item._id)).unwrap()
     } catch (error) {
-      console.error("Move to wishlist error:", error)
       toast.error(error?.message || "Failed to move to wishlist")
     }
   }
@@ -116,145 +87,107 @@ const CartPage = () => {
     }
   }
 
-  const isInWishlist = (productId) => {
-    return wishlistItems.some((item) => item._id === productId)
-  }
+  const isInWishlist = (productId) => wishlistItems.some((item) => item._id === productId)
 
   const shippingCost = summary.subtotal >= 399 ? 0 : 99
   const totalAmount = summary.subtotal + shippingCost
 
-  const getDisplayPrice = (item) => {
-    if (item.isBulkProduct) {
-      return item.pricePerSet || item.product?.bulkConfig?.pricePerSet || item.product?.price
-    }
-    return item.product?.price || 0
-  }
-
-  const getOriginalPrice = (item) => {
-    if (item.isBulkProduct) {
-      return item.product?.bulkConfig?.originalPricePerSet
-    }
-    return item.product?.originalPrice
-  }
-
+  const getDisplayPrice = (item) => item.isBulkProduct
+    ? (item.pricePerSet || item.product?.bulkConfig?.pricePerSet || item.product?.price)
+    : (item.product?.price || 0)
+  const getOriginalPrice = (item) => item.isBulkProduct
+    ? item.product?.bulkConfig?.originalPricePerSet
+    : item.product?.originalPrice
   const getDiscountPercent = (item) => {
-    const price = getDisplayPrice(item)
-    const originalPrice = getOriginalPrice(item)
-    if (originalPrice && originalPrice > price) {
-      return Math.round(((originalPrice - price) / originalPrice) * 100)
-    }
-    return 0
+    const p = getDisplayPrice(item), o = getOriginalPrice(item)
+    return o && o > p ? Math.round(((o - p) / o) * 100) : 0
   }
-
-  const getQuantityDisplay = (item) => {
-    if (item.isBulkProduct) {
-      return item.totalSets || item.quantity || 1
-    }
-    return item.quantity || 1
-  }
-
-  const getItemTotal = (item) => {
-    if (item.isBulkProduct) {
-      const pricePerSet = getDisplayPrice(item)
-      const totalSets = getQuantityDisplay(item)
-      return pricePerSet * totalSets
-    }
-    return (item.product?.price || 0) * (item.quantity || 1)
-  }
-
-  // Skeleton loading component
-  const LoadingSkeleton = () => (
-    <div className="space-y-4">
-      {[1, 2, 3].map((i) => (
-        <div key={i} className="p-4 bg-white rounded-xl shadow-sm border animate-pulse">
-          <div className="flex gap-4">
-            <div className="w-20 h-20 bg-gray-200 rounded-xl md:w-24 md:h-24"></div>
-            <div className="flex-1 space-y-3">
-              <div className="h-4 bg-gray-200 rounded w-3/4"></div>
-              <div className="h-3 bg-gray-200 rounded w-1/2"></div>
-              <div className="flex justify-between">
-                <div className="h-8 bg-gray-200 rounded w-24"></div>
-                <div className="h-4 bg-gray-200 rounded w-16"></div>
-              </div>
-            </div>
-          </div>
-        </div>
-      ))}
-    </div>
-  )
+  const getQuantityDisplay = (item) => item.isBulkProduct
+    ? (item.totalSets || item.quantity || 1) : (item.quantity || 1)
+  const getItemTotal = (item) => item.isBulkProduct
+    ? getDisplayPrice(item) * getQuantityDisplay(item)
+    : (item.product?.price || 0) * (item.quantity || 1)
 
   if (isLoading && items.length === 0) {
     return (
-      <div className="min-h-screen bg-white pt-28 md:pt-32 pb-20">
-        <div className="container px-4 mx-auto">
-          <div className="flex items-center justify-between mb-8">
-            <div className="h-8 bg-gray-200 rounded w-40 animate-pulse"></div>
-            <div className="h-8 bg-gray-200 rounded w-24 animate-pulse"></div>
+      <div className="min-h-screen bg-[#fafaf7] pt-28 pb-20">
+        <div className="container px-4 mx-auto max-w-7xl">
+          <div className="h-10 w-56 bg-neutral-200 rounded-full animate-pulse mb-8" />
+          <div className="space-y-4">
+            {[1,2,3].map(i => (
+              <div key={i} className="h-32 bg-white rounded-3xl ring-1 ring-neutral-200/70 animate-pulse" />
+            ))}
           </div>
-          <LoadingSkeleton />
         </div>
       </div>
     )
   }
 
   return (
-    <div className="min-h-screen bg-gradient-to-b from-gray-50 to-white pt-6 md:pt-10 pb-24 md:pb-12">
-      <div className="container px-4 mx-auto max-w-7xl">
+    <div className="relative min-h-screen bg-[#fafaf7] pt-6 md:pt-12 pb-28 md:pb-16 overflow-hidden">
+      {/* Ambient glow */}
+      <div className="pointer-events-none absolute -top-40 -right-32 w-[28rem] h-[28rem] rounded-full bg-gradient-to-br from-red-200/40 via-rose-100/30 to-transparent blur-3xl" />
+      <div className="pointer-events-none absolute top-1/3 -left-40 w-[26rem] h-[26rem] rounded-full bg-gradient-to-tr from-amber-100/30 to-transparent blur-3xl" />
+
+      <div className="relative container px-4 mx-auto max-w-7xl">
         {/* Header */}
-        <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 mb-8">
-          <div className="flex items-center space-x-3">
+        <div className="flex flex-col md:flex-row md:items-end justify-between gap-4 mb-10">
+          <div className="flex items-start gap-4">
             <motion.button
               onClick={() => navigate('/')}
-              className="p-2 transition-all duration-200 rounded-full hover:bg-gray-100 active:scale-95"
-              whileHover={{ scale: 1.05 }}
-              whileTap={{ scale: 0.95 }}
+              whileHover={{ scale: 1.05 }} whileTap={{ scale: 0.95 }}
+              className="mt-2 p-2.5 rounded-full bg-white ring-1 ring-neutral-200 shadow-sm hover:ring-red-200 transition"
+              aria-label="Back"
             >
-              <ArrowLeft className="w-5 h-5 text-gray-600" />
+              <ArrowLeft className="w-4 h-4 text-neutral-700" />
             </motion.button>
             <div>
-              <h1 className="text-2xl md:text-3xl font-bold text-gray-800">Shopping Cart</h1>
-              <p className="text-sm text-gray-500 mt-1">
-                {summary.totalItems} {summary.totalItems === 1 ? "item" : "items"} in your cart
+              <span className="inline-flex items-center gap-1.5 text-[11px] uppercase tracking-[0.2em] text-red-700/80 font-semibold mb-2">
+                <Sparkles className="w-3 h-3" /> Your Selection
+              </span>
+              <h1 className="font-serif text-4xl md:text-5xl font-semibold text-neutral-900 leading-none">
+                Shopping <span className="italic text-red-700">Bag</span>
+              </h1>
+              <p className="text-sm text-neutral-500 mt-2">
+                {summary.totalItems} {summary.totalItems === 1 ? "piece" : "pieces"} curated for you
               </p>
             </div>
           </div>
           {items.length > 0 && (
             <motion.button
               onClick={handleClearCart}
-              className="self-start md:self-auto text-sm font-medium text-red-600 hover:text-red-700 transition-colors flex items-center gap-1 px-3 py-1.5 rounded-lg hover:bg-red-50"
-              whileHover={{ scale: 1.02 }}
-              whileTap={{ scale: 0.98 }}
+              whileHover={{ scale: 1.02 }} whileTap={{ scale: 0.96 }}
+              className="self-start md:self-auto inline-flex items-center gap-2 px-4 py-2 rounded-full bg-white text-sm font-medium text-red-700 ring-1 ring-red-100 hover:ring-red-300 hover:bg-red-50 transition"
             >
-              <Trash2 className="w-4 h-4" />
-              Clear Cart
+              <Trash2 className="w-4 h-4" /> Clear bag
             </motion.button>
           )}
         </div>
 
         {items.length === 0 ? (
-          <motion.div 
-            initial={{ opacity: 0, y: 20 }} 
-            animate={{ opacity: 1, y: 0 }} 
-            className="py-20 text-center max-w-md mx-auto"
+          <motion.div
+            initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }}
+            className="relative max-w-md mx-auto text-center bg-white rounded-3xl ring-1 ring-neutral-200/80 shadow-xl p-10 overflow-hidden"
           >
-            <div className="flex items-center justify-center w-28 h-28 mx-auto mb-6 bg-gradient-to-br from-gray-100 to-gray-200 rounded-full shadow-inner">
-              <ShoppingCart className="w-12 h-12 text-gray-400" />
+            <div className="absolute -top-16 -right-16 w-48 h-48 rounded-full bg-rose-100/60 blur-3xl" />
+            <div className="absolute -bottom-16 -left-16 w-48 h-48 rounded-full bg-amber-100/60 blur-3xl" />
+            <div className="relative">
+              <div className="flex items-center justify-center w-20 h-20 mx-auto mb-6 rounded-2xl bg-gradient-to-br from-red-700 to-rose-900 shadow-lg shadow-red-900/20">
+                <ShoppingCart className="w-9 h-9 text-white" />
+              </div>
+              <h2 className="font-serif text-3xl text-neutral-900 mb-2">Your bag awaits</h2>
+              <p className="text-neutral-500 mb-7">Discover pieces worth keeping. Start exploring the collection.</p>
+              <Link
+                to="/products"
+                className="inline-flex items-center gap-2 px-7 py-3.5 rounded-full bg-red-700 text-white font-medium shadow-lg shadow-red-900/20 hover:bg-red-800 hover:shadow-xl active:scale-[0.98] transition-all"
+              >
+                <ShoppingBag className="w-4 h-4" /> Start Shopping
+              </Link>
             </div>
-            <h2 className="mb-3 text-2xl font-semibold text-gray-800">Your cart is empty</h2>
-            <p className="text-gray-500 mb-8">
-              Looks like you haven't added any items yet. Start shopping to fill it up!
-            </p>
-            <Link
-              to="/products"
-              className="inline-flex items-center gap-2 px-6 py-3 text-white bg-red-600 rounded-xl hover:bg-red-700 transition-all shadow-md hover:shadow-lg transform hover:-translate-y-0.5"
-            >
-              <ShoppingBag className="w-5 h-5" />
-              <span>Continue Shopping</span>
-            </Link>
           </motion.div>
         ) : (
-          <div className="grid gap-8 lg:grid-cols-3">
-            {/* Cart Items */}
+          <div className="grid gap-6 lg:gap-8 lg:grid-cols-3">
+            {/* Items */}
             <div className="lg:col-span-2 space-y-4">
               <AnimatePresence mode="popLayout">
                 {items.map((item, index) => {
@@ -268,121 +201,98 @@ const CartPage = () => {
 
                   return (
                     <motion.div
-                      key={item._id}
-                      layout
+                      key={item._id} layout
                       initial={{ opacity: 0, y: 20 }}
                       animate={{ opacity: 1, y: 0 }}
-                      exit={{ opacity: 0, x: -50 }}
-                      transition={{ duration: 0.3, delay: index * 0.05 }}
-                      className="group bg-white rounded-2xl shadow-sm border border-gray-100 hover:shadow-md transition-all duration-300 overflow-hidden"
+                      exit={{ opacity: 0, x: -40 }}
+                      transition={{ duration: 0.3, delay: index * 0.04 }}
+                      className="group relative bg-white rounded-3xl ring-1 ring-neutral-200/70 hover:ring-red-200/70 hover:shadow-xl hover:-translate-y-0.5 transition-all duration-300 overflow-hidden"
                     >
                       <div className="p-4 md:p-5">
                         <div className="flex flex-col sm:flex-row gap-4">
-                          {/* Product Image */}
                           <Link
                             to={`/product/${item.product.slug}`}
-                            className="flex-shrink-0 w-24 h-24 md:w-28 md:h-28 rounded-xl overflow-hidden bg-gray-100"
+                            className="relative flex-shrink-0 w-full sm:w-32 h-40 sm:h-32 rounded-2xl overflow-hidden bg-neutral-100"
                           >
                             <img
-                              src={item.product.images[0]?.url || "/placeholder.svg?height=112&width=112"}
+                              src={item.product.images[0]?.url || "/placeholder.svg"}
                               alt={item.product.name}
-                              className="w-full h-full object-cover transition-transform duration-300 group-hover:scale-105"
+                              className="w-full h-full object-cover transition-transform duration-500 group-hover:scale-110"
                             />
+                            {discountPercent > 0 && (
+                              <span className="absolute top-2 left-2 text-[10px] font-bold tracking-wide text-white bg-red-700 px-2 py-0.5 rounded-full shadow">
+                                -{discountPercent}%
+                              </span>
+                            )}
                           </Link>
 
-                          {/* Product Details */}
-                          <div className="flex-1 min-w-0">
-                            <div className="flex flex-wrap justify-between gap-2 mb-1">
+                          <div className="flex-1 min-w-0 flex flex-col">
+                            <div className="flex justify-between gap-2">
                               <Link
                                 to={`/product/${item.product.slug}`}
-                                className="text-base md:text-lg font-semibold text-gray-800 hover:text-red-600 transition-colors line-clamp-2 flex-1"
+                                className="font-serif text-lg md:text-xl text-neutral-900 hover:text-red-700 transition line-clamp-2 leading-snug"
                               >
                                 {item.product.name}
                               </Link>
                               <motion.button
                                 onClick={() => handleRemoveItem(item._id, item.product.name)}
-                                className="text-gray-400 hover:text-red-500 transition-colors p-1 -mr-1"
-                                whileHover={{ scale: 1.1 }}
-                                whileTap={{ scale: 0.9 }}
-                                aria-label="Remove item"
+                                whileHover={{ scale: 1.1, rotate: -8 }} whileTap={{ scale: 0.9 }}
+                                className="shrink-0 w-8 h-8 inline-flex items-center justify-center rounded-full text-neutral-400 hover:text-red-700 hover:bg-red-50 transition"
+                                aria-label="Remove"
                               >
                                 <Trash2 className="w-4 h-4" />
                               </motion.button>
                             </div>
 
-                            {/* Bulk Badge & Info */}
-                            {isBulk && (
-                              <div className="flex flex-wrap gap-2 mb-2">
-                                <span className="inline-flex items-center gap-1 px-2 py-0.5 text-xs font-medium text-red-700 bg-red-50 rounded-full">
-                                  <Package className="w-3 h-3" />
-                                  Bulk Pack
+                            {isBulk ? (
+                              <div className="flex flex-wrap gap-2 mt-1.5">
+                                <span className="inline-flex items-center gap-1 px-2.5 py-0.5 text-[11px] font-medium text-red-700 bg-red-50 ring-1 ring-red-100 rounded-full">
+                                  <Package className="w-3 h-3" /> Bulk Pack
                                 </span>
-                                {item.selectedColors && item.selectedColors.length > 0 && (
-                                  <span className="text-xs text-gray-500">
-                                    Colors: {item.selectedColors.join(", ")}
+                                {item.selectedColors?.length > 0 && (
+                                  <span className="text-xs text-neutral-500">
+                                    {item.selectedColors.join(" · ")}
                                   </span>
                                 )}
                               </div>
-                            )}
-
-                            {/* Size & Color */}
-                            {!isBulk && (
-                              <div className="flex flex-wrap gap-2 text-xs text-gray-500 mb-2">
-                                {item.size && <span>Size: {item.size}</span>}
-                                {item.color && <span>Color: {item.color}</span>}
+                            ) : (
+                              <div className="flex flex-wrap gap-x-3 gap-y-1 text-xs text-neutral-500 mt-1.5">
+                                {item.size && <span>Size <span className="text-neutral-800 font-medium">{item.size}</span></span>}
+                                {item.color && <span>Colour <span className="text-neutral-800 font-medium">{item.color}</span></span>}
                               </div>
                             )}
 
-                            {/* Price & Quantity Row */}
-                            <div className="flex flex-wrap items-center justify-between gap-3 mt-2">
+                            <div className="flex flex-wrap items-center justify-between gap-3 mt-auto pt-3">
                               <div className="flex items-baseline gap-2">
-                                <span className="text-lg font-bold text-gray-800">
-                                  ₹{displayPrice}
-                                  {isBulk && <span className="text-xs font-normal text-gray-500 ml-1">/set</span>}
-                                </span>
+                                <span className="text-xl font-semibold text-neutral-900">₹{displayPrice}</span>
+                                {isBulk && <span className="text-[11px] text-neutral-500">/set</span>}
                                 {originalPrice && originalPrice > displayPrice && (
-                                  <span className="text-sm text-gray-400 line-through">
-                                    ₹{originalPrice}
-                                  </span>
-                                )}
-                                {discountPercent > 0 && (
-                                  <span className="text-xs font-semibold text-green-600 bg-green-50 px-1.5 py-0.5 rounded-full">
-                                    {discountPercent}% off
-                                  </span>
+                                  <span className="text-sm text-neutral-400 line-through">₹{originalPrice}</span>
                                 )}
                               </div>
 
-                              {/* Quantity Controls */}
                               <div className="flex items-center gap-2">
-                                <div className="flex items-center border border-gray-200 rounded-lg bg-gray-50">
+                                <div className="flex items-center bg-neutral-50 ring-1 ring-neutral-200 rounded-full">
                                   <motion.button
-                                    onClick={() => {
-                                      if (isBulk) {
-                                        handleQuantityChange(item._id, null, true, quantityDisplay - 1)
-                                      } else {
-                                        handleQuantityChange(item._id, quantityDisplay - 1, false)
-                                      }
-                                    }}
+                                    onClick={() => isBulk
+                                      ? handleQuantityChange(item._id, null, true, quantityDisplay - 1)
+                                      : handleQuantityChange(item._id, quantityDisplay - 1, false)}
                                     disabled={quantityDisplay <= 1 || isUpdating}
-                                    className="p-1.5 px-2.5 text-gray-600 hover:bg-gray-100 rounded-l-lg transition disabled:opacity-40 disabled:cursor-not-allowed"
                                     whileTap={{ scale: 0.9 }}
+                                    className="w-8 h-8 inline-flex items-center justify-center rounded-full text-neutral-700 hover:bg-white hover:text-red-700 disabled:opacity-40 disabled:cursor-not-allowed transition"
                                   >
                                     <Minus className="w-3.5 h-3.5" />
                                   </motion.button>
-                                  <span className="w-10 text-center text-sm font-medium">
-                                    {isUpdating ? "..." : quantityDisplay}
+                                  <span className="w-8 text-center text-sm font-semibold tabular-nums">
+                                    {isUpdating ? "…" : quantityDisplay}
                                   </span>
                                   <motion.button
-                                    onClick={() => {
-                                      if (isBulk) {
-                                        handleQuantityChange(item._id, null, true, quantityDisplay + 1)
-                                      } else {
-                                        handleQuantityChange(item._id, quantityDisplay + 1, false)
-                                      }
-                                    }}
+                                    onClick={() => isBulk
+                                      ? handleQuantityChange(item._id, null, true, quantityDisplay + 1)
+                                      : handleQuantityChange(item._id, quantityDisplay + 1, false)}
                                     disabled={quantityDisplay >= 10 || isUpdating}
-                                    className="p-1.5 px-2.5 text-gray-600 hover:bg-gray-100 rounded-r-lg transition disabled:opacity-40 disabled:cursor-not-allowed"
                                     whileTap={{ scale: 0.9 }}
+                                    className="w-8 h-8 inline-flex items-center justify-center rounded-full text-neutral-700 hover:bg-white hover:text-red-700 disabled:opacity-40 disabled:cursor-not-allowed transition"
                                   >
                                     <Plus className="w-3.5 h-3.5" />
                                   </motion.button>
@@ -390,30 +300,25 @@ const CartPage = () => {
                                 {!isBulk && !isInWishlist(item.product._id) && (
                                   <motion.button
                                     onClick={() => handleMoveToWishlist(item)}
-                                    className="p-2 text-gray-400 hover:text-red-500 transition-colors rounded-full hover:bg-red-50"
-                                    title="Move to Wishlist"
-                                    whileHover={{ scale: 1.05 }}
-                                    whileTap={{ scale: 0.95 }}
+                                    whileHover={{ scale: 1.08 }} whileTap={{ scale: 0.92 }}
+                                    title="Move to wishlist"
+                                    className="w-8 h-8 inline-flex items-center justify-center rounded-full bg-neutral-50 ring-1 ring-neutral-200 text-neutral-500 hover:text-red-700 hover:ring-red-200 transition"
                                   >
-                                    <Heart className="w-4 h-4" />
+                                    <Heart className="w-3.5 h-3.5" />
                                   </motion.button>
                                 )}
                               </div>
                             </div>
 
-                            {/* Item Total & Pieces info */}
-                            <div className="flex justify-between items-center mt-3 pt-2 border-t border-gray-100">
-                              <div className="text-xs text-gray-500 flex items-center gap-1">
-                                <RotateCcw className="w-3 h-3" />
-                                <span>7 days return</span>
+                            <div className="flex justify-between items-center mt-3 pt-3 border-t border-dashed border-neutral-200">
+                              <div className="text-[11px] text-neutral-500 flex items-center gap-1.5">
+                                <RotateCcw className="w-3 h-3" /> 7-day easy returns
                               </div>
                               <div className="text-right">
-                                <span className="text-sm font-semibold text-gray-800">
-                                  Total: ₹{itemTotal}
-                                </span>
+                                <span className="text-sm font-semibold text-neutral-900">₹{itemTotal}</span>
                                 {isBulk && (
-                                  <p className="text-xs text-gray-500">
-                                    {quantityDisplay} set{quantityDisplay !== 1 ? 's' : ''} = {item.totalPieces || (item.piecesPerSet * quantityDisplay)} pieces
+                                  <p className="text-[11px] text-neutral-500">
+                                    {quantityDisplay} set{quantityDisplay !== 1 ? 's' : ''} · {item.totalPieces || (item.piecesPerSet * quantityDisplay)} pcs
                                   </p>
                                 )}
                               </div>
@@ -427,98 +332,96 @@ const CartPage = () => {
               </AnimatePresence>
             </div>
 
-            {/* Order Summary */}
+            {/* Summary */}
             <div className="lg:col-span-1">
-              {/* Free Shipping Banner */}
               {summary.subtotal >= 399 ? (
-                <motion.div 
-                  initial={{ opacity: 0, y: -10 }}
-                  animate={{ opacity: 1, y: 0 }}
-                  className="p-4 mb-5 border border-green-200 rounded-2xl bg-gradient-to-r from-green-50 to-emerald-50"
+                <motion.div
+                  initial={{ opacity: 0, y: -10 }} animate={{ opacity: 1, y: 0 }}
+                  className="p-4 mb-5 rounded-2xl bg-gradient-to-r from-emerald-50 to-green-50 ring-1 ring-emerald-200/70"
                 >
                   <div className="flex items-center gap-3">
-                    <div className="p-2 bg-green-100 rounded-full">
-                      <Truck className="w-5 h-5 text-green-600" />
-                    </div>
+                    <div className="p-2 bg-emerald-600 rounded-full shadow"><Truck className="w-4 h-4 text-white" /></div>
                     <div>
-                      <p className="text-sm font-semibold text-green-800">🎉 Free Shipping Unlocked!</p>
-                      <p className="text-xs text-green-600">You've saved ₹99 on delivery</p>
+                      <p className="text-sm font-semibold text-emerald-900">Free delivery unlocked</p>
+                      <p className="text-xs text-emerald-700">You saved ₹99 on shipping</p>
                     </div>
                   </div>
                 </motion.div>
               ) : (
-                <motion.div 
-                  initial={{ opacity: 0, y: -10 }}
-                  animate={{ opacity: 1, y: 0 }}
-                  className="p-4 mb-5 border border-blue-200 rounded-2xl bg-gradient-to-r from-blue-50 to-indigo-50"
+                <motion.div
+                  initial={{ opacity: 0, y: -10 }} animate={{ opacity: 1, y: 0 }}
+                  className="p-4 mb-5 rounded-2xl bg-white ring-1 ring-neutral-200"
                 >
                   <div className="flex items-center gap-3">
-                    <div className="p-2 bg-blue-100 rounded-full">
-                      <Gift className="w-5 h-5 text-blue-600" />
-                    </div>
+                    <div className="p-2 bg-red-700 rounded-full shadow"><Gift className="w-4 h-4 text-white" /></div>
                     <div>
-                      <p className="text-sm font-medium text-blue-800">
-                        Add ₹{399 - summary.subtotal} more for FREE Shipping
+                      <p className="text-sm font-semibold text-neutral-900">
+                        Add ₹{399 - summary.subtotal} more for free delivery
                       </p>
-                      <p className="text-xs text-blue-600">Current shipping: ₹99</p>
+                      <p className="text-xs text-neutral-500">Currently ₹99 shipping</p>
                     </div>
                   </div>
-                  <div className="mt-3 w-full bg-blue-200 rounded-full h-1.5 overflow-hidden">
-                    <motion.div 
-                      className="bg-blue-600 h-full rounded-full"
+                  <div className="mt-3 w-full h-1.5 bg-neutral-100 rounded-full overflow-hidden">
+                    <motion.div
+                      className="h-full bg-gradient-to-r from-red-700 to-rose-500 rounded-full"
                       initial={{ width: 0 }}
                       animate={{ width: `${Math.min((summary.subtotal / 399) * 100, 100)}%` }}
-                      transition={{ duration: 0.5 }}
+                      transition={{ duration: 0.6 }}
                     />
                   </div>
                 </motion.div>
               )}
 
               <motion.div
-                initial={{ opacity: 0, y: 20 }}
-                animate={{ opacity: 1, y: 0 }}
-                transition={{ delay: 0.2 }}
-                className="sticky top-24 bg-white rounded-2xl shadow-lg border border-gray-100 overflow-hidden"
+                initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.2 }}
+                className="sticky top-24 relative bg-white rounded-3xl ring-1 ring-neutral-200/80 shadow-xl overflow-hidden"
               >
-                <div className="p-5 md:p-6">
-                  <h3 className="text-xl font-bold text-gray-800 mb-4">Order Summary</h3>
-                  <div className="space-y-3">
-                    <div className="flex justify-between text-gray-600">
+                <div className="absolute inset-x-0 top-0 h-1 bg-gradient-to-r from-red-700 via-rose-600 to-red-700" />
+                <div className="p-6">
+                  <div className="flex items-center justify-between mb-5">
+                    <h3 className="font-serif text-2xl text-neutral-900">Order Summary</h3>
+                    <ShieldCheck className="w-5 h-5 text-red-700" />
+                  </div>
+
+                  <div className="space-y-3 text-sm">
+                    <div className="flex justify-between text-neutral-600">
                       <span>Subtotal</span>
-                      <span className="font-medium">₹{summary.subtotal}</span>
+                      <span className="font-medium text-neutral-900 tabular-nums">₹{summary.subtotal}</span>
                     </div>
-                    <div className="flex justify-between text-gray-600">
+                    <div className="flex justify-between text-neutral-600">
                       <span>Shipping</span>
-                      <span className="font-medium">
-                        {summary.subtotal >= 399 ? 
-                          <span className="text-green-600 font-semibold">FREE</span> : 
-                          <span>₹99</span>
-                        }
+                      <span className="font-medium tabular-nums">
+                        {summary.subtotal >= 399
+                          ? <span className="text-emerald-600 font-semibold">FREE</span>
+                          : <span className="text-neutral-900">₹99</span>}
                       </span>
                     </div>
-                    <div className="border-t border-gray-100 my-3"></div>
-                    <div className="flex justify-between text-lg font-bold">
-                      <span>Total</span>
-                      <span className="text-red-600">₹{totalAmount}</span>
+                    <div className="my-3 border-t border-dashed border-neutral-200" />
+                    <div className="flex justify-between items-baseline">
+                      <span className="text-base font-semibold text-neutral-900">Total</span>
+                      <span className="font-serif text-2xl font-semibold text-red-700 tabular-nums">₹{totalAmount}</span>
                     </div>
-                    <p className="text-xs text-gray-500 mt-1">Inclusive of all taxes</p>
+                    <p className="text-[11px] text-neutral-500">Inclusive of all taxes</p>
                   </div>
 
                   <motion.button
                     onClick={() => navigate("/checkout")}
-                    className="hidden md:block w-full mt-6 py-3.5 bg-red-600 hover:bg-red-700 text-white font-semibold rounded-xl transition-all shadow-md hover:shadow-lg transform hover:-translate-y-0.5"
-                    whileHover={{ scale: 1.02 }}
-                    whileTap={{ scale: 0.98 }}
+                    whileHover={{ scale: 1.01 }} whileTap={{ scale: 0.98 }}
+                    className="hidden md:flex items-center justify-center gap-2 w-full mt-6 py-4 bg-red-700 hover:bg-red-800 text-white font-semibold rounded-2xl shadow-lg shadow-red-900/20 hover:shadow-xl transition-all"
                   >
-                    Proceed to Checkout
+                    Proceed to Checkout <ArrowLeft className="w-4 h-4 rotate-180" />
                   </motion.button>
 
-                  <div className="mt-5 pt-3 border-t border-gray-100">
-                    <img 
-                      src="/badge.jpeg" 
-                      className="w-full rounded-xl shadow-sm" 
-                      alt="Secure checkout badge" 
-                    />
+                  <div className="mt-5 grid grid-cols-3 gap-2 text-[10px] text-neutral-500">
+                    <div className="flex flex-col items-center gap-1 p-2 rounded-xl bg-neutral-50">
+                      <ShieldCheck className="w-4 h-4 text-neutral-700" /> Secure
+                    </div>
+                    <div className="flex flex-col items-center gap-1 p-2 rounded-xl bg-neutral-50">
+                      <Truck className="w-4 h-4 text-neutral-700" /> Fast ship
+                    </div>
+                    <div className="flex flex-col items-center gap-1 p-2 rounded-xl bg-neutral-50">
+                      <RotateCcw className="w-4 h-4 text-neutral-700" /> Returns
+                    </div>
                   </div>
                 </div>
               </motion.div>
@@ -527,24 +430,25 @@ const CartPage = () => {
         )}
       </div>
 
-      {/* Mobile Sticky Checkout Button */}
+      {/* Mobile Sticky Checkout */}
       {items.length > 0 && (
         <motion.div
-          initial={{ y: 100 }}
-          animate={{ y: 0 }}
-          className="fixed bottom-0 left-0 right-0 p-4 bg-white border-t border-gray-200 shadow-lg md:hidden z-50"
+          initial={{ y: 100 }} animate={{ y: 0 }}
+          className="fixed bottom-0 left-0 right-0 p-4 bg-white/90 backdrop-blur-xl border-t border-neutral-200 shadow-2xl md:hidden z-50"
         >
           <div className="flex items-center justify-between mb-2 px-1">
-            <span className="text-sm text-gray-600">Total</span>
-            <span className="text-xl font-bold text-red-600">₹{totalAmount}</span>
+            <div>
+              <p className="text-[11px] uppercase tracking-wider text-neutral-500">Total</p>
+              <p className="font-serif text-2xl font-semibold text-red-700">₹{totalAmount}</p>
+            </div>
+            <motion.button
+              onClick={() => navigate("/checkout")}
+              whileTap={{ scale: 0.97 }}
+              className="px-7 py-3.5 bg-red-700 hover:bg-red-800 text-white font-semibold rounded-full shadow-lg shadow-red-900/20"
+            >
+              Place Order →
+            </motion.button>
           </div>
-          <motion.button
-            onClick={() => navigate("/checkout")}
-            className="w-full py-3.5 bg-red-600 hover:bg-red-700 text-white font-semibold rounded-xl transition-all"
-            whileTap={{ scale: 0.98 }}
-          >
-            Place Order
-          </motion.button>
         </motion.div>
       )}
     </div>

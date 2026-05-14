@@ -4,7 +4,7 @@ import { motion, AnimatePresence } from "framer-motion";
 import { 
   ChevronDown, X, Tag, DollarSign, Star, Filter, 
   Sliders, ShoppingBag, Zap, TrendingUp, Award, 
-  Sparkles, Palette, Layers, Clock 
+  Sparkles, Palette, Layers, Clock, Gem, Shield
 } from "lucide-react";
 
 const ProductFilters = memo(({ filters, categories, onFilterChange, onClearFilters, onClose }) => {
@@ -85,32 +85,32 @@ const ProductFilters = memo(({ filters, categories, onFilterChange, onClearFilte
     <motion.div
       initial={{ opacity: 0, x: -20 }}
       animate={{ opacity: 1, x: 0 }}
-      className="relative bg-gradient-to-br from-white via-white to-gray-50 rounded-[12px] shadow-xl border border-gray-100 overflow-hidden"
+      className="relative bg-white rounded-2xl shadow-xl border border-gray-100 overflow-hidden"
     >
-      {/* Header – compact */}
-      <div className="relative px-4 pt-4 pb-3 bg-gradient-to-r from-red-600 to-red-500">
-        <div className="absolute top-0 right-0 w-24 h-20 bg-white/10 rounded-full -mr-12 -mt-12" />
-        <div className="absolute bottom-0 left-0 w-20 h-12 bg-white/5 rounded-full -ml-10 -mb-10" />
+      {/* Premium Header - Only design change */}
+      <div className="relative px-5 pt-5 pb-4 bg-gradient-to-r from-gray-900 to-gray-800">
+        <div className="absolute top-0 right-0 w-32 h-32 bg-white/5 rounded-full -mr-16 -mt-16 blur-2xl" />
+        <div className="absolute bottom-0 left-0 w-24 h-24 bg-white/5 rounded-full -ml-12 -mb-12 blur-2xl" />
         
-        <div className="relative flex items-center justify-between rounded-md">
-          <div className="flex items-center gap-2">
-            <div className="p-1.5 bg-white/20 rounded-md backdrop-blur-sm">
+        <div className="relative flex items-center justify-between">
+          <div className="flex items-center gap-3">
+            <div className="p-2 bg-white/10 rounded-xl">
               <Sliders className="w-4 h-4 text-white" />
             </div>
             <div>
-              <h2 className="text-lg font-bold text-white tracking-tight">Filters</h2>
+              <h2 className="text-xl font-bold text-white tracking-tight">Filters</h2>
               {activeFiltersCount > 0 && (
-                <p className="text-[11px] text-white/80 mt-0">{activeFiltersCount} active</p>
+                <p className="text-[11px] text-white/60 mt-0.5">{activeFiltersCount} active</p>
               )}
             </div>
           </div>
-          <div className="flex items-center gap-1.5">
+          <div className="flex items-center gap-2">
             {activeFiltersCount > 0 && (
               <motion.button
-                whileHover={{ scale: 1.05 }}
-                whileTap={{ scale: 0.95 }}
+                whileHover={{ scale: 1.02 }}
+                whileTap={{ scale: 0.98 }}
                 onClick={clearAllFilters}
-                className="px-2 py-1 text-[11px] font-medium text-white bg-white/20 rounded-md hover:bg-white/30 transition"
+                className="px-3 py-1.5 text-[11px] font-medium text-white bg-white/10 rounded-full hover:bg-white/20 transition"
               >
                 Clear all
               </motion.button>
@@ -120,7 +120,7 @@ const ProductFilters = memo(({ filters, categories, onFilterChange, onClearFilte
                 whileHover={{ scale: 1.05, rotate: 90 }}
                 whileTap={{ scale: 0.95 }}
                 onClick={onClose}
-                className="p-1 text-white/80 hover:text-white rounded-full hover:bg-white/20 transition"
+                className="p-1.5 text-white/60 hover:text-white rounded-full hover:bg-white/10 transition"
               >
                 <X className="w-4 h-4" />
               </motion.button>
@@ -129,26 +129,28 @@ const ProductFilters = memo(({ filters, categories, onFilterChange, onClearFilte
         </div>
       </div>
 
-      {/* Filter sections – reduced padding */}
-      <div className="p-3 space-y-3 max-h-[calc(100vh-180px)] overflow-y-auto custom-scrollbar">
+      {/* Filter sections - Only design changes (colors, spacing, shadows) */}
+      <div className="p-4 space-y-4 max-h-[calc(100vh-200px)] overflow-y-auto custom-scrollbar">
+        
         {/* Categories Section */}
-        <div className="bg-white rounded-lg border border-gray-100 shadow-sm overflow-hidden">
+        <div className="bg-white rounded-xl border border-gray-100 shadow-sm overflow-hidden">
           <motion.button
             whileHover={{ backgroundColor: "#F9FAFB" }}
             onClick={() => toggleSection("categories")}
-            className="flex items-center justify-between w-full px-3 py-2 text-left transition-colors"
+            className="flex items-center justify-between w-full px-4 py-3 text-left transition-colors"
           >
-            <div className="flex items-center gap-1.5">
-              <div className="p-1 bg-red-50 rounded-md">
+            <div className="flex items-center gap-2.5">
+              <div className="p-1.5 bg-red-50 rounded-lg">
                 <ShoppingBag className="w-3.5 h-3.5 text-red-600" />
               </div>
               <h3 className="text-sm font-semibold text-gray-800">Categories</h3>
             </div>
             <motion.div
               animate={{ rotate: expandedSections.categories ? 180 : 0 }}
-              transition={{ duration: 0.2 }}
+              transition={{ duration: 0.3 }}
+              className="p-1 rounded-full bg-gray-100"
             >
-              <ChevronDown className="w-3.5 h-3.5 text-gray-400" />
+              <ChevronDown className="w-3.5 h-3.5 text-gray-500" />
             </motion.div>
           </motion.button>
           
@@ -161,19 +163,19 @@ const ProductFilters = memo(({ filters, categories, onFilterChange, onClearFilte
                 transition={{ duration: 0.2 }}
                 className="overflow-hidden"
               >
-                <div className="px-3 pb-3 space-y-1">
-                  <label className="flex items-center justify-between p-1.5 rounded-md cursor-pointer hover:bg-gray-50 transition group">
-                    <div className="flex items-center gap-2">
+                <div className="px-4 pb-4 space-y-1.5">
+                  <label className="flex items-center justify-between p-2 rounded-lg cursor-pointer hover:bg-gray-50 transition group">
+                    <div className="flex items-center gap-3">
                       <input
                         type="radio"
                         name="category"
                         checked={!filters.category}
                         onChange={() => onFilterChange({ category: "" })}
-                        className="w-3.5 h-3.5 text-red-600 border-gray-300"
+                        className="w-4 h-4 text-red-600 border-gray-300 focus:ring-red-500"
                       />
-                      <span className="text-xs text-gray-700 group-hover:text-red-600 transition">All Categories</span>
+                      <span className="text-sm text-gray-700 group-hover:text-red-600 transition">All Categories</span>
                     </div>
-                    <span className="text-[11px] text-gray-400">All</span>
+                    <span className="text-[11px] text-gray-400 bg-gray-100 px-2 py-1 rounded-full">All</span>
                   </label>
                   
                   {categories
@@ -184,22 +186,22 @@ const ProductFilters = memo(({ filters, categories, onFilterChange, onClearFilte
                     .map((category) => (
                       <label
                         key={category._id}
-                        className="flex items-center justify-between p-1.5 rounded-md cursor-pointer hover:bg-gray-50 transition group"
+                        className="flex items-center justify-between p-2 rounded-lg cursor-pointer hover:bg-gray-50 transition group"
                       >
-                        <div className="flex items-center gap-2">
+                        <div className="flex items-center gap-3">
                           <input
                             type="radio"
                             name="category"
                             checked={filters.category === category.slug}
                             onChange={() => onFilterChange({ category: category.slug })}
-                            className="w-3.5 h-3.5 text-red-600 border-gray-300"
+                            className="w-4 h-4 text-red-600 border-gray-300 focus:ring-red-500"
                           />
-                          <span className="flex items-center gap-1 text-xs text-gray-700 group-hover:text-red-600 transition">
+                          <span className="flex items-center gap-2 text-sm text-gray-700 group-hover:text-red-600 transition">
                             {getCategoryIcon(category.name)}
                             {category.name}
                           </span>
                         </div>
-                        <span className="text-[10px] font-medium text-gray-400 bg-gray-100 px-1.5 py-0.5 rounded-full">
+                        <span className="text-[11px] font-medium text-gray-400 bg-gray-100 px-2 py-1 rounded-full">
                           {category.productCount || 0}
                         </span>
                       </label>
@@ -211,23 +213,24 @@ const ProductFilters = memo(({ filters, categories, onFilterChange, onClearFilte
         </div>
 
         {/* Price Range Section */}
-        <div className="bg-white rounded-lg border border-gray-100 shadow-sm overflow-hidden">
+        <div className="bg-white rounded-xl border border-gray-100 shadow-sm overflow-hidden">
           <motion.button
             whileHover={{ backgroundColor: "#F9FAFB" }}
             onClick={() => toggleSection("price")}
-            className="flex items-center justify-between w-full px-3 py-2 text-left transition-colors"
+            className="flex items-center justify-between w-full px-4 py-3 text-left transition-colors"
           >
-            <div className="flex items-center gap-1.5">
-              <div className="p-1 bg-green-50 rounded-md">
+            <div className="flex items-center gap-2.5">
+              <div className="p-1.5 bg-green-50 rounded-lg">
                 <DollarSign className="w-3.5 h-3.5 text-green-600" />
               </div>
               <h3 className="text-sm font-semibold text-gray-800">Price Range</h3>
             </div>
             <motion.div
               animate={{ rotate: expandedSections.price ? 180 : 0 }}
-              transition={{ duration: 0.2 }}
+              transition={{ duration: 0.3 }}
+              className="p-1 rounded-full bg-gray-100"
             >
-              <ChevronDown className="w-3.5 h-3.5 text-gray-400" />
+              <ChevronDown className="w-3.5 h-3.5 text-gray-500" />
             </motion.div>
           </motion.button>
           
@@ -240,33 +243,33 @@ const ProductFilters = memo(({ filters, categories, onFilterChange, onClearFilte
                 transition={{ duration: 0.2 }}
                 className="overflow-hidden"
               >
-                <div className="px-3 pb-3 space-y-3">
+                <div className="px-4 pb-4 space-y-3">
                   <div className="space-y-2">
-                    <div className="flex items-center gap-2">
+                    <div className="flex items-center gap-3">
                       <div className="flex-1">
-                        <label className="block text-[10px] text-gray-500 mb-0.5">Min (₹)</label>
+                        <label className="block text-[10px] text-gray-500 mb-1">Min (₹)</label>
                         <input
                           type="number"
                           value={priceRangeValue.min === 0 ? "" : priceRangeValue.min}
                           onChange={(e) => handlePriceRangeChange("min", e.target.value)}
                           placeholder="0"
-                          className="w-full px-2 py-1.5 text-xs border border-gray-200 rounded-md focus:ring-2 focus:ring-red-500 focus:border-red-500 outline-none transition"
+                          className="w-full px-3 py-2 text-sm border border-gray-200 rounded-lg focus:ring-2 focus:ring-red-500 focus:border-red-500 outline-none transition"
                         />
                       </div>
-                      <span className="text-gray-400 mt-4">—</span>
+                      <span className="text-gray-400 mt-5">—</span>
                       <div className="flex-1">
-                        <label className="block text-[10px] text-gray-500 mb-0.5">Max (₹)</label>
+                        <label className="block text-[10px] text-gray-500 mb-1">Max (₹)</label>
                         <input
                           type="number"
                           value={priceRangeValue.max === 10000 ? "" : priceRangeValue.max}
                           onChange={(e) => handlePriceRangeChange("max", e.target.value)}
                           placeholder="10000+"
-                          className="w-full px-2 py-1.5 text-xs border border-gray-200 rounded-md focus:ring-2 focus:ring-red-500 focus:border-red-500 outline-none transition"
+                          className="w-full px-3 py-2 text-sm border border-gray-200 rounded-lg focus:ring-2 focus:ring-red-500 focus:border-red-500 outline-none transition"
                         />
                       </div>
                     </div>
                     
-                    <div className="flex flex-wrap gap-1.5 pt-1">
+                    <div className="flex flex-wrap gap-2 pt-2">
                       {[
                         { label: "Under ₹500", min: "", max: "500" },
                         { label: "₹500-1000", min: "500", max: "1000" },
@@ -287,7 +290,7 @@ const ProductFilters = memo(({ filters, categories, onFilterChange, onClearFilte
                               });
                               onFilterChange({ minPrice: range.min, maxPrice: range.max });
                             }}
-                            className={`px-2 py-1 text-[11px] font-medium rounded-full transition ${
+                            className={`px-3 py-1.5 text-[11px] font-medium rounded-full transition ${
                               isActive
                                 ? "bg-red-600 text-white shadow-sm"
                                 : "bg-gray-100 text-gray-700 hover:bg-gray-200"
@@ -306,23 +309,24 @@ const ProductFilters = memo(({ filters, categories, onFilterChange, onClearFilte
         </div>
 
         {/* Rating Section */}
-        <div className="bg-white rounded-lg border border-gray-100 shadow-sm overflow-hidden">
+        <div className="bg-white rounded-xl border border-gray-100 shadow-sm overflow-hidden">
           <motion.button
             whileHover={{ backgroundColor: "#F9FAFB" }}
             onClick={() => toggleSection("rating")}
-            className="flex items-center justify-between w-full px-3 py-2 text-left transition-colors"
+            className="flex items-center justify-between w-full px-4 py-3 text-left transition-colors"
           >
-            <div className="flex items-center gap-1.5">
-              <div className="p-1 bg-yellow-50 rounded-md">
+            <div className="flex items-center gap-2.5">
+              <div className="p-1.5 bg-yellow-50 rounded-lg">
                 <Star className="w-3.5 h-3.5 text-yellow-600" />
               </div>
               <h3 className="text-sm font-semibold text-gray-800">Customer Rating</h3>
             </div>
             <motion.div
               animate={{ rotate: expandedSections.rating ? 180 : 0 }}
-              transition={{ duration: 0.2 }}
+              transition={{ duration: 0.3 }}
+              className="p-1 rounded-full bg-gray-100"
             >
-              <ChevronDown className="w-3.5 h-3.5 text-gray-400" />
+              <ChevronDown className="w-3.5 h-3.5 text-gray-500" />
             </motion.div>
           </motion.button>
           
@@ -335,22 +339,22 @@ const ProductFilters = memo(({ filters, categories, onFilterChange, onClearFilte
                 transition={{ duration: 0.2 }}
                 className="overflow-hidden"
               >
-                <div className="px-3 pb-3 space-y-1.5">
+                <div className="px-4 pb-4 space-y-1.5">
                   {[4, 3, 2, 1].map((rating) => {
                     const isSelected = selectedRatings.includes(rating);
                     return (
                       <label
                         key={rating}
-                        className={`flex items-center justify-between p-1.5 rounded-md cursor-pointer transition ${
+                        className={`flex items-center justify-between p-2 rounded-lg cursor-pointer transition ${
                           isSelected ? "bg-yellow-50 border border-yellow-200" : "hover:bg-gray-50"
                         }`}
                       >
-                        <div className="flex items-center gap-2">
+                        <div className="flex items-center gap-3">
                           <input
                             type="checkbox"
                             checked={isSelected}
                             onChange={() => handleRatingChange(rating)}
-                            className="w-3.5 h-3.5 text-yellow-600 border-gray-300 rounded focus:ring-yellow-500 focus:ring-2"
+                            className="w-4 h-4 text-yellow-600 border-gray-300 rounded focus:ring-yellow-500"
                           />
                           <div className="flex items-center gap-0.5">
                             {[...Array(5)].map((_, i) => (
@@ -359,7 +363,7 @@ const ProductFilters = memo(({ filters, categories, onFilterChange, onClearFilte
                                 className={`w-3 h-3 ${i < rating ? "text-yellow-400 fill-current" : "text-gray-300"}`}
                               />
                             ))}
-                            <span className="text-xs text-gray-700 ml-1">& Up</span>
+                            <span className="text-sm text-gray-700 ml-1">& Up</span>
                           </div>
                         </div>
                         {isSelected && (
@@ -380,11 +384,11 @@ const ProductFilters = memo(({ filters, categories, onFilterChange, onClearFilte
 
         {/* Active filters summary */}
         {activeFiltersCount > 0 && (
-          <div className="pt-1">
-            <div className="flex flex-wrap gap-1.5">
+          <div className="pt-2">
+            <div className="flex flex-wrap gap-2">
               {filters.category && (
-                <span className="inline-flex items-center gap-0.5 px-1.5 py-0.5 text-[11px] bg-red-50 text-red-700 rounded-full">
-                  <Tag className="w-2.5 h-2.5" />
+                <span className="inline-flex items-center gap-1.5 px-2.5 py-1 text-[11px] bg-red-50 text-red-700 rounded-full border border-red-200">
+                  <Tag className="w-3 h-3" />
                   {categories.find(c => c.slug === filters.category)?.name || filters.category}
                   <button
                     onClick={() => onFilterChange({ category: "" })}
@@ -395,8 +399,8 @@ const ProductFilters = memo(({ filters, categories, onFilterChange, onClearFilte
                 </span>
               )}
               {(filters.minPrice || filters.maxPrice) && (
-                <span className="inline-flex items-center gap-0.5 px-1.5 py-0.5 text-[11px] bg-green-50 text-green-700 rounded-full">
-                  <DollarSign className="w-2.5 h-2.5" />
+                <span className="inline-flex items-center gap-1.5 px-2.5 py-1 text-[11px] bg-green-50 text-green-700 rounded-full border border-green-200">
+                  <DollarSign className="w-3 h-3" />
                   ₹{filters.minPrice || "0"} - ₹{filters.maxPrice || "∞"}
                   <button
                     onClick={() => {
@@ -410,8 +414,8 @@ const ProductFilters = memo(({ filters, categories, onFilterChange, onClearFilte
                 </span>
               )}
               {filters.minRating && (
-                <span className="inline-flex items-center gap-0.5 px-1.5 py-0.5 text-[11px] bg-yellow-50 text-yellow-700 rounded-full">
-                  <Star className="w-2.5 h-2.5 fill-current" />
+                <span className="inline-flex items-center gap-1.5 px-2.5 py-1 text-[11px] bg-yellow-50 text-yellow-700 rounded-full border border-yellow-200">
+                  <Star className="w-3 h-3 fill-current" />
                   {filters.minRating}+ Stars
                   <button
                     onClick={() => {
@@ -429,13 +433,13 @@ const ProductFilters = memo(({ filters, categories, onFilterChange, onClearFilte
         )}
       </div>
 
-      {/* Apply button – smaller */}
-      <div className="sticky bottom-0 p-3 bg-white/80 backdrop-blur-sm border-t border-gray-100">
+      {/* Apply button - Only design change */}
+      <div className="sticky bottom-0 p-4 bg-white/95 backdrop-blur-sm border-t border-gray-100">
         <motion.button
           whileHover={{ scale: 1.02 }}
           whileTap={{ scale: 0.98 }}
           onClick={onClose}
-          className="w-full py-2 bg-gradient-to-r from-red-600 to-red-500 text-white font-semibold text-sm rounded-lg shadow-md hover:shadow-lg transition-all"
+          className="w-full py-2.5 bg-gradient-to-r from-gray-900 to-gray-800 text-white font-semibold text-sm rounded-xl shadow-md hover:shadow-lg transition-all"
         >
           Apply Filters
         </motion.button>
