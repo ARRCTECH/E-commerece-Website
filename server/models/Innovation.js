@@ -18,30 +18,10 @@ const innovationSchema = new mongoose.Schema(
         default: "Innovation Image",
       },
     },
-    description: {
-      type: String,
-      required: true,
-      maxlength: 1000,
-    },
     category: {
       type: String,
       required: true,
       enum: ["Technology", "Design", "Process", "Product", "Service", "Other"],
-    },
-    tags: [{
-      type: String,
-      trim: true,
-      maxlength: 30,
-    }],
-    priority: {
-      type: String,
-      enum: ["Low", "Medium", "High", "Critical"],
-      default: "Medium",
-    },
-    status: {
-      type: String,
-      enum: ["Draft", "In Progress", "Review", "Approved", "Implemented"],
-      default: "Draft",
     },
     isActive: {
       type: Boolean,
