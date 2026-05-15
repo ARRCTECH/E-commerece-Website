@@ -1,0 +1,88 @@
+referralConfirmation: (data) => ({
+  subject: `${data.referrer_name || "A friend"} invited you to join!`,
+  html: `<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>You're invited!</title>
+</head>
+<body style="margin: 0; padding: 0; background-color: #fff5f5; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;">
+    <table width="100%" cellpadding="0" cellspacing="0" border="0" align="center" bgcolor="#fff5f5">
+        <tr>
+            <td align="center" style="padding: 40px 20px;">
+                <table width="100%" max-width="600" cellpadding="0" cellspacing="0" border="0" align="center" style="max-width: 600px; width: 100%; background-color: #ffffff; border-radius: 16px; box-shadow: 0 8px 20px rgba(220, 38, 38, 0.15); overflow: hidden;">
+                    
+                    <!-- Red Header -->
+                    <tr>
+                        <td align="center" bgcolor="#DC2626" style="padding: 40px 20px 30px;">
+                            <h1 style="margin: 0; color: #ffffff; font-size: 28px; font-weight: 700; letter-spacing: -0.5px;">🎁 ${data.referrer_name} invited you!</h1>
+                            <p style="margin: 12px 0 0; color: #fed7d7; font-size: 16px;">Join now and get a special reward</p>
+                        </td>
+                    </tr>
+                    
+                    <!-- Body Content -->
+                    <tr>
+                        <td style="padding: 32px 30px 24px;">
+                            <p style="margin: 0 0 16px; font-size: 16px; line-height: 1.5; color: #2c3e50;">Hi ${data.friend_name || "there"},</p>
+                            
+                            <p style="margin: 0 0 16px; font-size: 16px; line-height: 1.5; color: #2c3e50;">
+                                Your friend <strong style="color: #DC2626;">${data.referrer_name}</strong> thinks you'll love <strong>${data.product_name || "our service"}</strong>. 
+                                They've shared their personal referral code so you can get started with an exclusive bonus.
+                            </p>
+                            
+                            <!-- Red Referral Code Box -->
+                            <table width="100%" cellpadding="0" cellspacing="0" border="0" bgcolor="#FEF2F2" style="background-color: #FEF2F2; border-radius: 12px; border: 1px solid #FECACA; margin: 24px 0;">
+                                <tr>
+                                    <td align="center" style="padding: 20px;">
+                                        <p style="margin: 0 0 8px; font-size: 14px; color: #B91C1C; letter-spacing: 1px; font-weight: 600;">YOUR REFERRAL CODE</p>
+                                        <p style="margin: 0; font-size: 32px; font-weight: 800; letter-spacing: 4px; color: #DC2626;">${data.referral_code}</p>
+                                    </td>
+                                </tr>
+                            </table>
+                            
+                            <!-- Red CTA Button -->
+                            <table width="100%" cellpadding="0" cellspacing="0" border="0">
+                                <tr>
+                                    <td align="center" style="padding: 8px 0 24px;">
+                                        <a href="${data.signup_link}" style="display: inline-block; background-color: #DC2626; color: #ffffff; font-size: 16px; font-weight: 600; text-decoration: none; padding: 14px 32px; border-radius: 40px; box-shadow: 0 4px 12px rgba(220, 38, 38, 0.3);">Claim Your Reward →</a>
+                                    </td>
+                                </tr>
+                            </table>
+                            
+                            <p style="margin: 0 0 8px; font-size: 14px; line-height: 1.4; color: #4a5568;">
+                                <strong>How it works:</strong>
+                            </p>
+                            <ul style="margin: 0 0 20px; padding-left: 20px; font-size: 14px; line-height: 1.5; color: #4a5568;">
+                                <li>Sign up using the button above</li>
+                                <li>Enter code <strong style="color: #DC2626;">${data.referral_code}</strong> during registration</li>
+                                <li>You both get <strong>${data.reward_description}</strong> (${data.reward_value})</li>
+                            </ul>
+                            
+                            <p style="margin: 0 0 8px; font-size: 14px; color: #DC2626;">
+                                🕒 This offer expires on <strong>${data.expiry_date}</strong>.
+                            </p>
+                        </td>
+                    </tr>
+                    
+                    <!-- Red-accented Footer -->
+                    <tr>
+                        <td bgcolor="#FEF2F2" style="padding: 20px 30px; border-top: 1px solid #FECACA;">
+                            <p style="margin: 0 0 6px; font-size: 12px; color: #991B1B; text-align: center;">
+                                You received this email because ${data.referrer_name} invited you to join ${data.product_name || "our service"}.
+                            </p>
+                            <p style="margin: 0; font-size: 12px; color: #991B1B; text-align: center;">
+                                <a href="${data.unsubscribe_link}" style="color: #B91C1C; text-decoration: underline;">Unsubscribe</a> from future invites.
+                            </p>
+                            <p style="margin: 16px 0 0; font-size: 12px; color: #991B1B; text-align: center;">
+                                © ${data.year || new Date().getFullYear()} ${data.company_name || "Our Company"}. All rights reserved.
+                            </p>
+                        </td>
+                    </tr>
+                </table>
+            </td>
+        </tr>
+    </table>
+</body>
+</html>`,
+}),
