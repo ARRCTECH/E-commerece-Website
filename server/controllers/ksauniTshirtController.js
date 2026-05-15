@@ -1,18 +1,18 @@
 const KsauniTshirt = require("../models/Ksaunitshirt")
 const { uploadToCloudinary } = require("../utils/cloudinary")
 
-// Get all Ksauni T-shirts
+// Get all factory sales
 exports.getAllKsauniTshirts = async (req, res) => {
   try {
     const tshirts = await KsauniTshirt.find().sort({ order: 1, createdAt: -1 })
     res.status(200).json({ success: true, data: tshirts })
   } catch (error) {
-    console.error("Get all Ksauni T-shirts error:", error)
-    res.status(500).json({ success: false, message: "Failed to fetch Ksauni T-shirts" })
+    console.error("Get all factory sales error:", error)
+    res.status(500).json({ success: false, message: "Failed to fetch factory sales" })
   }
 }
 
-// Create Ksauni T-shirt
+// Create factory sale
 exports.createKsauniTshirt = async (req, res) => {
   try {
     if (!req.file) {
@@ -33,7 +33,7 @@ exports.createKsauniTshirt = async (req, res) => {
     const tshirt = new KsauniTshirt({
       image: {
         url: result.secure_url,
-        alt: req.body.alt || "Ksauni T-shirt",
+        alt: req.body.alt || "factory sale",
       },
       order: Number.parseInt(req.body.order) || 0,
       isActive: req.body.isActive === "true" || req.body.isActive === true,
@@ -44,20 +44,20 @@ exports.createKsauniTshirt = async (req, res) => {
 
     res.status(201).json({
       success: true,
-      message: "Ksauni T-shirt created successfully",
+      message: "factory sale created successfully",
       tshirt,
     })
   } catch (error) {
-    console.error("Create Ksauni T-shirt error:", error)
+    console.error("Create factory sale error:", error)
     res.status(500).json({
       success: false,
-      message: "Failed to create Ksauni T-shirt",
+      message: "Failed to create factory sale",
       error: error.message,
     })
   }
 }
 
-// Update Ksauni T-shirt
+// Update factory sale
 exports.updateKsauniTshirt = async (req, res) => {
   try {
     const { id } = req.params
@@ -68,7 +68,7 @@ exports.updateKsauniTshirt = async (req, res) => {
 
     const tshirt = await KsauniTshirt.findById(id)
     if (!tshirt) {
-      return res.status(404).json({ success: false, message: "Ksauni T-shirt not found" })
+      return res.status(404).json({ success: false, message: "factory sale not found" })
     }
 
     if (req.file) {
@@ -100,37 +100,37 @@ exports.updateKsauniTshirt = async (req, res) => {
 
     res.status(200).json({
       success: true,
-      message: "Ksauni T-shirt updated successfully",
+      message: "factory sale updated successfully",
       tshirt: updatedTshirt,
     })
   } catch (error) {
-    console.error("Update Ksauni T-shirt error:", error)
+    console.error("Update factory sale error:", error)
     res.status(500).json({
       success: false,
-      message: "Failed to update Ksauni T-shirt",
+      message: "Failed to update factory sale",
       error: error.message,
     })
   }
 }
 
-// Delete Ksauni T-shirt
+// Delete factory sale
 exports.deleteKsauniTshirt = async (req, res) => {
   try {
     const { id } = req.params
 
     const tshirt = await KsauniTshirt.findById(id)
     if (!tshirt) {
-      return res.status(404).json({ success: false, message: "Ksauni T-shirt not found" })
+      return res.status(404).json({ success: false, message: "factory sale not found" })
     }
 
     await KsauniTshirt.findByIdAndDelete(id)
 
-    res.status(200).json({ success: true, message: "Ksauni T-shirt deleted successfully" })
+    res.status(200).json({ success: true, message: "factory sale deleted successfully" })
   } catch (error) {
-    console.error("Delete Ksauni T-shirt error:", error)
+    console.error("Delete factory sale error:", error)
     res.status(500).json({
       success: false,
-      message: "Failed to delete Ksauni T-shirt",
+      message: "Failed to delete factory sale",
       error: error.message,
     })
   }

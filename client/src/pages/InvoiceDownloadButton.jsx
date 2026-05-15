@@ -7,22 +7,62 @@ import jsPDF from "jspdf";
 import autoTable from "jspdf-autotable";
 
 const DEFAULT_COMPANY = {
-  name: "FACTORY SALE",
-  tagline: "Premium Fashion Store",
-  gstin: "27ABCDE1234F1Z5",
-  address: "123 Fashion Street, Andheri West, Mumbai, Maharashtra - 400058",
-  email: "support@factorysale.com",
-  phone: "+91 98765 43210",
-  website: "www.factorysale.com",
+  COMPANY_NAME: "REVON JEANS",
+  TAGLINE: "Premium Men's wear",
+  GSTIN: "27ETNPK4151G1ZH",
+  ADDRESS: "SHOP NO. 1 OM SAI GANESH KPIRA CHAWL NEAR CHIRAG HOTEL,NEAR BASANT BAHAR ROAD ULHASNAGAR 421005",
+  EMAIL: "factorysaleusadata@gmail.com",
+  PHONE: "+91 8830155383",
+  STATE: "MAHARASHTRA",
 };
 
 const InvoiceDownloadButton = ({ order, company = {} }) => {
   const [loading, setLoading] = useState(false);
   const co = { ...DEFAULT_COMPANY, ...company };
 
-  const formatINR = (n) =>
-    `₹${Number(n || 0).toLocaleString("en-IN", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
-  const safe = (v, fb = "-") => (v === 0 || v ? v : fb);
+  const inr = (n) =>
+    `Rs. ${Number(n || 0).toLocaleString("en-IN", {
+      minimumFractionDigits: 2,
+      maximumFractionDigits: 2,
+    })}`;
+
+  // ---------- Helpers ----------
+  const getPaymentStatusLabel = (order) => {
+    const s = (order?.paymentInfo?.status || "").toUpperCase();
+    if (s === "PAID") return { text: "PAID", color: [16, 145, 80] };
+    if (s === "PARTIALLY_PAID")
+      return { text: "PARTIALLY PAID", color: [200, 120, 0] };
+    if (s === "PENDING" && order?.paymentInfo?.method?.toUpperCase() === "COD")
+      return { text: "COD - PAY ON DELIVERY", color: [200, 120, 0] };
+    if (s === "FAILED") return { text: "FAILED", color: [200, 30, 30] };
+    return { text: s || "PENDING", color: [120, 120, 120] };
+  };
+
+  const getOrderType = (order) =>
+    order?.items?.some((i) => i.isBulkProduct) ? "BULK ORDER" : "REGULAR";
+
+  const getItemQtyDetail = (it) => {
+    if (it.isBulkProduct) {
+      const sets = it.totalSets || it.quantity || 1;
+      const perSet = it.piecesPerSet || 0;
+      const totalPieces = it.totalPieces || perSet * sets;
+      return {
+        qtyText: `${sets} Set(s)`,
+        piecesText: `${perSet}/set · ${totalPieces} pcs`,
+        unitPrice: it.pricePerSet || it.price || 0,
+        unitLabel: "/set",
+        lineTotal: (it.pricePerSet || it.price || 0) * sets,
+      };
+    }
+    const qty = it.quantity || 1;
+    return {
+      qtyText: String(qty),
+      piecesText: "-",
+      unitPrice: it.price || 0,
+      unitLabel: "/pc",
+      lineTotal: (it.price || 0) * qty,
+    };
+  };
 
   const generatePDF = async () => {
     if (!order) return;
@@ -30,239 +70,337 @@ const InvoiceDownloadButton = ({ order, company = {} }) => {
 
     try {
       const doc = new jsPDF({ unit: "pt", format: "a4" });
-      const pageWidth = doc.internal.pageSize.getWidth();
-      const pageHeight = doc.internal.pageSize.getHeight();
-      const margin = 40;
+      const pageW = doc.internal.pageSize.getWidth();
+      const pageH = doc.internal.pageSize.getHeight();
+      const M = 36;
 
-      // ===== Header =====
+      // ============ HEADER BAR ============
       doc.setFillColor(220, 38, 38);
-      doc.rect(0, 0, pageWidth, 110, "F");
+      doc.rect(0, 0, pageW, 85, "F");
 
       doc.setTextColor(255, 255, 255);
       doc.setFont("helvetica", "bold");
-      doc.setFontSize(26);
-      doc.text("FACTORY", margin, 45);
       doc.setFontSize(18);
-      doc.text("SALE", margin + 90, 45);
-      
+      doc.text(co.COMPANY_NAME, M, 32);
       doc.setFont("helvetica", "normal");
-      doc.setFontSize(9);
-      doc.text("Premium Fashion Store", margin, 68);
+      doc.setFontSize(7);
+      doc.text(co.TAGLINE, M, 46);
+      
+      // ✅ Address ko multiple lines me wrap karna
+      doc.setFontSize(6.5);
+      const addressLines = doc.splitTextToSize(co.ADDRESS, pageW - M * 2 - 100);
+      let addrY = 56;
+      addressLines.forEach((line) => {
+        doc.text(line, M, addrY);
+        addrY += 8;
+      });
+      doc.text(`GSTIN: ${co.GSTIN}`, M, addrY + 4);
 
       doc.setFont("helvetica", "bold");
-      doc.setFontSize(28);
-      doc.setTextColor(255, 215, 0);
-      doc.text("TAX INVOICE", pageWidth - margin, 48, { align: "right" });
-      
-      doc.setFontSize(9);
-      doc.setTextColor(255, 255, 255);
-      doc.text(`Order #${safe(order.orderId || order._id || order.id)}`, pageWidth - margin, 72, { align: "right" });
-
-      // ===== Company Info =====
-      doc.setFillColor(250, 250, 250);
-      doc.rect(margin, 130, pageWidth - (margin * 2), 70, "F");
-      doc.setDrawColor(220, 220, 220);
-      doc.rect(margin, 130, pageWidth - (margin * 2), 70, "D");
-
-      doc.setTextColor(80, 80, 80);
-      doc.setFontSize(8);
+      doc.setFontSize(16);
+      doc.text("TAX INVOICE", pageW - M, 32, { align: "right" });
       doc.setFont("helvetica", "normal");
-      
-      const companyLines = [
-        `${co.name} - ${co.tagline}`,
-        `GST: ${co.gstin}`,
-        co.address,
-        `Email: ${co.email} | Phone: ${co.phone}`,
-      ];
-      
-      let cy = 146;
-      companyLines.forEach((line) => {
-        doc.text(line, margin + 10, cy);
-        cy += 13;
-      });
+      doc.setFontSize(6.5);
+      doc.text("Original for Recipient", pageW - M, 46, { align: "right" });
+      doc.text(`${co.EMAIL} | ${co.PHONE}`, pageW - M, 58, { align: "right" });
+      doc.text(`State: ${co.STATE}`, pageW - M, 68, { align: "right" });
 
-      // ===== Billing & Shipping =====
-      let y = 225;
-      const colWidth = (pageWidth - (margin * 2) - 30) / 2;
-      
-      // Billing Address
-      doc.setFillColor(255, 255, 255);
-      doc.rect(margin, y, colWidth, 90, "F");
-      doc.setDrawColor(200, 200, 200);
-      doc.rect(margin, y, colWidth, 90, "D");
-      
-      doc.setTextColor(0, 110, 230);
-      doc.setFontSize(9);
-      doc.setFont("helvetica", "bold");
-      doc.text("BILLING ADDRESS", margin + 12, y + 20);
-      
-      const addr = order.shippingAddress || {};
-      const billLines = [
-        addr.fullName || order.userName || "Customer",
-        addr.phone || order.userPhone || "",
-        addr.addressLine1 || addr.address || "",
-        addr.addressLine2 || "",
-        [addr.city, addr.state, addr.pincode].filter(Boolean).join(", "),
-      ].filter(Boolean);
-      
-      doc.setTextColor(70, 70, 70);
-      doc.setFont("helvetica", "normal");
-      doc.setFontSize(8.5);
-      let by = y + 38;
-      billLines.forEach((line) => {
-        doc.text(line, margin + 12, by);
-        by += 13;
-      });
-
-      // Shipping Address
-      doc.rect(pageWidth - margin - colWidth, y, colWidth, 90, "D");
-      doc.rect(pageWidth - margin - colWidth, y, colWidth, 90, "F");
-      
-      doc.setTextColor(0, 110, 230);
-      doc.setFont("helvetica", "bold");
-      doc.text("SHIPPING ADDRESS", pageWidth - margin - colWidth + 12, y + 20);
-      
-      doc.setTextColor(70, 70, 70);
-      doc.setFont("helvetica", "normal");
-      let sy = y + 38;
-      billLines.forEach((line) => {
-        doc.text(line, pageWidth - margin - colWidth + 12, sy);
-        sy += 13;
-      });
-
-      // ===== Order Summary =====
-      y = y + 110;
-      doc.setFillColor(255, 248, 240);
-      doc.rect(margin, y, pageWidth - (margin * 2), 45, "F");
-      doc.setDrawColor(230, 200, 150);
-      doc.rect(margin, y, pageWidth - (margin * 2), 45, "D");
-      
+      // ============ ORDER META STRIP ============
+      let y = 110;
+      const orderId = order.orderNumber || order.orderId || order._id || order.id || "-";
+      const invoiceNo = `INV-${String(orderId).slice(-8).toUpperCase()}`;
       const orderDate = order.createdAt
-        ? new Date(order.createdAt).toLocaleDateString("en-IN", { day: "2-digit", month: "short", year: "numeric" })
+        ? new Date(order.createdAt).toLocaleDateString("en-IN", {
+            day: "2-digit",
+            month: "short",
+            year: "numeric",
+          })
         : "-";
-      
-      const summaryItems = [
-        { label: "Order Date", value: orderDate },
-        { label: "Status", value: String(order.status || "-").toUpperCase() },
-        { label: "Payment", value: String(order.paymentMethod || "-").toUpperCase() },
-      ];
-      
-      let sx = margin + 15;
-      summaryItems.forEach((item, idx) => {
-        doc.setTextColor(100, 100, 100);
-        doc.setFontSize(8);
-        doc.setFont("helvetica", "normal");
-        doc.text(item.label, sx + (idx * 170), y + 18);
-        doc.setTextColor(40, 40, 40);
-        doc.setFont("helvetica", "bold");
-        doc.setFontSize(9);
-        doc.text(item.value, sx + (idx * 170) + 80, y + 18, { align: "right" });
+      const invoiceDate = new Date().toLocaleDateString("en-IN", {
+        day: "2-digit",
+        month: "short",
+        year: "numeric",
       });
 
-      // ===== Items Table =====
+      doc.setFillColor(245, 245, 245);
+      doc.rect(M, y, pageW - M * 2, 44, "F");
+      doc.setDrawColor(220, 220, 220);
+      doc.rect(M, y, pageW - M * 2, 44, "S");
+
+      const metaCol = (label, value, x, yy) => {
+        doc.setTextColor(110, 110, 110);
+        doc.setFont("helvetica", "normal");
+        doc.setFontSize(6);
+        doc.text(label.toUpperCase(), x, yy);
+        doc.setTextColor(30, 30, 30);
+        doc.setFont("helvetica", "bold");
+        doc.setFontSize(8);
+        doc.text(String(value), x, yy + 11);
+      };
+
+      const colW = (pageW - M * 2) / 4;
+      metaCol("Invoice No.", invoiceNo, M + 12, y + 14);
+      metaCol("Order ID", `#${orderId}`, M + 12 + colW, y + 14);
+      metaCol("Order Date", orderDate, M + 12 + colW * 2, y + 14);
+      metaCol("Invoice Date", invoiceDate, M + 12 + colW * 3, y + 14);
+
+      // ============ ORDER TYPE + PAYMENT STATUS BADGES ============
+      y += 58;
+      const orderType = getOrderType(order);
+      const payStatus = getPaymentStatusLabel(order);
+
+      // Order type badge
+      doc.setFillColor(orderType === "BULK ORDER" ? 220 : 60, orderType === "BULK ORDER" ? 38 : 60, orderType === "BULK ORDER" ? 38 : 60);
+      doc.roundedRect(M, y, 100, 20, 3, 3, "F");
+      doc.setTextColor(255, 255, 255);
+      doc.setFont("helvetica", "bold");
+      doc.setFontSize(8);
+      doc.text(orderType, M + 50, y + 13, { align: "center" });
+
+      // Payment status badge
+      doc.setFillColor(payStatus.color[0], payStatus.color[1], payStatus.color[2]);
+      doc.roundedRect(M + 115, y, 160, 20, 3, 3, "F");
+      doc.setTextColor(255, 255, 255);
+      doc.text(payStatus.text, M + 195, y + 13, { align: "center" });
+
+      // Payment method on right
+      doc.setTextColor(60, 60, 60);
+      doc.setFont("helvetica", "normal");
+      doc.setFontSize(8);
+      doc.text(
+        `Payment: ${(order.paymentInfo?.method || order.paymentMethod || "N/A").toUpperCase()}`,
+        pageW - M,
+        y + 13,
+        { align: "right" }
+      );
+
+      // ============ BILLING / SHIPPING ============
+      y += 34;
+      const addr = order.shippingAddress || {};
+      const boxW = (pageW - M * 2 - 12) / 2;
+
+      const addrBox = (x, title, lines) => {
+        doc.setFillColor(252, 252, 252);
+        doc.rect(x, y, boxW, 85, "F");
+        doc.setDrawColor(220, 220, 220);
+        doc.rect(x, y, boxW, 85, "S");
+        doc.setFillColor(220, 38, 38);
+        doc.rect(x, y, boxW, 18, "F");
+        doc.setTextColor(255, 255, 255);
+        doc.setFont("helvetica", "bold");
+        doc.setFontSize(8);
+        doc.text(title, x + 10, y + 13);
+        doc.setTextColor(60, 60, 60);
+        doc.setFont("helvetica", "normal");
+        doc.setFontSize(7);
+        let ly = y + 28;
+        lines.filter(Boolean).forEach((l) => {
+          const wrapped = doc.splitTextToSize(String(l), boxW - 20);
+          wrapped.forEach((w) => {
+            if (ly < y + 82) {
+              doc.text(w, x + 10, ly);
+              ly += 10;
+            }
+          });
+        });
+      };
+
+      const addrLines = [
+        addr.fullName || order.user?.name || "Customer",
+        addr.phoneNumber || addr.phone || "",
+        addr.email || order.user?.email || "",
+        [addr.addressLine1, addr.addressLine2].filter(Boolean).join(", "),
+        [addr.city, addr.state, addr.pinCode || addr.pincode].filter(Boolean).join(", "),
+      ];
+
+      addrBox(M, "BILLING ADDRESS", addrLines);
+      addrBox(M + boxW + 12, "SHIPPING ADDRESS", addrLines);
+
+      // ============ ITEMS TABLE ============
+      y += 100;
       const items = order.items || order.products || [];
-      const tableBody = items.map((it, idx) => {
+
+      const body = items.map((it, idx) => {
+        const d = getItemQtyDetail(it);
         const name = it.name || it.productName || it.title || "Item";
-        const variant = [it.color, it.size].filter(Boolean).join(" · ");
-        const qty = it.quantity || it.qty || 1;
-        const price = it.price || it.unitPrice || 0;
-        const total = price * qty;
-        
-        const isBulk = it.isBulkProduct;
-        const bulkInfo = isBulk ? `\n${it.totalPieces || it.piecesPerSet * it.totalSets} pieces` : "";
-        
+        const variant = [
+          it.size ? `${it.size}` : null,
+          it.color ? `${it.color}` : null,
+        ]
+          .filter(Boolean)
+          .join(" | ");
+        const desc = name + (variant ? `\n(${variant})` : "");
+        const hsn = it.hsn || it.hsnCode || it.product?.hsn || "6109";
         return [
           String(idx + 1),
-          variant ? `${name}${bulkInfo}\n${variant}` : `${name}${bulkInfo}`,
-          String(qty),
-          formatINR(price),
-          formatINR(total),
+          desc,
+          hsn,
+          d.qtyText,
+          `${inr(d.unitPrice)}\n(${d.unitLabel})`,
+          inr(d.lineTotal),
         ];
       });
 
       autoTable(doc, {
-        startY: y + 60,
-        head: [["#", "DESCRIPTION", "QTY", "UNIT PRICE", "TOTAL"]],
-        body: tableBody.length ? tableBody : [["-", "No items", "-", "-", "-"]],
-        theme: "striped",
-        headStyles: { 
-          fillColor: [220, 38, 38], 
-          textColor: 255, 
-          fontStyle: "bold", 
-          fontSize: 9,
+        startY: y,
+        head: [["#", "DESCRIPTION", "HSN", "QTY", "UNIT", "AMOUNT"]],
+        body: body.length ? body : [["-", "No items", "-", "-", "-", "-"]],
+        theme: "grid",
+        headStyles: {
+          fillColor: [40, 40, 40],
+          textColor: 255,
+          fontStyle: "bold",
+          fontSize: 8,
           halign: "center",
+          cellPadding: 5,
         },
-        bodyStyles: { fontSize: 8.5, textColor: [60, 60, 60] },
+        bodyStyles: {
+          fontSize: 7,
+          textColor: [50, 50, 50],
+          cellPadding: 5,
+          valign: "middle",
+        },
         alternateRowStyles: { fillColor: [250, 250, 250] },
         columnStyles: {
-          0: { cellWidth: 35, halign: "center" },
-          1: { cellWidth: 230 },
+          0: { cellWidth: 22, halign: "center" },
+          1: { cellWidth: 210 },
           2: { cellWidth: 45, halign: "center" },
-          3: { cellWidth: 85, halign: "right" },
-          4: { cellWidth: 95, halign: "right" },
+          3: { cellWidth: 45, halign: "center" },
+          4: { cellWidth: 75, halign: "right" },
+          5: { cellWidth: 75, halign: "right", fontStyle: "bold" },
         },
-        margin: { left: margin, right: margin },
+        margin: { left: M, right: M },
       });
 
-      // ===== Totals Section - Fixed spacing =====
-      const subtotal = order.subtotal ?? items.reduce((s, it) => s + (it.price || 0) * (it.quantity || 1), 0);
-      const shipping = order.shippingCost ?? order.shipping ?? 0;
-      const discount = order.discount ?? 0;
-      const total = order.totalAmount ?? order.total ?? subtotal + shipping - discount;
+      // ============ TOTALS ============
+      let ty = doc.lastAutoTable.finalY + 12;
 
-      let ty = doc.lastAutoTable.finalY + 25;
-      const totalsX = pageWidth - margin - 220;
+      const subtotal =
+        order.pricing?.subtotal ??
+        order.subtotal ??
+        items.reduce((s, it) => s + getItemQtyDetail(it).lineTotal, 0);
+      const shipping = order.pricing?.shipping ?? order.shippingCharge ?? order.shippingCost ?? 0;
+      const freeDisc = order.pricing?.freediscount ?? order.freediscount ?? 0;
+      const couponDisc = order.discount ?? 0;
+      const total = order.pricing?.total ?? order.totalAmount ?? order.total ?? subtotal + shipping - freeDisc - couponDisc;
 
-      // Totals box
-      doc.setFillColor(250, 250, 250);
-      doc.rect(totalsX - 10, ty - 8, 230, (discount > 0 ? 110 : 95), "F");
-      doc.setDrawColor(220, 220, 220);
-      doc.rect(totalsX - 10, ty - 8, 230, (discount > 0 ? 110 : 95), "D");
+      // Page-break safety
+      if (ty > pageH - 220) {
+        doc.addPage();
+        ty = M + 20;
+      }
 
-      const drawTotalRow = (label, value, bold = false, color = [60, 60, 60]) => {
-        doc.setFont("helvetica", bold ? "bold" : "normal");
-        doc.setFontSize(bold ? 12 : 9);
-        doc.setTextColor(color[0], color[1], color[2]);
-        doc.text(label, totalsX, ty);
-        doc.text(value, pageWidth - margin, ty, { align: "right" });
-        ty += bold ? 24 : 18;
-      };
-
-      drawTotalRow("Subtotal", formatINR(subtotal));
-      drawTotalRow("Shipping Charges", formatINR(shipping));
-      if (discount > 0) drawTotalRow("Discount", `- ${formatINR(discount)}`, false, [220, 53, 69]);
+      // ✅ FIX: Payment box aur total box ka height same rakhna
+      const totalsX = pageW - M - 220;
+      const totalsW = 220;
+      const rowsCount = 2 + (freeDisc > 0 ? 1 : 0) + (couponDisc > 0 ? 1 : 0);
+      const boxH = Math.max(rowsCount * 18 + 45, 130); // Minimum height set kiya
       
-      ty += 2;
-      doc.setDrawColor(200, 200, 200);
-      doc.line(totalsX - 5, ty - 10, pageWidth - margin, ty - 10);
-      drawTotalRow("GRAND TOTAL", formatINR(total), true, [220, 38, 38]);
+      const payBoxW = pageW - M * 2 - totalsW - 12;
+      const payBoxX = M;
+      const payBoxY = ty;
 
-      // ===== Footer =====
-      const footerY = pageHeight - 85;
-      
-      doc.setFillColor(248, 248, 248);
-      doc.rect(0, pageHeight - 130, pageWidth, 50, "F");
-      doc.setTextColor(100, 100, 100);
-      doc.setFontSize(7);
-      doc.text("* Terms & Conditions:", margin, pageHeight - 115);
-      doc.text("1. Goods once sold cannot be returned or exchanged", margin + 10, pageHeight - 103);
-      doc.text("2. This is a computer generated invoice and requires no signature", margin + 10, pageHeight - 93);
-      doc.text(`3. For any queries, please contact within 7 days of delivery`, margin + 10, pageHeight - 83);
+      // ✅ Payment Breakdown Box (Left side)
+      doc.setFillColor(255, 251, 245);
+      doc.rect(payBoxX, payBoxY, payBoxW, boxH, "F");
+      doc.setDrawColor(230, 200, 160);
+      doc.rect(payBoxX, payBoxY, payBoxW, boxH, "S");
 
       doc.setFillColor(220, 38, 38);
-      doc.rect(0, pageHeight - 70, pageWidth, 70, "F");
-      
+      doc.rect(payBoxX, payBoxY, payBoxW, 18, "F");
       doc.setTextColor(255, 255, 255);
+      doc.setFont("helvetica", "bold");
       doc.setFontSize(8);
-      doc.setFont("helvetica", "normal");
-      doc.text("Thank you for shopping with FACTORY SALE", margin, pageHeight - 48);
-      doc.text("Need help? Contact us at support@factorysale.com | +91 98765 43210", margin, pageHeight - 36);
-      
-      doc.setFontSize(7);
-      doc.text(`Generated on ${new Date().toLocaleString("en-IN")}`, pageWidth - margin, pageHeight - 48, { align: "right" });
-      doc.text(`GSTIN: ${co.gstin}`, pageWidth - margin, pageHeight - 36, { align: "right" });
+      doc.text("PAYMENT DETAILS", payBoxX + 10, payBoxY + 13);
 
-      doc.save(`Invoice-${order.orderId || order._id || "order"}.pdf`);
+      doc.setTextColor(60, 60, 60);
+      doc.setFont("helvetica", "normal");
+      doc.setFontSize(7.5);
+      let py = payBoxY + 30;
+
+      const payLine = (k, v, bold = false) => {
+        doc.setFont("helvetica", "normal");
+        doc.setTextColor(110, 110, 110);
+        doc.text(k, payBoxX + 10, py);
+        doc.setFont("helvetica", bold ? "bold" : "normal");
+        doc.setTextColor(40, 40, 40);
+        doc.text(String(v), payBoxX + payBoxW - 10, py, { align: "right" });
+        py += 13;
+      };
+
+      payLine("Method", (order.paymentInfo?.method || order.paymentMethod || "N/A").toUpperCase());
+      payLine("Status", payStatus.text, true);
+
+      if (order.partialCod?.enabled) {
+        payLine(`Online (${order.partialCod.percentage}%)`, inr(order.partialCod.onlineAmount), true);
+        payLine("COD on Delivery", inr(order.partialCod.codAmount), true);
+      } else if ((order.paymentInfo?.method || "").toUpperCase() === "COD") {
+        payLine("To Pay on Delivery", inr(total), true);
+      } else {
+        payLine("Amount Paid", inr(total), true);
+      }
+
+      // ✅ Total Box (Right side) - Same height as payment box
+      doc.setFillColor(250, 250, 250);
+      doc.rect(totalsX, ty, totalsW, boxH, "F");
+      doc.setDrawColor(220, 220, 220);
+      doc.rect(totalsX, ty, totalsW, boxH, "S");
+
+      let ry = ty + 16;
+      const row = (label, val, opts = {}) => {
+        doc.setFont("helvetica", opts.bold ? "bold" : "normal");
+        doc.setFontSize(opts.bold ? 10 : 8);
+        doc.setTextColor(...(opts.color || [60, 60, 60]));
+        doc.text(label, totalsX + 10, ry);
+        doc.text(val, totalsX + totalsW - 10, ry, { align: "right" });
+        ry += opts.bold ? 20 : 16;
+      };
+
+      row("Subtotal", inr(subtotal));
+      row("Shipping", inr(shipping));
+      if (freeDisc > 0) row("Free Discount", `- ${inr(freeDisc)}`, { color: [30, 110, 200] });
+      if (couponDisc > 0)
+        row(
+          `Coupon${order.couponCode ? ` (${order.couponCode})` : ""}`,
+          `- ${inr(couponDisc)}`,
+          { color: [16, 145, 80] }
+        );
+
+      doc.setDrawColor(180, 180, 180);
+      doc.line(totalsX + 8, ry - 6, totalsX + totalsW - 8, ry - 6);
+      row("GRAND TOTAL", inr(total), { bold: true, color: [220, 38, 38] });
+
+      // ============ FOOTER ============
+      const fy = pageH - 60;
+      doc.setFillColor(245, 245, 245);
+      doc.rect(0, fy - 45, pageW, 45, "F");
+      doc.setTextColor(90, 90, 90);
+      doc.setFontSize(6.5);
+      doc.setFont("helvetica", "bold");
+      doc.text("Terms:", M, fy - 32);
+      doc.setFont("helvetica", "normal");
+      doc.text("1. Goods once sold will be taken back as per return policy.", M, fy - 22);
+      doc.text("2. Computer generated invoice - no signature required.", M, fy - 14);
+      doc.text("3. Subject to Mumbai jurisdiction. E.&O.E.", M, fy - 6);
+
+      doc.setFillColor(220, 38, 38);
+      doc.rect(0, fy, pageW, 60, "F");
+      doc.setTextColor(255, 255, 255);
+      doc.setFont("helvetica", "bold");
+      doc.setFontSize(9);
+      doc.text(`Thank you for shopping with ${co.COMPANY_NAME}!`, pageW / 2, fy + 20, { align: "center" });
+      doc.setFont("helvetica", "normal");
+      doc.setFontSize(7);
+      doc.text(`${co.EMAIL} | ${co.PHONE}`, pageW / 2, fy + 34, { align: "center" });
+      doc.setFontSize(6);
+      doc.text(
+        `Generated on ${new Date().toLocaleString("en-IN")} | GSTIN: ${co.GSTIN}`,
+        pageW / 2,
+        fy + 48,
+        { align: "center" }
+      );
+
+      doc.save(`Invoice-${invoiceNo}.pdf`);
     } catch (e) {
       console.error("Invoice generation failed:", e);
       alert("Could not generate invoice. Please try again.");
@@ -273,19 +411,19 @@ const InvoiceDownloadButton = ({ order, company = {} }) => {
 
   return (
     <motion.button
-      whileHover={{ scale: 1.02 }}
-      whileTap={{ scale: 0.98 }}
+      whileHover={{ scale: 1.01 }}
+      whileTap={{ scale: 0.99 }}
       onClick={generatePDF}
       disabled={loading || !order}
-      className="w-full inline-flex items-center justify-center gap-2 py-3 px-5 rounded-xl bg-gradient-to-r from-red-600 to-red-700 hover:from-red-700 hover:to-red-800 disabled:opacity-60 disabled:cursor-not-allowed text-white text-sm font-semibold shadow-lg shadow-red-600/20 transition-all duration-300"
+      className="w-full inline-flex items-center justify-center gap-2 py-2.5 px-4 rounded-lg bg-gradient-to-r from-red-600 to-red-700 hover:from-red-700 hover:to-red-800 disabled:opacity-60 disabled:cursor-not-allowed text-white text-sm font-semibold shadow-md transition-all duration-300"
     >
       {loading ? (
         <>
-          <Loader2 className="w-4 h-4 animate-spin" /> Generating Invoice...
+          <Loader2 className="w-4 h-4 animate-spin" /> Generating...
         </>
       ) : (
         <>
-          <Download className="w-4 h-4" /> Download Tax Invoice
+          <Download className="w-4 h-4" /> Download Invoice
         </>
       )}
     </motion.button>

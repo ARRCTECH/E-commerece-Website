@@ -12,7 +12,7 @@ const ContactUsPage = () => {
         <div className="space-y-6 text-gray-800">
           <p className="text-lg leading-relaxed">
             <span className="font-semibold text-red-600">Manufactured & Packed By:</span><br />
-            Ksauni Bliss <br />
+            Factory Sale <br />
             Ground Floor, Nawada Housing Complex, Dwarka More, Delhi - 110059
           </p>
           {/* Contact Methods */}

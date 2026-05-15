@@ -119,7 +119,7 @@ const InnovationManagementEnhanced = () => {
         <div className="flex items-center space-x-4">
           <button
             onClick={() => setShowModal(true)}
-            className="flex items-center px-4 py-2 space-x-2 text-white bg-blue-600 rounded-lg hover:bg-blue-700"
+            className="flex items-center px-4 py-2 space-x-2 text-white bg-red-600 rounded-lg hover:bg-red-700"
           >
             <Plus className="w-4 h-4" />
             <span>Add Innovation</span>

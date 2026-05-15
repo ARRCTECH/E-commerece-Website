@@ -129,16 +129,7 @@ const BannersManagement = () => {
       <div className="p-3 space-y-3 bg-white rounded-lg shadow">
         <div className="flex flex-col space-y-3 sm:flex-row sm:items-center sm:justify-between sm:space-y-0">
           <div className="flex flex-col flex-1 space-y-2 sm:flex-row sm:items-center sm:space-x-3 sm:space-y-0">
-            <div className="relative flex-1">
-              <Search className="absolute w-4 h-4 text-gray-400 transform -translate-y-1/2 left-3 top-1/2" />
-              <input
-                type="text"
-                placeholder="Search banners..."
-                value={searchTerm}
-                onChange={(e) => setSearchTerm(e.target.value)}
-                className="w-full py-2 pl-10 pr-4 text-sm border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-              />
-            </div>
+            
             <select
               value={filterType}
               onChange={(e) => setFilterType(e.target.value)}
@@ -153,7 +144,7 @@ const BannersManagement = () => {
           <div className="flex flex-col space-y-2 sm:flex-row sm:items-center sm:space-x-3 sm:space-y-0">
             <button
               onClick={() => setShowModal(true)}
-              className="flex items-center justify-center px-3 py-2 space-x-2 text-sm text-white bg-blue-600 rounded-lg hover:bg-blue-700"
+              className="flex items-center justify-center px-3 py-2 space-x-2 text-sm text-white bg-red-600 rounded-lg hover:bg-red-700"
             >
               <Plus className="w-4 h-4" />
               <span>Add Banner</span>

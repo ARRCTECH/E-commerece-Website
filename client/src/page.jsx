@@ -381,7 +381,7 @@ const ProductDetailPage = () => {
               {/* Brand Name Under Product Image */}
               <div className="mt-4 text-left lg:hidden">
                 <p className="text-md font-semibold text-gray-900">
-                  <span>{currentProduct.brand || "Ksauni Bliss"}</span>
+                  <span>{currentProduct.brand || "Factory Sale"}</span>
                 </p>
                 {currentProduct.name && (
                   <p className="text-sm text-gray-600 mt-1">
@@ -419,7 +419,7 @@ const ProductDetailPage = () => {
               <div className="flex items-start justify-between">
                 <div className="hidden lg:block mb-2">
                   <p className="text-lg font-semibold text-gray-900">
-                    <span>{currentProduct.brand || "Ksauni Bliss"}</span>
+                    <span>{currentProduct.brand || "Factory Sale"}</span>
                   </p>
                   {currentProduct.description && (
                     <p className="text-base text-gray-600 mb-2">

@@ -263,8 +263,8 @@ const CheckoutPage = () => {
           key: import.meta.env.VITE_RAZORPAY_KEY_ID,
           amount: razorpayOrderData.amount,
           currency: razorpayOrderData.currency,
-          name: "KsauniBliss",
-          description: "KsauniBliss Purchase",
+          name: "Factory Sale",
+          description: "Factory Sale Purchase",
           order_id: razorpayOrderData.id,
           handler: async (response) => {
             console.log("🟢 Razorpay payment success:", response);
@@ -385,7 +385,7 @@ const CheckoutPage = () => {
         key: import.meta.env.VITE_RAZORPAY_KEY_ID,
         amount: result.razorpayOrder.amount,
         currency: "INR",
-        name: "KsauniBliss",
+        name: "Factory Sale",
         description: `Pay ${partialPercentage}% (₹${onlineAmount}) online, rest ₹${codAmount} on delivery`,
         order_id: result.razorpayOrder.id,
         handler: async (response) => {

@@ -4,7 +4,7 @@ const API_BASE_URL = `${BASE_API_URL}/ksauni-tshirts`;
 // Fetch all T-shirts
 export const fetchKsauniTshirtsAPI = async () => {
   const response = await fetch(API_BASE_URL);
-  if (!response.ok) throw new Error("Failed to fetch Ksauni T-shirts");
+  if (!response.ok) throw new Error("Failed to fetch factory sales");
   return await response.json();
 };
 // Create T-shirt
@@ -16,7 +16,7 @@ export const createKsauniTshirtAPI = async (formData) => {
     },
     body: formData,
   });
-  if (!response.ok) throw new Error("Failed to create Ksauni T-shirt");
+  if (!response.ok) throw new Error("Failed to create factory sale");
   return await response.json();
 };
 // Update T-shirt
@@ -28,7 +28,7 @@ export const updateKsauniTshirtAPI = async (id, formData) => {
     },
     body: formData,
   });
-  if (!response.ok) throw new Error("Failed to update Ksauni T-shirt");
+  if (!response.ok) throw new Error("Failed to update factory sale");
   return await response.json();
 };
 // Delete T-shirt
@@ -39,6 +39,6 @@ export const deleteKsauniTshirtAPI = async (id) => {
       Authorization: `Bearer ${localStorage.getItem("fashionhub_token")}`,
     },
   });
-  if (!response.ok) throw new Error("Failed to delete Ksauni T-shirt");
+  if (!response.ok) throw new Error("Failed to delete factory sale");
   return id;
 };
