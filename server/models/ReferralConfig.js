@@ -1,4 +1,4 @@
-const mongoose = require("mongoose")
+const mongoose = require("mongoose");
 
 const discountSchema = new mongoose.Schema({
   active: { type: Boolean, default: true },
@@ -9,7 +9,6 @@ const discountSchema = new mongoose.Schema({
 
 const referralConfigSchema = new mongoose.Schema({
   referredBy: discountSchema,
-  referredTo: discountSchema,
   createdAt: { type: Date, default: Date.now },
   updatedAt: { type: Date, default: Date.now }
 });

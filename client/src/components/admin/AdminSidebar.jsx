@@ -24,8 +24,9 @@ const AdminSidebar = ({ sidebarOpen, setSidebarOpen, userRole }) => {
     { name: "Banners", href: "/admin/banners", icon: PhotoIcon },
     { name: "Innovations", href: "/admin/innovations", icon: LightBulbIcon },
     { name: "Kasuni T-Shirt Style", href: "/admin/ksaunitshirtstyle", icon: SparklesIcon },
-    {name: "Partial COD", href: "/admin/partial-cod", icon: TicketIcon},
-    { name: "Feedback", href: "/admin/cancellation", icon: QuestionMarkCircleIcon } 
+    { name: "Partial COD", href: "/admin/partial-cod", icon: TicketIcon},
+    { name: "Feedback", href: "/admin/cancellation", icon: QuestionMarkCircleIcon },
+    { name: "Referral Discounts", href: "/admin/referral", icon: UserPlus },
   ];
   // Admin-only navigation items
   const adminOnlyNavigation = [
