@@ -1,82 +1,75 @@
-import { createSlice, createAsyncThunk } from '@reduxjs/toolkit'
-import adminAPI from "../api/adminApi.js"
-import axios from 'axios'
-
-const API_URL = import.meta.env.VITE_API_URL || "http://localhost:5000/api"
-
-// ----------------- Public API -----------------
-const publicAPI = {
-  getAllInnovations: () => axios.get(`${API_URL}/innovations`), // no token
-}
+import { createSlice, createAsyncThunk } from '@reduxjs/toolkit';
+import innovationAPI from '../api/innovationAPI';
 
 // ----------------- Thunks -----------------
 
-// Public fetch
+// Public fetch (active innovations only)
 export const fetchPublicInnovations = createAsyncThunk(
   'innovations/fetchPublic',
   async (_, { rejectWithValue }) => {
     try {
-      const response = await publicAPI.getAllInnovations()
-      return response.data
+      const response = await innovationAPI.getActiveInnovations();
+      return response.data;
     } catch (error) {
-      return rejectWithValue(error.response?.data?.message || 'Failed to fetch public innovations')
+      return rejectWithValue(error.response?.data?.message || 'Failed to fetch public innovations');
     }
   }
-)
+);
 
-// Admin fetch
+// Admin fetch (all innovations)
 export const fetchAllInnovations = createAsyncThunk(
   'innovations/fetchAll',
   async (_, { rejectWithValue }) => {
     try {
-      const response = await adminAPI.getAllInnovations()
-      return response.data
+      const response = await innovationAPI.getAllInnovations();
+      return response.data;
     } catch (error) {
-      return rejectWithValue(error.response?.data?.message || 'Failed to fetch admin innovations')
+      return rejectWithValue(error.response?.data?.message || 'Failed to fetch admin innovations');
     }
   }
-)
+);
 
 // Create innovation
 export const createInnovation = createAsyncThunk(
   'innovations/create',
   async (formData, { rejectWithValue }) => {
     try {
-      const response = await adminAPI.createInnovation(formData)
-      return response.data
+      const response = await innovationAPI.createInnovation(formData);
+      return response.data;
     } catch (error) {
-      return rejectWithValue(error.response?.data?.message || 'Failed to create innovation')
+      return rejectWithValue(error.response?.data?.message || 'Failed to create innovation');
     }
   }
-)
+);
 
 // Update innovation
 export const updateInnovation = createAsyncThunk(
   'innovations/update',
-  async ({ innovationId, formData }, { rejectWithValue }) => {
+  async ({ id, formData }, { rejectWithValue }) => {
     try {
-      const response = await adminAPI.updateInnovation(innovationId, formData)
-      return response.data
+      const response = await innovationAPI.updateInnovation(id, formData);
+      return response.data;
     } catch (error) {
-      return rejectWithValue(error.response?.data?.message || 'Failed to update innovation')
+      return rejectWithValue(error.response?.data?.message || 'Failed to update innovation');
     }
   }
-)
+);
 
 // Delete innovation
 export const deleteInnovation = createAsyncThunk(
   'innovations/delete',
-  async (innovationId, { rejectWithValue }) => {
+  async (id, { rejectWithValue }) => {
     try {
-      await adminAPI.deleteInnovation(innovationId)
-      return innovationId
+      await innovationAPI.deleteInnovation(id);
+      return id;
     } catch (error) {
-      return rejectWithValue(error.response?.data?.message || 'Failed to delete innovation')
+      return rejectWithValue(error.response?.data?.message || 'Failed to delete innovation');
     }
   }
-)
+);
 
 // ----------------- Slice -----------------
+
 const innovationSlice = createSlice({
   name: 'innovations',
   initialState: {
@@ -86,74 +79,94 @@ const innovationSlice = createSlice({
   },
   reducers: {
     clearError: (state) => {
-      state.error = null
+      state.error = null;
+    },
+    clearInnovations: (state) => {
+      state.innovations = [];
     },
   },
   extraReducers: (builder) => {
     builder
       // Public fetch
       .addCase(fetchPublicInnovations.pending, (state) => {
-        state.loading = true
-        state.error = null
+        state.loading = true;
+        state.error = null;
       })
       .addCase(fetchPublicInnovations.fulfilled, (state, action) => {
-        state.loading = false
-        const payload = action.payload
-        state.innovations = Array.isArray(payload.innovations)
-          ? payload.innovations
-          : Array.isArray(payload.data)
-          ? payload.data
-          : Array.isArray(payload)
-          ? payload
-          : []
+        state.loading = false;
+        state.innovations = action.payload?.innovations || [];
       })
       .addCase(fetchPublicInnovations.rejected, (state, action) => {
-        state.loading = false
-        state.error = action.payload
+        state.loading = false;
+        state.error = action.payload;
       })
 
       // Admin fetch
       .addCase(fetchAllInnovations.pending, (state) => {
-        state.loading = true
-        state.error = null
+        state.loading = true;
+        state.error = null;
       })
       .addCase(fetchAllInnovations.fulfilled, (state, action) => {
-        state.loading = false
-        const payload = action.payload
-        state.innovations = Array.isArray(payload.innovations)
-          ? payload.innovations
-          : Array.isArray(payload.data)
-          ? payload.data
-          : Array.isArray(payload)
-          ? payload
-          : []
+        state.loading = false;
+        state.innovations = action.payload?.innovations || [];
       })
       .addCase(fetchAllInnovations.rejected, (state, action) => {
-        state.loading = false
-        state.error = action.payload
+        state.loading = false;
+        state.error = action.payload;
       })
 
       // Create
+      .addCase(createInnovation.pending, (state) => {
+        state.loading = true;
+        state.error = null;
+      })
       .addCase(createInnovation.fulfilled, (state, action) => {
-        const newInnovation = action.payload.innovation || action.payload
-        state.innovations.unshift(newInnovation)
+        state.loading = false;
+        const newInnovation = action.payload?.innovation;
+        if (newInnovation) {
+          state.innovations.unshift(newInnovation);
+        }
+      })
+      .addCase(createInnovation.rejected, (state, action) => {
+        state.loading = false;
+        state.error = action.payload;
       })
 
       // Update
+      .addCase(updateInnovation.pending, (state) => {
+        state.loading = true;
+        state.error = null;
+      })
       .addCase(updateInnovation.fulfilled, (state, action) => {
-        const updatedInnovation = action.payload.innovation || action.payload
-        const index = state.innovations.findIndex(inv => inv._id === updatedInnovation._id)
-        if (index !== -1) {
-          state.innovations[index] = updatedInnovation
+        state.loading = false;
+        const updatedInnovation = action.payload?.innovation;
+        if (updatedInnovation) {
+          const index = state.innovations.findIndex((inv) => inv._id === updatedInnovation._id);
+          if (index !== -1) {
+            state.innovations[index] = updatedInnovation;
+          }
         }
+      })
+      .addCase(updateInnovation.rejected, (state, action) => {
+        state.loading = false;
+        state.error = action.payload;
       })
 
       // Delete
-      .addCase(deleteInnovation.fulfilled, (state, action) => {
-        state.innovations = state.innovations.filter(inv => inv._id !== action.payload)
+      .addCase(deleteInnovation.pending, (state) => {
+        state.loading = true;
+        state.error = null;
       })
+      .addCase(deleteInnovation.fulfilled, (state, action) => {
+        state.loading = false;
+        state.innovations = state.innovations.filter((inv) => inv._id !== action.payload);
+      })
+      .addCase(deleteInnovation.rejected, (state, action) => {
+        state.loading = false;
+        state.error = action.payload;
+      });
   },
-})
+});
 
-export const { clearError } = innovationSlice.actions
-export default innovationSlice.reducer
+export const { clearError, clearInnovations } = innovationSlice.actions;
+export default innovationSlice.reducer;

@@ -142,19 +142,7 @@ const HomePage = () => {
 <ReferralProgram/>
       
       <InnovationList />
-
       
-
-
-
-
-      {/* {popupVisible && popupBanner && (
-        <Popup
-          banner={popupBanner}
-          visible={popupVisible}
-          onClose={() => setPopupVisible(false)}
-        />
-      )} */}
     </div>
   );
 };
