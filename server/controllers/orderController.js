@@ -202,7 +202,8 @@ const createRazorpayOrder = async (req, res) => {
       }
     }
 
-    const shippingCharges = subtotal >= 399 ? 0 : 99;
+    // const shippingCharges = subtotal >= 399 ? 0 : 99;
+    const shippingCharges = 0;
     const total = Math.round(amount || (subtotal + shippingCharges - discount));
     const orderNumber = `FH-${Date.now()}`;
 
@@ -387,7 +388,8 @@ const createPartialCodOrder = async (req, res) => {
       }
     }
     
-    const shippingCharges = subtotal >= 399 ? 0 : 99;
+    // const shippingCharges = subtotal >= 399 ? 0 : 99;
+    const shippingCharges = 0;
     let discount = 0;
     let couponDetails = null;
     
@@ -817,7 +819,8 @@ const placeCodOrder = async (req, res) => {
       }
     }
 
-    const shippingCharges = subtotal >= 399 ? 0 : 99;
+    // const shippingCharges = subtotal >= 399 ? 0 : 99;
+    const shippingCharges = 0;
     const total = Math.round(amount);
     const orderNumber = `FH-${Date.now()}`;
 

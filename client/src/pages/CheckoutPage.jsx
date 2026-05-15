@@ -160,7 +160,8 @@ const CheckoutPage = () => {
   const calculateFinalPricing = useMemo(() => {
     console.log("🔵 Calculating final pricing...");
     let subtotal = isBuyNow && buyNowProduct ? buyNowProduct.product.price * buyNowProduct.quantity : cartSummary.subtotal || 0;
-    const shippingCharges = subtotal >= 399 ? 0 : 99;
+    // const shippingCharges = subtotal >= 399 ? 0 : 99;
+    const shippingCharges = 0;
     const discount = appliedCoupon?.discountAmount || 0;
     const freediscount = filterYCoupon[0]?.discountType == "flat" ? filterYCoupon[0]?.discountValue : subtotal * (filterYCoupon[0]?.discountValue) / 100 || 0;
     const totalSaving = discount + freediscount;
