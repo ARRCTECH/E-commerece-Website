@@ -18,8 +18,8 @@ class ShipmozoService {
   getHeaders() {
     return {
       'Content-Type': 'application/json',
-      'public_key': this.publicKey,
-      'private_key': this.privateKey
+      'public-key': this.publicKey,
+      'private-key': this.privateKey
     };
   }
 
