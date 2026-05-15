@@ -2,8 +2,7 @@
 
 import { useRef, useState, useCallback, useEffect } from "react";
 import { useDispatch, useSelector } from "react-redux";
-import PropTypes from 'prop-types';
-import { ChevronLeft, ChevronRight, ArrowUpRight, Sparkles } from "lucide-react";
+import { ChevronLeft, ChevronRight, ArrowUpRight, Sparkles, Zap, Compass, Infinity, TrendingUp } from "lucide-react";
 import { fetchPublicInnovations } from "../../store/slices/innovationSlice";
 
 const InnovationList = () => {
@@ -26,7 +25,7 @@ const InnovationList = () => {
   const displayedInnovations = innovations.slice(0, 8);
 
   const scrollRef = useRef(null);
-  const [hovered, setHovered] = useState(null);
+  const [activeIndex, setActiveIndex] = useState(0);
 
   const scroll = (dir) => {
     if (!scrollRef.current) return;
@@ -34,160 +33,208 @@ const InnovationList = () => {
     scrollRef.current.scrollBy({ left: dir === "left" ? -amt : amt, behavior: "smooth" });
   };
 
-  // Placeholder image fallback
+  const handleScroll = () => {
+    if (scrollRef.current) {
+      const scrollLeft = scrollRef.current.scrollLeft;
+      const cardWidth = scrollRef.current.children[0]?.offsetWidth || 0;
+      const newIndex = Math.round(scrollLeft / (cardWidth + 20));
+      setActiveIndex(newIndex);
+    }
+  };
+
   const getImageUrl = (image) => {
     if (image?.url) return image.url;
     return "/placeholder.svg?height=600&width=450&text=Innovation";
   };
 
   return (
-    <section className="relative w-full overflow-hidden bg-[#0a0a0a] py-20 md:py-28">
-      <div className="pointer-events-none absolute -top-40 left-1/2 h-[500px] w-[800px] -translate-x-1/2 rounded-full bg-amber-500/10 blur-[120px]" />
-      <div className="pointer-events-none absolute bottom-0 right-0 h-[400px] w-[400px] rounded-full bg-amber-400/5 blur-[100px]" />
+    <section className="relative w-full bg-white overflow-hidden py-16 sm:py-20">
+      {/* Unique diagonal pattern background */}
+      <div className="absolute inset-0 bg-[linear-gradient(45deg,#f8f8f8_1px,transparent_1px),linear-gradient(-45deg,#f8f8f8_1px,transparent_1px)] bg-[size:30px_30px]" />
+      
+      {/* Floating accent shapes */}
+      <div className="absolute top-20 left-10 w-32 h-32 border border-red-100 rounded-full animate-pulse" />
+      <div className="absolute bottom-20 right-10 w-24 h-24 bg-red-50 rounded-full blur-2xl" />
+      <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-96 h-96 bg-gradient-to-r from-red-50/30 to-amber-50/30 rounded-full blur-3xl" />
 
-      <div className="relative mx-auto max-w-screen-2xl px-6 md:px-12">
-        <div className="mb-12 flex flex-col gap-8 md:mb-16 md:flex-row md:items-end md:justify-between">
-          <div className="max-w-2xl">
-            <div className="mb-5 inline-flex items-center gap-2 border-b border-amber-400/40 pb-2 text-[11px] font-medium uppercase tracking-[0.3em] text-amber-300">
-              <Sparkles className="h-3.5 w-3.5" />
-              <span>Factory Sale</span>
-            </div>
-            <h2
-              className="text-4xl font-light leading-[1.05] tracking-tight text-white md:text-6xl"
-              style={{ fontFamily: "'Cormorant Garamond', Georgia, serif" }}
-            >
-              Where craft meets
-              <br />
-              <span
-                className="italic"
-                style={{
-                  background: "linear-gradient(135deg, #f5d68a 0%, #c9a14a 100%)",
-                  WebkitBackgroundClip: "text",
-                  WebkitTextFillColor: "transparent",
-                  backgroundClip: "text",
-                }}
-              >
-                visionary living.
+      <div className="relative max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+        
+        {/* Unique Header - Split Layout */}
+        <div className="flex flex-col lg:flex-row lg:items-end justify-between gap-6 mb-12">
+          <div className="flex-1">
+            <div className="flex items-center gap-2 mb-3">
+              <div className="w-8 h-8 rounded-full bg-red-500 flex items-center justify-center">
+                <Zap className="w-4 h-4 text-white" />
+              </div>
+              <span className="text-[10px] font-bold tracking-[0.3em] text-red-500 uppercase">
+                Innovation Lab
               </span>
+            </div>
+            
+            <h2 className="text-4xl sm:text-5xl lg:text-6xl font-bold text-neutral-900 tracking-tight leading-[1.1]">
+              Where ideas
+              <br />
+              <span className="text-red-500">come to life</span>
             </h2>
-            <p className="mt-5 max-w-md text-sm leading-relaxed text-white/60 md:text-base">
-              An evolving collection of landmark addresses — engineered with quiet precision, composed for those who notice every detail.
-            </p>
           </div>
-
-          <div className="flex items-center gap-3">
-            <button
-              onClick={() => scroll("left")}
-              aria-label="Previous"
-              className="group flex h-12 w-12 items-center justify-center rounded-full border border-white/15 bg-white/5 text-white backdrop-blur transition-all hover:border-amber-300 hover:bg-amber-300 hover:text-black"
-            >
-              <ChevronLeft className="h-5 w-5 transition-transform group-hover:-translate-x-0.5" />
-            </button>
-            <button
-              onClick={() => scroll("right")}
-              aria-label="Next"
-              className="group flex h-12 w-12 items-center justify-center rounded-full border border-white/15 bg-white/5 text-white backdrop-blur transition-all hover:border-amber-300 hover:bg-amber-300 hover:text-black"
-            >
-              <ChevronRight className="h-5 w-5 transition-transform group-hover:translate-x-0.5" />
-            </button>
+          
+          <div className="flex items-center gap-4">
+            {/* Active Counter */}
+            <div className="text-right">
+              <p className="text-2xl font-light text-neutral-400">
+                {String(activeIndex + 1).padStart(2, "0")}
+                <span className="text-sm">/{String(displayedInnovations.length).padStart(2, "0")}</span>
+              </p>
+              <p className="text-[9px] tracking-[0.2em] text-neutral-400 uppercase">Featured</p>
+            </div>
+            
+            {/* Navigation Buttons - Unique Design */}
+            <div className="flex gap-2">
+              <button
+                onClick={() => scroll("left")}
+                className="w-10 h-10 rounded-full border border-neutral-200 bg-white flex items-center justify-center hover:bg-red-500 hover:border-red-500 hover:text-white transition-all duration-300 group"
+              >
+                <ChevronLeft className="w-4 h-4 group-hover:-translate-x-0.5 transition-transform" />
+              </button>
+              <button
+                onClick={() => scroll("right")}
+                className="w-10 h-10 rounded-full border border-neutral-200 bg-white flex items-center justify-center hover:bg-red-500 hover:border-red-500 hover:text-white transition-all duration-300 group"
+              >
+                <ChevronRight className="w-4 h-4 group-hover:translate-x-0.5 transition-transform" />
+              </button>
+            </div>
           </div>
         </div>
 
+        {/* Unique Card Design - Masonry Style */}
         {isLoading ? (
-          <div className="flex justify-center py-20">
-            <div className="h-10 w-10 animate-spin rounded-full border-2 border-white/10 border-t-amber-300" />
+          <div className="flex justify-center py-32">
+            <div className="relative">
+              <div className="w-12 h-12 rounded-full border-2 border-neutral-200 border-t-red-500 animate-spin" />
+              <div className="absolute inset-0 w-12 h-12 rounded-full border-2 border-red-500/20 animate-pulse" />
+            </div>
           </div>
         ) : displayedInnovations.length === 0 ? (
-          <div className="py-16 text-center text-sm uppercase tracking-[0.25em] text-white/40">
-            No innovations found
+          <div className="text-center py-32">
+            <Compass className="w-12 h-12 text-neutral-300 mx-auto mb-4" />
+            <p className="text-neutral-400 text-sm">Innovations coming soon</p>
           </div>
         ) : (
           <>
-            <style>{`
-              .inn-scroll::-webkit-scrollbar { display: none; }
-              @keyframes inn-fade-up {
-                from { opacity: 0; transform: translateY(24px); }
-                to { opacity: 1; transform: translateY(0); }
-              }
-            `}</style>
             <div
               ref={scrollRef}
-              className="inn-scroll -mx-6 flex snap-x snap-mandatory gap-5 overflow-x-auto scroll-smooth px-6 pb-4 md:-mx-12 md:gap-6 md:px-12"
+              onScroll={handleScroll}
+              className="flex gap-5 overflow-x-auto pb-8 scrollbar-hide snap-x snap-mandatory"
               style={{ scrollbarWidth: "none", msOverflowStyle: "none" }}
             >
-              {displayedInnovations.map((item, i) => (
-                <article
-                  key={item._id}
-                  onMouseEnter={() => setHovered(item._id)}
-                  onMouseLeave={() => setHovered(null)}
-                  style={{
-                    animation: "inn-fade-up 0.8s cubic-bezier(0.22,1,0.36,1) both",
-                    animationDelay: `${i * 80}ms`,
-                    boxShadow: "0 30px 80px -20px rgba(0,0,0,0.6), 0 0 0 1px rgba(201,161,74,0.08)",
-                  }}
-                  className="group relative aspect-[3/4] w-[78%] flex-shrink-0 cursor-pointer snap-start overflow-hidden rounded-sm sm:w-[55%] md:w-[42%] lg:w-[30%] xl:w-[26%]"
-                >
-                  <img
-                    src={getImageUrl(item.image)}
-                    alt={item.title}
-                    loading="lazy"
-                    className="absolute inset-0 h-full w-full object-cover transition-transform duration-[1400ms] ease-out will-change-transform group-hover:scale-110"
-                  />
+              {displayedInnovations.map((item, idx) => {
+                const isEven = idx % 2 === 0;
+                return (
                   <div
-                    className="absolute inset-0"
-                    style={{
-                      background: "linear-gradient(180deg, rgba(0,0,0,0.1) 0%, rgba(0,0,0,0) 40%, rgba(0,0,0,0.95) 100%)",
-                    }}
-                  />
-                  <div
-                    className={`pointer-events-none absolute inset-0 border transition-colors duration-500 ${
-                      hovered === item._id ? "border-amber-300/60" : "border-transparent"
+                    key={item._id}
+                    className={`group relative flex-shrink-0 w-[75%] sm:w-[60%] md:w-[45%] lg:w-[38%] snap-start transition-all duration-500 hover:-translate-y-2 ${
+                      isEven ? 'mt-0' : 'mt-8 lg:mt-12'
                     }`}
-                  />
-                  
-                  <div className="absolute inset-x-0 bottom-0 p-5 md:p-6">
-                    {item.category && (
-                      <p className="mb-2 text-[10px] font-medium uppercase tracking-[0.3em] text-amber-300">
-                        {item.category}
-                      </p>
-                    )}
-                    <h3
-                      className="text-2xl font-light leading-tight text-white md:text-3xl"
-                      style={{ fontFamily: "'Cormorant Garamond', Georgia, serif" }}
-                    >
-                      {item.title}
-                    </h3>
-                    <div className="mt-3 flex items-end justify-between">
-                      <p className="text-xs tracking-wide text-white/60">{item.location || ""}</p>
-                      <div className="flex h-9 w-9 items-center justify-center rounded-full border border-white/30 text-white transition-all duration-500 group-hover:border-amber-300 group-hover:bg-amber-300 group-hover:text-black">
-                        <ArrowUpRight className="h-4 w-4 transition-transform group-hover:rotate-45" />
+                  >
+                    {/* Card Container */}
+                    <div className="bg-white rounded-2xl overflow-hidden shadow-sm hover:shadow-2xl transition-all duration-500 border border-neutral-100">
+                      
+                      {/* Image Section */}
+                      <div className="relative aspect-[4/3] overflow-hidden bg-neutral-100">
+                        <img
+                          src={getImageUrl(item.image)}
+                          alt={item.title}
+                          className="w-full h-full object-cover transition-transform duration-1000 group-hover:scale-110"
+                        />
+                        
+                        {/* Category Tag - Unique Position */}
+                        <div className="absolute top-4 left-4">
+                          <div className="bg-black/70 backdrop-blur-sm px-3 py-1 rounded-full">
+                            <span className="text-[9px] font-semibold text-white tracking-wide">
+                              {item.category || "INNOVATION"}
+                            </span>
+                          </div>
+                        </div>
+                        
+                        {/* Index Badge - Unique Style */}
+                        <div className="absolute bottom-4 right-4">
+                          <div className="bg-white/90 backdrop-blur-sm w-8 h-8 rounded-full flex items-center justify-center shadow-md">
+                            <span className="text-xs font-bold text-red-500">
+                              {String(idx + 1).padStart(2, "0")}
+                            </span>
+                          </div>
+                        </div>
+                        
+                        {/* Unique Corner Accent */}
+                        <div className="absolute top-0 right-0 w-16 h-16">
+                          <div className="absolute top-0 right-0 w-0 h-0 border-t-[60px] border-r-[60px] border-t-transparent border-r-red-500/20" />
+                        </div>
+                      </div>
+                      
+                      {/* Content Section */}
+                      <div className="p-5">
+                        <div className="flex items-start justify-between gap-3 mb-2">
+                          <h3 className="text-lg font-semibold text-neutral-800 leading-tight flex-1 line-clamp-2">
+                            {item.title}
+                          </h3>
+                          <div className="w-8 h-8 rounded-full border border-neutral-200 flex items-center justify-center group-hover:bg-red-500 group-hover:border-red-500 transition-all duration-300 flex-shrink-0">
+                            <ArrowUpRight className="w-3.5 h-3.5 text-neutral-400 group-hover:text-white transition-colors" />
+                          </div>
+                        </div>
+                        
+                        {item.location && (
+                          <p className="text-xs text-neutral-400 flex items-center gap-1 mb-3">
+                            <Compass className="w-3 h-3" />
+                            {item.location}
+                          </p>
+                        )}
+                        
+                        {/* Unique Progress Indicator */}
+                        <div className="mt-4">
+                          <div className="flex items-center justify-between text-[9px] text-neutral-400 mb-1">
+                            <span>Innovation score</span>
+                            <span>{85 + idx * 2}%</span>
+                          </div>
+                          <div className="h-1 bg-neutral-100 rounded-full overflow-hidden">
+                            <div 
+                              className="h-full bg-gradient-to-r from-red-500 to-amber-500 rounded-full transition-all duration-1000 group-hover:w-full"
+                              style={{ width: `${65 + idx * 3}%` }}
+                            />
+                          </div>
+                        </div>
                       </div>
                     </div>
-                    <div
-                      className="mt-5 h-px w-0 transition-all duration-700 group-hover:w-full"
-                      style={{ background: "linear-gradient(90deg, #f5d68a, #c9a14a)" }}
-                    />
                   </div>
-                </article>
-              ))}
+                );
+              })}
             </div>
-
-            {/* <div className="mt-14 flex flex-wrap items-center justify-between gap-4 border-t border-white/10 pt-6 text-[11px] uppercase tracking-[0.3em] text-white/50">
-              <span>{displayedInnovations.length} Featured Developments</span>
-              <button className="group flex items-center gap-2 text-white transition-colors hover:text-amber-300">
-                Explore the Portfolio
-                <ArrowUpRight className="h-3.5 w-3.5 transition-transform group-hover:-translate-y-0.5 group-hover:translate-x-0.5" />
+            
+            {/* Bottom Stats - Unique */}
+            <div className="mt-12 pt-8 border-t border-neutral-100 flex flex-wrap items-center justify-between gap-4">
+              <div className="flex items-center gap-6">
+                <div className="flex items-center gap-2">
+                  <TrendingUp className="w-4 h-4 text-red-500" />
+                  <span className="text-xs text-neutral-500">
+                    {displayedInnovations.length} breakthrough innovations
+                  </span>
+                </div>
+                <div className="w-px h-4 bg-neutral-200" />
+                <div className="flex items-center gap-2">
+                  <Infinity className="w-4 h-4 text-red-500" />
+                  <span className="text-xs text-neutral-500">Endless possibilities</span>
+                </div>
+              </div>
+              
+              <button className="group flex items-center gap-2 text-xs font-medium text-neutral-600 hover:text-red-500 transition-colors">
+                Explore all innovations
+                <ArrowUpRight className="w-3.5 h-3.5 group-hover:translate-x-0.5 group-hover:-translate-y-0.5 transition-transform" />
               </button>
-            </div> */}
+            </div>
           </>
         )}
       </div>
     </section>
   );
-};
-
-InnovationList.propTypes = {
-  // No props required for this component
 };
 
 export default InnovationList;

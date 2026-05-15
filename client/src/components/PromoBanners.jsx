@@ -80,8 +80,11 @@ const PromoBanners = () => {
 
   if (isLoading) {
     return (
-      <div className="flex items-center justify-center min-h-[400px]">
-        <LoadingSpinner />
+      <div className="flex items-center justify-center min-h-[400px] bg-[#0b0b0c]">
+        <div className="flex flex-col items-center gap-4">
+          <div className="w-12 h-12 rounded-full border-2 border-amber-200/30 border-t-amber-200 animate-spin" />
+          <p className="text-white/40 text-xs tracking-wider uppercase">Loading experience</p>
+        </div>
       </div>
     );
   }
@@ -99,10 +102,6 @@ const PromoBanners = () => {
         {/* Editorial header */}
         <div className="flex items-end justify-between mb-6 sm:mb-10 px-1">
           <div>
-            <div className="flex items-center gap-2 text-[10px] sm:text-[11px] tracking-[0.5em] uppercase text-amber-200/70">
-              <span className="w-8 h-px bg-amber-200/40" />
-              Factory Sale 
-            </div>
             <h3
               className="mt-3 text-2xl sm:text-3xl text-white/90 italic font-light"
               style={{ fontFamily: "'Playfair Display', Georgia, serif" }}
@@ -121,40 +120,36 @@ const PromoBanners = () => {
           onMouseEnter={() => setPaused(true)}
           onMouseLeave={() => setPaused(false)}
         >
-          {/* Gold gradient frame */}
-          <div className="pointer-events-none absolute inset-0 rounded-[28px] p-[1px] bg-gradient-to-br from-amber-200/30 via-transparent to-amber-200/10">
+          {/* Gold gradient frame - refined */}
+          <div className="pointer-events-none absolute inset-0 rounded-[28px] p-[1px] bg-gradient-to-br from-amber-200/40 via-amber-500/10 to-amber-200/20">
             <div className="w-full h-full rounded-[27px] bg-transparent" />
           </div>
 
-          {/* Ambient glows */}
-          {/* <div className="pointer-events-none absolute -top-40 -right-40 w-[700px] h-[700px] rounded-full bg-amber-500/10 blur-3xl" /> */}
-          {/* <div className="pointer-events-none absolute -bottom-40 -left-40 w-[700px] h-[700px] rounded-full bg-rose-900/20 blur-3xl" /> */}
-
           {/* Film grain */}
           <div
-            className="pointer-events-none absolute inset-0 opacity-[0.06] mix-blend-overlay"
+            className="pointer-events-none absolute inset-0 opacity-[0.04] mix-blend-overlay"
             style={{
               backgroundImage:
                 "url(\"data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='200' height='200'><filter id='n'><feTurbulence type='fractalNoise' baseFrequency='0.9'/></filter><rect width='100%' height='100%' filter='url(%23n)' opacity='0.6'/></svg>\")",
             }}
           />
 
-          {/* Corner ornaments */}
+          {/* Corner ornaments - more elegant */}
           {["top-4 left-4", "top-4 right-4", "bottom-4 left-4", "bottom-4 right-4"].map(
             (pos, i) => (
               <div
                 key={i}
-                className={`absolute ${pos} w-8 h-8 border-amber-200/40 z-10 ${
-                  pos.includes("top") ? "border-t" : "border-b"
-                } ${pos.includes("left") ? "border-l" : "border-r"}`}
+                className={`absolute ${pos} w-10 h-10 border-amber-200/30 z-10 transition-opacity duration-500 ${
+                  pos.includes("top") ? "border-t-2" : "border-b-2"
+                } ${pos.includes("left") ? "border-l-2" : "border-r-2"}`}
               />
             )
           )}
 
           <div className="relative grid grid-cols-1 lg:grid-cols-12 min-h-[520px] sm:min-h-[600px] lg:min-h-[680px]">
-            {/* LEFT — image */}
+            {/* LEFT — image with hover zoom */}
             <div
-              className="relative lg:col-span-7 overflow-hidden cursor-pointer min-h-[320px] lg:min-h-full"
+              className="relative lg:col-span-7 overflow-hidden cursor-pointer min-h-[320px] lg:min-h-full group/image"
               onClick={handleClick}
             >
               <AnimatePresence mode="wait">
@@ -166,35 +161,20 @@ const PromoBanners = () => {
                   animate={{ scale: 1, opacity: 1 }}
                   exit={{ opacity: 0 }}
                   transition={{ duration: 1.2, ease: [0.22, 1, 0.36, 1] }}
-                  className="absolute inset-0 w-full h-full object-cover"
+                  className="absolute inset-0 w-full h-full object-cover transition-transform duration-700 group-hover/image:scale-105"
                 />
               </AnimatePresence>
 
-              {/* Cinematic overlays */}
-              <div className="absolute inset-0 bg-gradient-to-r from-black/40 via-transparent to-black/70" />
-              <div className="absolute inset-0 bg-gradient-to-t from-black via-black/20 to-transparent lg:hidden" />
+              {/* Cinematic overlays - refined */}
+              <div className="absolute inset-0 bg-gradient-to-r from-black/50 via-transparent to-black/60" />
+              <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-black/20 to-transparent lg:hidden" />
 
-              {/* Wax seal badge */}
-              <div className="absolute top-6 left-6 sm:top-8 sm:left-8 z-10">
-                <div className="relative w-24 h-24 sm:w-28 sm:h-28">
-                  <div className="absolute inset-0 rounded-full bg-gradient-to-br from-amber-300 via-amber-500 to-amber-700 shadow-[0_8px_30px_rgba(0,0,0,0.5)] rotate-[-8deg]" />
-                  <div className="absolute inset-[3px] rounded-full border border-amber-900/40 flex flex-col items-center justify-center text-black rotate-[-8deg]">
-                    <span
-                      className="text-[9px] tracking-[0.3em] uppercase"
-                      style={{ fontFamily: "'Playfair Display', serif" }}
-                    >
-                      Est.
-                    </span>
-                    <span className="text-2xl sm:text-3xl font-black leading-none">50</span>
-                    <span className="text-[9px] tracking-[0.3em] uppercase mt-0.5">% Off</span>
-                  </div>
-                </div>
-              </div>
-
-              {/* Vertical caption */}
-              <div className="hidden lg:flex absolute bottom-8 left-8 items-center gap-3 -rotate-90 origin-bottom-left translate-y-[-100%] text-[10px] tracking-[0.5em] uppercase text-white/40">
-                <span className="w-10 h-px bg-white/30" />
-                factory sale brand of india
+              {/* Image badge */}
+              <div className="absolute bottom-6 left-6 z-10 bg-black/50 backdrop-blur-md rounded-full px-3 py-1.5 border border-white/10">
+                <span className="text-[10px] tracking-wider text-white/70 flex items-center gap-1.5">
+                  <Sparkles className="w-3 h-3 text-amber-200" />
+                  LIMITED EDITION
+                </span>
               </div>
             </div>
 
@@ -240,23 +220,21 @@ const PromoBanners = () => {
                 </motion.div>
               </AnimatePresence>
 
-              {/* CTA */}
+              {/* CTA - refined responsive */}
               <div className="mt-9 flex flex-wrap items-center gap-5">
                 <button
                   onClick={handleClick}
-                  className="group/btn relative inline-flex items-center gap-4 px-7 py-3.5 rounded-full bg-gradient-to-r from-amber-200 via-amber-100 to-amber-300 text-black text-[11px] tracking-[0.35em] uppercase font-semibold transition-all duration-500 hover:shadow-[0_15px_40px_-10px_rgba(251,191,36,0.6)] overflow-hidden"
+                  className="group/btn relative inline-flex items-center gap-4 px-6 sm:px-7 py-3 rounded-full bg-gradient-to-r from-amber-200 via-amber-100 to-amber-300 text-black text-[10px] sm:text-[11px] tracking-[0.35em] uppercase font-semibold transition-all duration-500 hover:shadow-[0_15px_40px_-10px_rgba(251,191,36,0.6)] overflow-hidden"
                 >
                   <span className="relative z-10">{current?.buttonText || "Discover"}</span>
-                  <span className="relative z-10 w-7 h-7 rounded-full bg-black text-amber-200 flex items-center justify-center group-hover/btn:rotate-45 transition-transform duration-500">
-                    <ArrowUpRight className="w-3.5 h-3.5" />
+                  <span className="relative z-10 w-6 h-6 sm:w-7 sm:h-7 rounded-full bg-black text-amber-200 flex items-center justify-center group-hover/btn:rotate-45 transition-transform duration-500">
+                    <ArrowUpRight className="w-3 h-3 sm:w-3.5 sm:h-3.5" />
                   </span>
                   <span className="absolute inset-0 bg-white/30 -translate-x-full group-hover/btn:translate-x-full transition-transform duration-1000" />
                 </button>
-
-                
               </div>
 
-              {/* Countdown */}
+              {/* Countdown with glow effect */}
               {Object.keys(timeLeft).length > 0 && (
                 <div className="mt-10">
                   <div className="flex items-center gap-3 mb-4 text-[10px] tracking-[0.5em] uppercase text-white/40">
@@ -264,11 +242,11 @@ const PromoBanners = () => {
                     Reservation Closes In
                     <span className="flex-1 h-px bg-gradient-to-r from-white/20 to-transparent" />
                   </div>
-                  <div className="grid grid-cols-4 gap-2.5 max-w-md">
+                  <div className="grid grid-cols-4 gap-2 sm:gap-3 max-w-md">
                     {units.map((u) => (
                       <div
                         key={u.key}
-                        className="relative group/unit flex flex-col items-center justify-center bg-black/40 backdrop-blur-sm border border-amber-200/10 hover:border-amber-200/30 rounded-xl py-3 overflow-hidden transition-colors"
+                        className="relative group/unit flex flex-col items-center justify-center bg-black/40 backdrop-blur-sm border border-amber-200/10 hover:border-amber-200/30 rounded-xl py-3 overflow-hidden transition-all duration-300 hover:shadow-[0_0_15px_rgba(251,191,36,0.2)]"
                       >
                         <div className="absolute inset-x-2 top-0 h-px bg-gradient-to-r from-transparent via-amber-200/40 to-transparent" />
                         <span
@@ -277,7 +255,7 @@ const PromoBanners = () => {
                         >
                           {String(timeLeft[u.key] ?? 0).padStart(2, "0")}
                         </span>
-                        <span className="mt-1 text-[8px] tracking-[0.3em] uppercase text-white/40">
+                        <span className="mt-1 text-[7px] sm:text-[8px] tracking-[0.3em] uppercase text-white/40">
                           {u.label}
                         </span>
                       </div>
@@ -288,27 +266,27 @@ const PromoBanners = () => {
             </div>
           </div>
 
-          {/* Side arrows */}
+          {/* Side arrows - bigger hit area */}
           {banners.length > 1 && (
             <>
               <button
                 onClick={goPrev}
-                className="absolute left-3 sm:left-5 top-1/2 -translate-y-1/2 z-20 w-11 h-11 sm:w-12 sm:h-12 rounded-full bg-black/40 hover:bg-amber-200 hover:text-black backdrop-blur border border-white/15 hover:border-amber-200 flex items-center justify-center transition-all duration-300"
+                className="absolute left-2 sm:left-5 top-1/2 -translate-y-1/2 z-20 w-10 h-10 sm:w-12 sm:h-12 rounded-full bg-black/50 hover:bg-amber-200 hover:text-black backdrop-blur-md border border-white/15 hover:border-amber-200 flex items-center justify-center transition-all duration-300 group"
                 aria-label="Previous"
               >
-                <ChevronLeft className="w-5 h-5" />
+                <ChevronLeft className="w-5 h-5 group-hover:scale-110 transition-transform" />
               </button>
               <button
                 onClick={goNext}
-                className="absolute right-3 sm:right-5 top-1/2 -translate-y-1/2 z-20 w-11 h-11 sm:w-12 sm:h-12 rounded-full bg-black/40 hover:bg-amber-200 hover:text-black backdrop-blur border border-white/15 hover:border-amber-200 flex items-center justify-center transition-all duration-300"
+                className="absolute right-2 sm:right-5 top-1/2 -translate-y-1/2 z-20 w-10 h-10 sm:w-12 sm:h-12 rounded-full bg-black/50 hover:bg-amber-200 hover:text-black backdrop-blur-md border border-white/15 hover:border-amber-200 flex items-center justify-center transition-all duration-300 group"
                 aria-label="Next"
               >
-                <ChevronRight className="w-5 h-5" />
+                <ChevronRight className="w-5 h-5 group-hover:scale-110 transition-transform" />
               </button>
             </>
           )}
 
-          {/* Indicators */}
+          {/* Indicators - refined */}
           {banners.length > 1 && (
             <div className="absolute bottom-5 left-1/2 -translate-x-1/2 z-20 flex items-center gap-4">
               <div className="flex gap-2">
@@ -321,18 +299,12 @@ const PromoBanners = () => {
                     }}
                     className={`h-[2px] rounded-full transition-all duration-700 ${
                       i === index
-                        ? "w-12 bg-gradient-to-r from-amber-200 to-amber-400"
-                        : "w-6 bg-white/25 hover:bg-white/50"
+                        ? "w-12 bg-gradient-to-r from-amber-300 to-amber-500 shadow-[0_0_4px_rgba(251,191,36,0.6)]"
+                        : "w-5 bg-white/25 hover:bg-white/50"
                     }`}
                   />
                 ))}
               </div>
-              <span
-                className="text-[10px] tracking-[0.3em] text-white/50 tabular-nums"
-                style={{ fontFamily: "'Playfair Display', serif" }}
-              >
-                {String(index + 1).padStart(2, "0")} — {String(banners.length).padStart(2, "0")}
-              </span>
             </div>
           )}
         </div>
