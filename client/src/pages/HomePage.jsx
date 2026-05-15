@@ -133,20 +133,21 @@ const HomePage = () => {
 
       {/* <FlatDiscount /> */}
             <FeaturedCategories />
+<CategoryBanner/>
 
             <TrendingProducts />
+<ReferralProgram/>
 
       {/* <KsauniTshirtStyle /> */}
       {/* <PriceSelection /> */}
 <NewArrivals />
-<CategoryBanner/>
+
+      <InnovationList />
 
       <Oversized899 />
       {/* <TopPicksShowcase/> */}
-<ReferralProgram/>
       {/* <FandomShop /> */}
       
-      <InnovationList />
 
       {/* Brand of India Banner - moved to last position before footer */}
       {/* <div className="mx-auto w-full max-w-md sm:max-w-lg md:max-w-3xl lg:max-w-5xl xl:max-w-7xl 2xl:max-w-screen-2xl">
