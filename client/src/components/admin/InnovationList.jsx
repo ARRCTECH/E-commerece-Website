@@ -188,20 +188,7 @@ const InnovationList = () => {
                             {item.location}
                           </p>
                         )}
-                        
-                        {/* Unique Progress Indicator */}
-                        <div className="mt-4">
-                          <div className="flex items-center justify-between text-[9px] text-neutral-400 mb-1">
-                            <span>Innovation score</span>
-                            <span>{85 + idx * 2}%</span>
-                          </div>
-                          <div className="h-1 bg-neutral-100 rounded-full overflow-hidden">
-                            <div 
-                              className="h-full bg-gradient-to-r from-red-500 to-amber-500 rounded-full transition-all duration-1000 group-hover:w-full"
-                              style={{ width: `${65 + idx * 3}%` }}
-                            />
-                          </div>
-                        </div>
+
                       </div>
                     </div>
                   </div>
@@ -209,27 +196,7 @@ const InnovationList = () => {
               })}
             </div>
             
-            {/* Bottom Stats - Unique */}
-            <div className="mt-12 pt-8 border-t border-neutral-100 flex flex-wrap items-center justify-between gap-4">
-              <div className="flex items-center gap-6">
-                <div className="flex items-center gap-2">
-                  <TrendingUp className="w-4 h-4 text-red-500" />
-                  <span className="text-xs text-neutral-500">
-                    {displayedInnovations.length} breakthrough innovations
-                  </span>
-                </div>
-                <div className="w-px h-4 bg-neutral-200" />
-                <div className="flex items-center gap-2">
-                  <Infinity className="w-4 h-4 text-red-500" />
-                  <span className="text-xs text-neutral-500">Endless possibilities</span>
-                </div>
-              </div>
-              
-              <button className="group flex items-center gap-2 text-xs font-medium text-neutral-600 hover:text-red-500 transition-colors">
-                Explore all innovations
-                <ArrowUpRight className="w-3.5 h-3.5 group-hover:translate-x-0.5 group-hover:-translate-y-0.5 transition-transform" />
-              </button>
-            </div>
+            
           </>
         )}
       </div>
