@@ -2,8 +2,7 @@ const axios = require('axios');
 
 class ShipmozoService {
   constructor() {
-    this.baseURL = process.env.SHIPMOZO_BASE_URL;
-    // ✅ Direct keys from .env (no login API)
+    this.baseURL = process.env.SHIPMOZO_BASE_URL || 'https://shipping-api.com/app/api/v1';
     this.publicKey = process.env.SHIPMOZO_PUBLIC_KEY;
     this.privateKey = process.env.SHIPMOZO_PRIVATE_KEY;
     this.warehouseId = process.env.SHIPMOZO_WAREHOUSE_ID;
@@ -12,12 +11,10 @@ class ShipmozoService {
     this.defaultWidth = parseInt(process.env.SHIPMOZO_DEFAULT_WIDTH) || 20;
     this.defaultHeight = parseInt(process.env.SHIPMOZO_DEFAULT_HEIGHT) || 10;
     
-    console.log('🔧 ShipmozoService Initialized:');
-    console.log('   Public Key:', this.publicKey ? this.publicKey.substring(0, 10) + '...' : 'MISSING ❌');
-    console.log('   Private Key:', this.privateKey ? this.privateKey.substring(0, 10) + '...' : 'MISSING ❌');
-    console.log('   Warehouse ID:', this.warehouseId || 'MISSING ❌');
+    console.log('🔧 ShipmozoService Initialized');
   }
 
+  // ✅ Headers as per documentation
   getHeaders() {
     return {
       'Content-Type': 'application/json',
@@ -34,16 +31,18 @@ class ShipmozoService {
     return cleaned.padStart(10, '9');
   }
 
+  // ========== 1. Push Order API ==========
   async pushOrder(orderData) {
     try {
       console.log('🟢 Pushing order to Shipmozo:', orderData.orderNumber);
       
+      // ✅ Prepare product details as per documentation
       const productDetails = [];
       for (const item of orderData.items) {
         for (let i = 0; i < item.quantity; i++) {
           productDetails.push({
             name: item.name.substring(0, 100),
-            sku_number: "",
+            sku_number: item.sku || "",
             quantity: 1,
             discount: "",
             hsn: "",
@@ -57,6 +56,7 @@ class ShipmozoService {
       const totalWeight = (orderData.weight || this.defaultWeight) * totalItems;
       const collectableAmount = orderData.paymentType === "COD" ? orderData.totalAmount : 0;
       
+      // ✅ Payload as per documentation example
       const payload = {
         order_id: orderData.orderNumber,
         order_date: new Date().toISOString().split('T')[0],
@@ -82,10 +82,9 @@ class ShipmozoService {
         gstin_number: ""
       };
 
-      console.log('📋 Headers:', {
-        public_key: this.publicKey?.substring(0, 10) + '...',
-        private_key: this.privateKey?.substring(0, 10) + '...'
-      });
+      console.log('📋 Request URL:', `${this.baseURL}/push-order`);
+      console.log('📋 Headers public_key exists:', !!this.publicKey);
+      console.log('📋 Headers private_key exists:', !!this.privateKey);
       
       const response = await axios.post(`${this.baseURL}/push-order`, payload, {
         headers: this.getHeaders()
@@ -95,7 +94,11 @@ class ShipmozoService {
 
       if (response.data.result === "1") {
         console.log(`✅ Order pushed: ${response.data.data.order_id}`);
-        return { success: true, orderId: response.data.data.order_id };
+        return { 
+          success: true, 
+          orderId: response.data.data.order_id,
+          referenceId: response.data.data.reference_id
+        };
       } else {
         throw new Error(response.data.message);
       }
@@ -105,6 +108,7 @@ class ShipmozoService {
     }
   }
 
+  // ========== 2. Track Order API ==========
   async trackOrder(awbNumber) {
     try {
       const response = await axios.get(`${this.baseURL}/track-order`, {
@@ -113,14 +117,29 @@ class ShipmozoService {
       });
       
       if (response.data.result === "1") {
-        return { success: true, tracking: response.data.data };
+        const scanDetail = response.data.data.scan_detail || [];
+        return {
+          success: true,
+          orderId: response.data.data.order_id,
+          awbNumber: response.data.data.awb_number,
+          courier: response.data.data.courier,
+          currentStatus: response.data.data.current_status,
+          scanHistories: scanDetail.map(scan => ({
+            status: scan.scan_status,
+            location: scan.scan_location,
+            timestamp: scan.scan_datetime,
+            remark: scan.scan_remarks
+          }))
+        };
       }
-      return { success: false };
+      return { success: false, message: response.data.message };
     } catch (error) {
-      return { success: false };
+      console.error('❌ Track error:', error.message);
+      return { success: false, message: error.message };
     }
   }
 
+  // ========== 3. Cancel Order API ==========
   async cancelOrder(orderId, awbNumber) {
     try {
       const response = await axios.post(`${this.baseURL}/cancel-order`, {
@@ -128,9 +147,35 @@ class ShipmozoService {
         awb_number: awbNumber
       }, { headers: this.getHeaders() });
       
-      return { success: response.data.result === "1" };
+      if (response.data.result === "1") {
+        console.log(`✅ Order cancelled: ${orderId}`);
+        return { success: true };
+      }
+      return { success: false, message: response.data.message };
     } catch (error) {
-      return { success: false };
+      console.error('❌ Cancel error:', error.message);
+      return { success: false, message: error.message };
+    }
+  }
+
+  // ========== 4. Get Order Label API ==========
+  async getOrderLabel(awbNumber) {
+    try {
+      const response = await axios.get(`${this.baseURL}/get-order-label/${awbNumber}`, {
+        headers: this.getHeaders()
+      });
+      
+      if (response.data.result === "1" && response.data.data && response.data.data[0]) {
+        return {
+          success: true,
+          label: response.data.data[0].label,
+          createdAt: response.data.data[0].created_at
+        };
+      }
+      return { success: false, message: response.data.message };
+    } catch (error) {
+      console.error('❌ Label error:', error.message);
+      return { success: false, message: error.message };
     }
   }
 }
