@@ -27,12 +27,12 @@ const FeaturedCategories = () => {
           {/* Header — left aligned */}
           <div className="flex flex-col md:flex-row md:items-end md:justify-between gap-6 mb-1 sm:mb-16 border-b border-neutral-300/70 pb-8">
             <div className="flex flex-col items-start text-left max-w-2xl">
-              <div className="inline-flex items-center gap-2.5 px-4 py-1.5 rounded-full border border-neutral-300 bg-white mb-5">
+              {/* <div className="inline-flex items-center gap-2.5 px-4 py-1.5 rounded-full border border-neutral-300 bg-white mb-5">
                 <Sparkles className="h-3 w-3 text-neutral-700" strokeWidth={1.5} />
                 <span className="text-[10px] tracking-[0.4em] uppercase text-neutral-700 font-medium">
                   Factory Sale
                 </span>
-              </div>
+              </div> */}
 
               <h2 className="text-4xl sm:text-5xl lg:text-6xl font-extralight tracking-tight text-neutral-900 leading-[1.05]">
                 Shop by{" "}

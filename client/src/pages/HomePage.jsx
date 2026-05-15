@@ -129,10 +129,11 @@ const HomePage = () => {
   return (
     <div className="flex flex-col">
       <PromoBanners />
+            <HeroBanner />
+
       {/* <FlatDiscount /> */}
             <FeaturedCategories />
 
-      <HeroBanner />
             <TrendingProducts />
 
       {/* <KsauniTshirtStyle /> */}
