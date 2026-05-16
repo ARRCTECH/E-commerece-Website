@@ -6,7 +6,7 @@ import { useNavigate, useLocation, Link } from "react-router-dom"
 import { motion, AnimatePresence } from "framer-motion"
 import {
   Mail, Lock, User, Eye, EyeOff, ArrowRight, AlertCircle, Loader2,
-  ShoppingBag, ShieldCheck, Truck, Sparkles, Star,
+  ShoppingBag, ShieldCheck, Truck, Sparkles, Star, X,
 } from "lucide-react"
 import {
   registerWithEmail,
@@ -24,7 +24,7 @@ const LoginPage = () => {
   const location = useLocation()
   const { isLoading, error, success, user } = useSelector((s) => s.auth)
 
-  const [mode, setMode] = useState("login") // 'login' | 'register'
+  const [mode, setMode] = useState("login")
   const [showPassword, setShowPassword] = useState(false)
   const [showConfirmPassword, setShowConfirmPassword] = useState(false)
   const [showForgot, setShowForgot] = useState(false)
@@ -84,112 +84,49 @@ const LoginPage = () => {
     dispatch(forgotPassword(forgotEmail))
   }
 
-  // Shared input style — light, premium, red focus
   const inputBase =
-    "w-full h-12 pl-11 pr-11 rounded-xl bg-white border border-neutral-200 text-neutral-900 placeholder:text-neutral-400 outline-none transition-all duration-200 focus:border-red-500 focus:ring-4 focus:ring-red-500/10 shadow-sm"
+    "w-full h-12 pl-11 pr-11 rounded-xl bg-white/10 backdrop-blur-sm border border-white/20 text-white placeholder:text-white/40 outline-none transition-all duration-200 focus:border-red-500 focus:ring-4 focus:ring-red-500/20"
 
   return (
-    <div className="min-h-screen w-full bg-[#faf7f5] text-neutral-900 antialiased">
-      <div className="grid min-h-screen lg:grid-cols-2">
-        {/* LEFT — Men's Fashion Showcase */}
-        <div className="relative hidden lg:flex overflow-hidden">
-          {/* Background image */}
-          <img
-            src="https://images.unsplash.com/photo-1617137968427-85924c800a22?auto=format&fit=crop&w=1400&q=80"
-            alt="Men's fashion"
-            className="absolute inset-0 h-full w-full object-cover"
-          />
-          {/* Soft warm overlay (not dark) */}
-          <div className="absolute inset-0 bg-gradient-to-tr from-red-600/25 via-rose-200/20 to-white/30" />
-          <div className="absolute inset-0 bg-gradient-to-t from-white/70 via-transparent to-transparent" />
+    <div className="relative min-h-screen w-full overflow-hidden">
+      <div
+        className="absolute inset-0 bg-cover bg-center bg-no-repeat"
+        style={{ backgroundImage: "url('/loginpageBackground.png')" }}
+      />
 
-          {/* Top brand */}
-          <div className="relative z-10 flex flex-col justify-between p-12 w-full">
-            <div className="flex items-center gap-3">
-              <div className="h-11 w-11 rounded-xl bg-red-600 grid place-items-center shadow-lg shadow-red-600/30">
-                <ShoppingBag className="h-5 w-5 text-white" />
-              </div>
-              <div>
-                <p className="text-xl font-bold tracking-tight text-neutral-900">Factory Sale</p>
-                <p className="text-xs text-neutral-700/80 -mt-0.5">Men's Premium Wear</p>
-              </div>
-            </div>
+      <Link
+        to="/"
+        className="absolute top-6 left-6 z-20 flex items-center gap-2 px-4 py-2 rounded-full bg-black/50 backdrop-blur-md border border-white/20 text-white hover:bg-black/70 hover:scale-105 transition-all duration-300 group"
+      >
+        <ArrowRight className="h-4 w-4 rotate-180 group-hover:-translate-x-1 transition-transform" />
+        <span className="text-sm font-medium">Back to Home</span>
+      </Link>
 
-            {/* Bottom card */}
-            <div className="space-y-6">
-              <div className="inline-flex items-center gap-2 rounded-full bg-white/80 backdrop-blur px-4 py-1.5 text-xs font-medium text-red-600 border border-red-100 shadow-sm">
-                <Sparkles className="h-3.5 w-3.5" />
-                New Season Drop · 2026
-              </div>
-
-              <h2 className="text-5xl xl:text-6xl font-bold leading-[1.05] text-neutral-900 max-w-md">
-                Define your <span className="text-red-600">style</span>, own the moment.
-              </h2>
-              <p className="text-neutral-700 text-base max-w-sm">
-                Curated menswear — tailored shirts, premium denim, and statement
-                accessories crafted for the modern gentleman.
-              </p>
-
-              {/* Trust pills */}
-              <div className="grid grid-cols-3 gap-3 max-w-md pt-2">
-                {[
-                  { icon: ShieldCheck, label: "Secure" },
-                  { icon: Truck, label: "Free Shipping" },
-                  { icon: Star, label: "4.9 Rated" },
-                ].map(({ icon: Icon, label }) => (
-                  <div
-                    key={label}
-                    className="rounded-xl bg-white/85 backdrop-blur border border-white/60 px-3 py-3 text-center shadow-sm"
-                  >
-                    <Icon className="h-4 w-4 text-red-600 mx-auto mb-1" />
-                    <p className="text-[11px] font-semibold text-neutral-800">{label}</p>
-                  </div>
-                ))}
+      <div className="relative z-10 min-h-screen flex items-center justify-center p-4 sm:p-4 lg:p-2">
+        <motion.div
+          initial={{ opacity: 0, y: 30 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ duration: 0.6, ease: [0.22, 1, 0.36, 1] }}
+          className="w-full max-w-md"
+        >
+          <div className="rounded-3xl bg-black/50 backdrop-blur-xl border border-white/20 shadow-2xl overflow-hidden">
+            <div className="pt-4 px-7 text-center">
+              <div className="flex justify-center">
+                <img
+                  src="/loginPage logo.png"
+                  alt="Factory Sale Logo"
+                  className="h-16 w-auto object-contain"
+                />
               </div>
             </div>
-          </div>
-        </div>
 
-        {/* RIGHT — Form */}
-        <div className="flex items-center justify-center p-5 sm:p-10 relative">
-          {/* Subtle decorative blobs */}
-          <div className="pointer-events-none absolute -top-24 -right-24 h-72 w-72 rounded-full bg-red-200/40 blur-3xl" />
-          <div className="pointer-events-none absolute -bottom-24 -left-10 h-72 w-72 rounded-full bg-rose-200/40 blur-3xl" />
-
-          <motion.div
-            initial={{ opacity: 0, y: 16 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ duration: 0.5 }}
-            className="relative z-10 w-full max-w-md"
-          >
-            {/* Mobile brand */}
-            <div className="lg:hidden mb-8 flex flex-col items-center text-center">
-              <div className="h-12 w-12 rounded-xl bg-red-600 grid place-items-center shadow-lg shadow-red-600/30 mb-3">
-                <ShoppingBag className="h-6 w-6 text-white" />
-              </div>
-              <p className="text-2xl font-bold tracking-tight">Factory Sale</p>
-              <p className="text-xs text-neutral-500">Men's Premium Wear</p>
-            </div>
-
-            <div className="rounded-3xl bg-white border border-neutral-200/80 shadow-xl shadow-red-900/5 p-7 sm:p-9">
-              {/* Header */}
-              <div className="mb-7">
-                <h1 className="text-3xl font-bold tracking-tight text-neutral-900">
-                  {mode === "login" ? "Welcome back" : "Create account"}
-                </h1>
-                <p className="text-sm text-neutral-500 mt-1.5">
-                  {mode === "login"
-                    ? "Sign in to continue your style journey"
-                    : "Join thousands of stylish gentlemen"}
-                </p>
-              </div>
-
-              {/* Mode toggle */}
-              <div className="relative grid grid-cols-2 p-1 rounded-xl bg-neutral-100 mb-6">
+            <div className="p-7 sm:p-8 pt-2">
+              {/* ✅ Enhanced Mode Toggle - More Attractive */}
+              <div className="relative grid grid-cols-2 p-1 rounded-xl bg-white/10 backdrop-blur-sm mb-6">
                 <motion.div
                   layout
-                  transition={{ type: "spring", stiffness: 300, damping: 30 }}
-                  className="absolute inset-y-1 w-[calc(50%-4px)] rounded-lg bg-white shadow-sm border border-neutral-200/70"
+                  transition={{ type: "spring", stiffness: 500, damping: 30 }}
+                  className="absolute inset-y-1 w-[calc(50%-4px)] rounded-lg bg-gradient-to-r from-red-500 to-pink-500 shadow-lg shadow-red-500/50"
                   style={{ left: mode === "login" ? 4 : "calc(50% + 0px)" }}
                 />
                 {["login", "register"].map((m) => (
@@ -197,8 +134,8 @@ const LoginPage = () => {
                     key={m}
                     type="button"
                     onClick={() => setMode(m)}
-                    className={`relative z-10 py-2 text-sm font-semibold capitalize transition-colors ${
-                      mode === m ? "text-red-600" : "text-neutral-500"
+                    className={`relative z-10 py-2.5 text-sm font-semibold capitalize transition-all duration-200 rounded-lg ${
+                      mode === m ? "text-white" : "text-white/60 hover:text-white"
                     }`}
                   >
                     {m === "login" ? "Sign In" : "Sign Up"}
@@ -206,14 +143,13 @@ const LoginPage = () => {
                 ))}
               </div>
 
-              {/* Error */}
               <AnimatePresence>
                 {(error || localError) && (
                   <motion.div
                     initial={{ opacity: 0, y: -8 }}
                     animate={{ opacity: 1, y: 0 }}
                     exit={{ opacity: 0, y: -8 }}
-                    className="mb-4 flex items-start gap-2 rounded-lg bg-red-50 border border-red-200 px-3 py-2.5 text-sm text-red-700"
+                    className="mb-4 flex items-start gap-2 rounded-xl bg-red-500/20 backdrop-blur-sm border border-red-500/30 px-3 py-2.5 text-sm text-red-200"
                   >
                     <AlertCircle className="h-4 w-4 mt-0.5 shrink-0" />
                     <span>{localError || error}</span>
@@ -221,7 +157,20 @@ const LoginPage = () => {
                 )}
               </AnimatePresence>
 
-              {/* Form */}
+              <AnimatePresence>
+                {success && (
+                  <motion.div
+                    initial={{ opacity: 0, y: -8 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    exit={{ opacity: 0, y: -8 }}
+                    className="mb-4 flex items-start gap-2 rounded-xl bg-green-500/20 backdrop-blur-sm border border-green-500/30 px-3 py-2.5 text-sm text-green-200"
+                  >
+                    <AlertCircle className="h-4 w-4 mt-0.5 shrink-0" />
+                    <span>{success}</span>
+                  </motion.div>
+                )}
+              </AnimatePresence>
+
               <form onSubmit={handleSubmit} className="space-y-4">
                 <AnimatePresence>
                   {mode === "register" && (
@@ -231,7 +180,7 @@ const LoginPage = () => {
                       exit={{ opacity: 0, height: 0 }}
                       className="relative"
                     >
-                      <User className="absolute left-3.5 top-1/2 -translate-y-1/2 h-4.5 w-4.5 text-neutral-400" />
+                      <User className="absolute left-3.5 top-1/2 -translate-y-1/2 h-4.5 w-4.5 text-white/50" />
                       <input
                         name="fullName"
                         type="text"
@@ -245,7 +194,7 @@ const LoginPage = () => {
                 </AnimatePresence>
 
                 <div className="relative">
-                  <Mail className="absolute left-3.5 top-1/2 -translate-y-1/2 h-4.5 w-4.5 text-neutral-400" />
+                  <Mail className="absolute left-3.5 top-1/2 -translate-y-1/2 h-4.5 w-4.5 text-white/50" />
                   <input
                     name="email"
                     type="email"
@@ -258,7 +207,7 @@ const LoginPage = () => {
                 </div>
 
                 <div className="relative">
-                  <Lock className="absolute left-3.5 top-1/2 -translate-y-1/2 h-4.5 w-4.5 text-neutral-400" />
+                  <Lock className="absolute left-3.5 top-1/2 -translate-y-1/2 h-4.5 w-4.5 text-white/50" />
                   <input
                     name="password"
                     type={showPassword ? "text" : "password"}
@@ -271,7 +220,7 @@ const LoginPage = () => {
                   <button
                     type="button"
                     onClick={() => setShowPassword((s) => !s)}
-                    className="absolute right-3 top-1/2 -translate-y-1/2 p-1.5 text-neutral-400 hover:text-red-600 transition-colors"
+                    className="absolute right-3 top-1/2 -translate-y-1/2 p-1.5 text-white/50 hover:text-white transition-colors"
                   >
                     {showPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
                   </button>
@@ -286,7 +235,7 @@ const LoginPage = () => {
                       className="space-y-4"
                     >
                       <div className="relative">
-                        <Lock className="absolute left-3.5 top-1/2 -translate-y-1/2 h-4.5 w-4.5 text-neutral-400" />
+                        <Lock className="absolute left-3.5 top-1/2 -translate-y-1/2 h-4.5 w-4.5 text-white/50" />
                         <input
                           name="confirmPassword"
                           type={showConfirmPassword ? "text" : "password"}
@@ -298,13 +247,13 @@ const LoginPage = () => {
                         <button
                           type="button"
                           onClick={() => setShowConfirmPassword((s) => !s)}
-                          className="absolute right-3 top-1/2 -translate-y-1/2 p-1.5 text-neutral-400 hover:text-red-600 transition-colors"
+                          className="absolute right-3 top-1/2 -translate-y-1/2 p-1.5 text-white/50 hover:text-white transition-colors"
                         >
                           {showConfirmPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
                         </button>
                       </div>
                       <div className="relative">
-                        <Sparkles className="absolute left-3.5 top-1/2 -translate-y-1/2 h-4.5 w-4.5 text-neutral-400" />
+                        <Sparkles className="absolute left-3.5 top-1/2 -translate-y-1/2 h-4.5 w-4.5 text-white/50" />
                         <input
                           name="referralCode"
                           type="text"
@@ -319,78 +268,80 @@ const LoginPage = () => {
                 </AnimatePresence>
 
                 {mode === "login" && (
-                  <div className="flex justify-end -mt-1">
+                  <div className="flex justify-end">
                     <button
                       type="button"
                       onClick={() => setShowForgot(true)}
-                      className="text-xs font-medium text-red-600 hover:text-red-700"
+                      className="text-xs font-medium text-white/60 hover:text-white transition-all duration-200 hover:underline"
                     >
                       Forgot password?
                     </button>
                   </div>
                 )}
 
+                {/* ✅ Enhanced Submit Button - More Attractive */}
                 <button
                   type="submit"
                   disabled={isLoading}
-                  className="group relative w-full h-12 rounded-xl bg-red-600 text-white font-semibold shadow-lg shadow-red-600/25 hover:bg-red-700 hover:shadow-red-600/40 transition-all duration-200 disabled:opacity-60 disabled:cursor-not-allowed flex items-center justify-center gap-2"
+                  className="group relative w-full h-12 rounded-xl bg-gradient-to-r from-red-600 to-red-500 text-white font-semibold shadow-lg shadow-red-500/30 hover:shadow-xl hover:shadow-red-500/40 hover:scale-[1.02] active:scale-[0.98] transition-all duration-200 disabled:opacity-60 disabled:cursor-not-allowed disabled:hover:scale-100 flex items-center justify-center gap-2 overflow-hidden"
                 >
+                  <span className="absolute inset-0 w-full h-full bg-gradient-to-r from-red-500 to-red-600 opacity-0 group-hover:opacity-100 transition-opacity duration-300"></span>
                   {isLoading ? (
-                    <Loader2 className="h-5 w-5 animate-spin" />
+                    <Loader2 className="h-5 w-5 animate-spin relative z-10" />
                   ) : (
                     <>
-                      {mode === "login" ? "Sign In" : "Create Account"}
-                      <ArrowRight className="h-4 w-4 transition-transform group-hover:translate-x-1" />
+                      <span className="relative z-10">{mode === "login" ? "Sign In" : "Create Account"}</span>
+                      <ArrowRight className="h-4 w-4 transition-transform group-hover:translate-x-1 relative z-10" />
                     </>
                   )}
                 </button>
               </form>
 
-              {/* Divider */}
               <div className="relative my-6">
                 <div className="absolute inset-0 flex items-center">
-                  <div className="w-full border-t border-neutral-200" />
+                  <div className="w-full border-t border-white/10" />
                 </div>
                 <div className="relative flex justify-center">
-                  <span className="bg-white px-3 text-xs text-neutral-400 uppercase tracking-wider">
+                  <span className="bg-transparent px-3 text-xs text-white/50 uppercase tracking-wider">
                     or continue with
                   </span>
                 </div>
               </div>
 
-              <GoogleSignInButton />
+              {/* ✅ Enhanced Google Button Style */}
+              <div className="transform transition-all duration-200 hover:scale-[1.02] active:scale-[0.98]">
+                <GoogleSignInButton />
+              </div>
 
-              {/* Footer switch */}
-              <p className="mt-6 text-center text-sm text-neutral-500">
+              <p className="mt-6 text-center text-sm text-white/60">
                 {mode === "login" ? "New to Factory Sale? " : "Already a member? "}
                 <button
                   type="button"
                   onClick={() => setMode(mode === "login" ? "register" : "login")}
-                  className="font-semibold text-red-600 hover:text-red-700"
+                  className="font-semibold text-white hover:text-red-400 transition-colors hover:underline"
                 >
                   {mode === "login" ? "Create account" : "Sign in"}
                 </button>
               </p>
+              <p className="text-center text-xs text-white/40 mt-4">
+                By continuing, you agree to our{" "}
+                <Link to="/terms" className="text-white/60 hover:text-white transition-colors">Terms</Link>
+                {" & "}
+                <Link to="/privacy" className="text-white/60 hover:text-white transition-colors">Privacy</Link>
+              </p>
             </div>
-
-            <p className="mt-6 text-center text-xs text-neutral-400">
-              By continuing, you agree to our{" "}
-              <Link to="/terms" className="text-neutral-600 hover:text-red-600">Terms</Link>
-              {" "}&{" "}
-              <Link to="/privacy" className="text-neutral-600 hover:text-red-600">Privacy</Link>
-            </p>
-          </motion.div>
-        </div>
+          </div>
+        </motion.div>
       </div>
 
-      {/* Forgot password modal */}
+      {/* Forgot Password Modal - Enhanced */}
       <AnimatePresence>
         {showForgot && (
           <motion.div
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
             exit={{ opacity: 0 }}
-            className="fixed inset-0 z-50 flex items-center justify-center bg-neutral-900/40 backdrop-blur-sm p-4"
+            className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-md p-4"
             onClick={() => setShowForgot(false)}
           >
             <motion.div
@@ -398,41 +349,49 @@ const LoginPage = () => {
               animate={{ scale: 1, opacity: 1 }}
               exit={{ scale: 0.95, opacity: 0 }}
               onClick={(e) => e.stopPropagation()}
-              className="w-full max-w-sm rounded-2xl bg-white p-7 shadow-2xl border border-neutral-200"
+              className="w-full max-w-sm rounded-2xl bg-black/80 backdrop-blur-xl border border-white/20 p-6 shadow-2xl"
             >
-              <h3 className="text-xl font-bold text-neutral-900">Reset password</h3>
-              <p className="text-sm text-neutral-500 mt-1 mb-5">
+              <div className="flex justify-between items-center mb-4">
+                <h3 className="text-xl font-bold text-white">Reset password</h3>
+                <button
+                  onClick={() => setShowForgot(false)}
+                  className="text-white/50 hover:text-white hover:rotate-90 transition-all duration-200"
+                >
+                  <X className="h-5 w-5" />
+                </button>
+              </div>
+              <p className="text-sm text-white/60 mb-5">
                 Enter your email and we'll send you a reset link.
               </p>
               <form onSubmit={handleForgot} className="space-y-4">
                 <div className="relative">
-                  <Mail className="absolute left-3.5 top-1/2 -translate-y-1/2 h-4.5 w-4.5 text-neutral-400" />
+                  <Mail className="absolute left-3.5 top-1/2 -translate-y-1/2 h-4.5 w-4.5 text-white/50" />
                   <input
                     type="email"
                     required
                     placeholder="Email address"
                     value={forgotEmail}
                     onChange={(e) => setForgotEmail(e.target.value)}
-                    className={inputBase}
+                    className="w-full h-12 pl-11 pr-4 rounded-xl bg-white/10 backdrop-blur-sm border border-white/20 text-white placeholder:text-white/40 outline-none focus:border-red-500 focus:ring-2 focus:ring-red-500/20 transition-all"
                   />
                 </div>
                 {success && (
-                  <p className="text-sm text-green-600 bg-green-50 border border-green-200 rounded-lg px-3 py-2">
+                  <p className="text-sm text-green-400 bg-green-500/10 border border-green-500/20 rounded-lg px-3 py-2">
                     {success}
                   </p>
                 )}
-                <div className="flex gap-2">
+                <div className="flex gap-3">
                   <button
                     type="button"
                     onClick={() => setShowForgot(false)}
-                    className="flex-1 h-11 rounded-xl border border-neutral-200 text-neutral-700 font-medium hover:bg-neutral-50"
+                    className="flex-1 h-11 rounded-xl border border-white/20 text-white font-medium hover:bg-white/10 hover:border-white/40 transition-all duration-200"
                   >
                     Cancel
                   </button>
                   <button
                     type="submit"
                     disabled={isLoading}
-                    className="flex-1 h-11 rounded-xl bg-red-600 text-white font-semibold hover:bg-red-700 disabled:opacity-60 flex items-center justify-center"
+                    className="flex-1 h-11 rounded-xl bg-gradient-to-r from-red-600 to-red-500 text-white font-semibold shadow-lg shadow-red-500/30 hover:shadow-xl hover:shadow-red-500/40 hover:scale-[1.02] active:scale-[0.98] disabled:opacity-60 flex items-center justify-center transition-all duration-200"
                   >
                     {isLoading ? <Loader2 className="h-4 w-4 animate-spin" /> : "Send Link"}
                   </button>
