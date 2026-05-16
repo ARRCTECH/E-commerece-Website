@@ -10,7 +10,7 @@ import "swiper/css/free-mode"
 import "swiper/css/navigation"
 import "swiper/css/thumbs"
 import "swiper/css/pagination"
-import { Heart, Minus, Plus, X, AlertCircle, Ruler, ShoppingCart } from "lucide-react"
+import { Heart, Minus, Plus, X, AlertCircle, Ruler, ShoppingCart, Share2 } from "lucide-react"
 import { fetchProductById, fetchProductBySlug } from "../store/slices/productSlice"
 import { addToCart, optimisticAddToCart, selectIsAddingToCart } from "../store/slices/cartSlice"
 import {
@@ -32,6 +32,7 @@ const ProductDetailPage = () => {
   const navigate = useNavigate()
   const { currentProduct, isLoading, error } = useSelector((state) => state.products)
   const { items: wishlistItems } = useSelector((state) => state.wishlist)
+  const { user } = useSelector((state) => state.auth)
   const isAddingToCart = useSelector(selectIsAddingToCart)
   const isAddingToWishlist = useSelector(selectIsAddingToWishlist)
   const isRemovingFromWishlist = useSelector(selectIsRemovingFromWishlist)
@@ -66,7 +67,7 @@ const ProductDetailPage = () => {
   const totalPieces = piecesPerSet * totalSets
   const totalPrice = (currentProduct?.bulkConfig?.pricePerSet || currentProduct?.price) * totalSets
 
-  // Build unified media array (images first, then videos – you can reorder as needed)
+  // Build unified media array (images first, then videos)
   const mediaItems = [
     ...(currentProduct?.images?.map(img => ({ type: 'image', url: img?.url, alt: currentProduct.name, id: img._id })) || []),
     ...(currentProduct?.videos?.map(vid => ({ type: 'video', url: vid?.url, alt: currentProduct.name, id: vid._id })) || [])
@@ -81,6 +82,25 @@ const ProductDetailPage = () => {
       .filter(line => line.length > 0)
       .join('\n');
   };
+
+  // REFERRAL SHARE HANDLER
+  const handleReferralShare = () => {
+    if (!user) {
+      toast.error("Please login to get your referral link")
+      return
+    }
+    const referralLink = `${window.location.origin}/register?ref=${user.myreferralCode}`
+    if (navigator.share) {
+      navigator.share({
+        title: "Check out this product!",
+        text: `Buy ${currentProduct.name} using my referral link and get rewards!`,
+        url: referralLink,
+      }).catch(() => toast.error("Sharing failed"))
+    } else {
+      navigator.clipboard.writeText(referralLink)
+      toast.success("Referral link copied!")
+    }
+  }
 
   useEffect(() => {
     if (slug) {
@@ -224,14 +244,12 @@ const ProductDetailPage = () => {
   }
   
   const handleBuyNowClick = () => {
-    // For bulk product - directly proceed to checkout with selected colors
     if (isBulkProduct) {
       if (selectedColors.length < minColors) {
-        toast.error(`Please select at least ${minColors} color(s)`);
+        toast.error(`Please select at least ${minColors} color(s)`)
         return;
       }
 
-      // Navigate to checkout with bulk product data
       navigate("/checkout", {
         state: {
           buyNow: true,
@@ -254,7 +272,6 @@ const ProductDetailPage = () => {
       return;
     }
 
-    // Regular product buy now logic (existing)
     if (currentProduct.sizes?.length > 0 && !selectedSize) {
       setShowBuyNowSizeModal(true);
       return;
@@ -418,6 +435,14 @@ const ProductDetailPage = () => {
               <Heart id="wish" className={`w-5 h-5 ${isInWishlist ? "fill-current" : ""}`} />
             </button>
 
+            {/* REFERRAL SHARE BUTTON - MOBILE (right side, next to heart) */}
+            <button
+              onClick={handleReferralShare}
+              className="absolute top-3 right-12 z-10 p-2 rounded-full bg-white/80 backdrop-blur-sm shadow-md"
+            >
+              <Share2 className="w-5 h-5 text-gray-700" />
+            </button>
+
             <Swiper spaceBetween={0} pagination={{ clickable: true, dynamicBullets: true }} modules={[Pagination]} className="rounded-xl">
               {mediaItems.map((item, idx) => (
                 <SwiperSlide key={idx}>
@@ -499,6 +524,14 @@ const ProductDetailPage = () => {
               {/* Main Media Display */}
               <div className="flex-1">
                 <div className="relative bg-gray-50 rounded-xl overflow-hidden group">
+                  {/* REFERRAL SHARE BUTTON - DESKTOP (top-right) */}
+                  <button
+                    onClick={handleReferralShare}
+                    className="absolute top-4 right-4 z-10 p-2 rounded-full bg-white/80 backdrop-blur-sm shadow-md hover:bg-white transition"
+                  >
+                    <Share2 className="w-5 h-5 text-gray-700" />
+                  </button>
+
                   {mediaItems[selectedMediaIndex]?.type === 'image' ? (
                     <motion.img
                       src={mediaItems[selectedMediaIndex]?.url}
@@ -529,7 +562,7 @@ const ProductDetailPage = () => {
             </div>
           </div>
 
-          {/* RIGHT COLUMN - PRODUCT INFO (unchanged functionality, only variable names updated) */}
+          {/* RIGHT COLUMN - PRODUCT INFO */}
           <div className="lg:hidden space-y-4 px-2 mt-24">
             {/* Description - Mobile */}
             <div>
@@ -715,7 +748,7 @@ const ProductDetailPage = () => {
             </div>
           </div>
 
-          {/* DESKTOP RIGHT COLUMN - unchanged except variable name consistency */}
+          {/* DESKTOP RIGHT COLUMN */}
           <div className="hidden lg:block space-y-1">
             <div className="flex items-start justify-between">
               <div className="hidden lg:block mb-1">
@@ -967,14 +1000,14 @@ const ProductDetailPage = () => {
           </div>
         </div>
 
-        {/* Static Design Section - Same */}
+        {/* Static Design Section */}
         <div className="px-4 mt-6">
           <div className="bg-white border border-gray-200 rounded-xl shadow-sm py-4 px-4">
             <img src="/badge.jpeg" className="w-full h-auto rounded-xl" />
           </div>
         </div>
 
-        {/* Reviews & Related Products - Same */}
+        {/* Reviews & Related Products */}
         <div id="reviews" className="border-t border-gray-200 rounded-xl px-4 py-6 mt-6 bg-white">
           <ProductReviews productId={currentProduct._id} />
         </div>
@@ -983,9 +1016,7 @@ const ProductDetailPage = () => {
         </div>
       </div>
 
-      {/* All Modals - unchanged except closures and function names updated */}
-      
-      {/* Bulk Modal */}
+      {/* All Modals */}
       <AnimatePresence>
         {showBulkModal && isBulkProduct && (
           <motion.div
