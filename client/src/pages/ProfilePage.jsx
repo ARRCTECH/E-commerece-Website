@@ -1,6 +1,7 @@
 import { useState, useEffect } from "react";
 import { useDispatch, useSelector } from "react-redux";
 import { motion, AnimatePresence } from "framer-motion";
+import axios from "axios";
 import {
   User,
   Camera,
@@ -77,7 +78,6 @@ const ProfilePage = () => {
     pincode: "",
     isDefault: false,
   });
-
   useEffect(() => {
     if (user) {
       setProfileData({
@@ -93,7 +93,35 @@ const ProfilePage = () => {
       });
     }
   }, [user]);
+const [dataforreferral,setDataforreferral] = useState(null);
+const [totalEarning,setTotalEarning] = useState(0);
 
+const getTotalEarning= async ()=>{
+  try{
+    const res=await axios.post(`${import.meta.env.VITE_API_URL}/referral-total-earning`,{userId:user._id}); 
+    setTotalEarning(res.data.data.totalEarning); 
+  }catch(error){
+    console.error("Error calculating total earning:", error);
+  }
+}
+console.log(totalEarning)
+
+  const getReferralDetails = async () => {
+    try {
+      const res = await axios.post(
+        `${import.meta.env.VITE_API_URL}/referral/fetchReferral`,
+         { userId : user._id },   
+      );
+      setDataforreferral(res.data.data);
+    } catch (error) {
+      console.error("Error:", error.response?.data || error.message);
+    }
+  };
+  useEffect(() => {
+    getReferralDetails();
+    getTotalEarning();
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [user._id]);
   useEffect(() => {
     dispatch(fetchUserOrders({ limit: 5 }));
     dispatch(fetchWishlist());
@@ -270,7 +298,7 @@ const ProfilePage = () => {
           {/* Premium Profile Header */}
           <div className="relative mb-8 overflow-hidden bg-white rounded-2xl shadow-xl">
             <div className="absolute top-0 right-0 w-80 h-80 bg-gradient-to-br from-red-500/10 to-rose-500/5 rounded-full -mt-40 -mr-40 blur-3xl" />
-            <div className="absolute bottom-0 left-0 w-80 h-80 bg-gradient-to-tr from-red-500/5 to-red-500/5 rounded-full -mb-40 -ml-40 blur-3xl" />
+            <div className="absolute bottom-0 left-0 w-80 h-80 bg-gradient-to-tr from-amber-500/5 to-red-500/5 rounded-full -mb-40 -ml-40 blur-3xl" />
 
             <div className="relative p-6 sm:p-8">
               <div className="flex flex-col items-center gap-6 md:flex-row md:items-start">
@@ -745,11 +773,11 @@ const ProfilePage = () => {
                             <div className="relative p-6 overflow-hidden bg-gradient-to-br from-red-700 to-red-800 rounded-2xl shadow-xl">
                               <div className="absolute top-0 right-0 w-32 h-32 bg-white/5 rounded-full -mt-16 -mr-16 blur-2xl" />
                               <p className="relative text-sm font-medium text-gray-300">Total Referrals</p>
-                              <p className="relative mt-2 text-4xl font-bold text-white">{user?.totalReferrals || 0}</p>
+                              <p className="relative mt-2 text-4xl font-bold text-white">{dataforreferral?.numberOfReferrals || 0}</p>
                             </div>
                             <div className="relative p-6 overflow-hidden bg-white border border-gray-200 rounded-2xl shadow-lg">
                               <p className="text-sm font-medium text-gray-500">Referral Earnings</p>
-                              <p className="mt-2 text-4xl font-bold text-gray-700">₹{user?.referralEarnings || 0}</p>
+                              <p className="mt-2 text-4xl font-bold text-gray-900">₹{totalEarning}</p>
                             </div>
                           </div>
                           <div className="p-6 bg-white border border-gray-200 rounded-2xl shadow-lg">

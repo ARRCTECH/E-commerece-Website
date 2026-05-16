@@ -13,8 +13,6 @@ const cartItemSchema = new mongoose.Schema({
   },
   size: String,
   color: String,
-  
-  // 🆕 Bulk Product Specific Fields
   isBulkProduct: {
     type: Boolean,
     default: false,
@@ -38,14 +36,12 @@ const cartItemSchema = new mongoose.Schema({
     type: Number,
     default: 0,
   },
-  
+
   addedAt: {
     type: Date,
     default: Date.now,
   },
 });
-
-// 📍 Address Sub-Schema
 const addressSchema = new mongoose.Schema({
   type: {
     type: String,
@@ -82,8 +78,6 @@ const addressSchema = new mongoose.Schema({
     default: false,
   },
 });
-
-// 📦 Temp Order Data Schema
 const tempOrderItemSchema = new mongoose.Schema({
   product: { type: mongoose.Schema.Types.ObjectId, ref: "Product" },
   name: { type: String, required: false },
@@ -127,26 +121,33 @@ const tempOrderDataSchema = new mongoose.Schema({
   paymentInfo: paymentInfoSchema,
   status: { type: String, default: "pending" },
   createdAt: { type: Date, default: Date.now },
-  trackingUrl:{ type: String},
-  temp_order_id:{ type: String},
-  trackingInfo: { type:  {
-    awbCode: { type: String, default: null },
-    courierName: { type: String, default: null },
-    awbStatus: {
-      type: String,
-      enum: ["PENDING", "ASSIGNED", "FAILED", "N/A"],
-      default: "PENDING",
-    },
-    awbAssignedAt: { type: Date, default: null },
-    awbError: { type: String, default: null },
-    trackingUrl:{type: String, default: null},
-    message:{type: String, default: null}
-    }, default: () => ({ awbStatus: "PENDING" }) },
+  trackingUrl: { type: String },
+  temp_order_id: { type: String },
+  trackingInfo: {
+    type: {
+      awbCode: { type: String, default: null },
+      courierName: { type: String, default: null },
+      awbStatus: {
+        type: String,
+        enum: ["PENDING", "ASSIGNED", "FAILED", "N/A"],
+        default: "PENDING",
+      },
+      awbAssignedAt: { type: Date, default: null },
+      awbError: { type: String, default: null },
+      trackingUrl: { type: String, default: null },
+      message: { type: String, default: null }
+    }, default: () => ({ awbStatus: "PENDING" })
+  },
+});
+const referralDetailsSchema = new mongoose.Schema({
+  expiryDate: { type: Date, default: null },
+  amount: { type: Number, default: 0 },        
+  type: { type: String, enum: ["percentage", "fixed"], default: "percentage" },
+  firstOrderStatus: { type: Boolean, default: false },
+  creditStatus: { type: Boolean, default: false },
+  referredAt: { type: Date, default: Date.now },  
 });
 
-
-
-// 👤 Main User Schema
 const userSchema = new mongoose.Schema(
   {
     firebaseUid: {
@@ -155,17 +156,22 @@ const userSchema = new mongoose.Schema(
       sparse: true,
       index: true,
     },
-    expireReferralDate:{
-       type:Date,
-       default: null
+    expireReferralDate: {
+      type: Date,
+      default: null
     },
-    referredBy: {
+    referredBy:{
       type:String,
       default:null
+    },
+    referredTo: {
+      type: Map,
+      of: referralDetailsSchema,
+      default: () => ({}), 
     },
     myreferralCode: {
-      type:String,
-      default:null
+      type: String,
+      default: null
     },
     name: {
       type: String,

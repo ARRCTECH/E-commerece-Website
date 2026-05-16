@@ -1,10 +1,6 @@
 import { motion } from "framer-motion";
 import { X, CreditCard } from "lucide-react";
 import { useState } from "react";
-
-console.log("🔵 CheckoutModals.jsx loaded");
-
-// ========== Payment Modal ==========
 export const PaymentModal = ({ 
   isOpen, 
   onClose, 
@@ -17,32 +13,15 @@ export const PaymentModal = ({
   isBulkProduct 
 }) => {
   const [tab, setTab] = useState("online");
-  
-  console.log("🔵 PaymentModal rendered, isOpen:", isOpen);
-  
   if (!isOpen) return null;
-
   const onlineAmount = Math.round(amount * (partialPercentage / 100));
   const codAmount = amount - onlineAmount;
-
-  // Determine which tabs to show
   const showCodTab = !showPartialCod;
   const showPartialCodTab = showPartialCod;
-
-  console.log("🔵 PaymentModal - Amount:", amount);
-  console.log("🔵 PaymentModal - showPartialCod:", showPartialCod);
-  console.log("🔵 PaymentModal - partialPercentage:", partialPercentage);
-  console.log("🔵 PaymentModal - onlineAmount:", onlineAmount);
-  console.log("🔵 PaymentModal - codAmount:", codAmount);
-  console.log("🔵 PaymentModal - showCodTab:", showCodTab);
-  console.log("🔵 PaymentModal - showPartialCodTab:", showPartialCodTab);
-  console.log("🔵 PaymentModal - current tab:", tab);
-
   const handleTabChange = (newTab) => {
     console.log("🔵 PaymentModal - tab changed to:", newTab);
     setTab(newTab);
   };
-
   return (
     <div className="fixed inset-0 bg-black/40 flex items-center justify-center z-50">
       <div className="bg-white rounded-xl shadow-2xl p-6 max-w-md w-full mx-4">
@@ -132,16 +111,8 @@ export const PaymentModal = ({
     </div>
   );
 };
-
-// ========== Congratulations Modal ==========
 export const CongratulationsModal = ({ isOpen, onClose, couponCode, savingsAmount }) => {
-  console.log("🔵 CongratulationsModal rendered, isOpen:", isOpen);
-  
   if (!isOpen) return null;
-  
-  console.log("🔵 CongratulationsModal - couponCode:", couponCode);
-  console.log("🔵 CongratulationsModal - savingsAmount:", savingsAmount);
-  
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/50 backdrop-blur-sm">
       <motion.div 
@@ -175,13 +146,7 @@ export const ExitWarningModal = ({ isOpen, onContinue, onExit, message, type = "
   const [selectedReasons, setSelectedReasons] = useState([]);
   const [othersText, setOthersText] = useState("");
   const [isOthersSelected, setIsOthersSelected] = useState(false);
-
-  console.log("🔵 ExitWarningModal rendered, isOpen:", isOpen);
-  console.log("🔵 ExitWarningModal - type:", type);
-  console.log("🔵 ExitWarningModal - message:", message);
-
   if (!isOpen) return null;
-
   const reasons = [
     "Don't want to share mobile number",
     "Need to modify cart",
@@ -192,25 +157,17 @@ export const ExitWarningModal = ({ isOpen, onContinue, onExit, message, type = "
     "Just browsing",
     "Others"
   ];
-
   const handleSubmit = (e) => {
     e.preventDefault();
-    console.log("🔵 ExitWarningModal - Form submitted");
-    console.log("   Selected reasons:", selectedReasons);
-    console.log("   Is others selected:", isOthersSelected);
-    console.log("   Others text:", othersText);
-    
     let finalReasons = [...selectedReasons];
     if (isOthersSelected) {
       finalReasons = finalReasons.filter(r => r !== "Others");
       finalReasons.push(othersText || "Others");
     }
-    console.log("   Final reasons:", finalReasons);
     onExit(finalReasons);
   };
 
   const handleReasonChange = (reason, isChecked) => {
-    console.log("🔵 ExitWarningModal - Reason changed:", reason, "checked:", isChecked);
     if (isChecked) {
       setSelectedReasons([...selectedReasons, reason]);
       if (reason === "Others") setIsOthersSelected(true);
@@ -219,10 +176,7 @@ export const ExitWarningModal = ({ isOpen, onContinue, onExit, message, type = "
       if (reason === "Others") setIsOthersSelected(false);
     }
   };
-
-  // Survey Modal (Exit with feedback)
   if (type === "survey") {
-    console.log("🔵 ExitWarningModal - Rendering SURVEY modal");
     return (
       <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm">
         <motion.div 
@@ -288,9 +242,6 @@ export const ExitWarningModal = ({ isOpen, onContinue, onExit, message, type = "
       </div>
     );
   }
-
-  // Warning Modal (Exit warning for free gift)
-  console.log("🔵 ExitWarningModal - Rendering WARNING modal");
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm">
       <motion.div 
@@ -324,5 +275,3 @@ export const ExitWarningModal = ({ isOpen, onContinue, onExit, message, type = "
     </div>
   );
 };
-
-console.log("🔵 CheckoutModals.jsx exported successfully");

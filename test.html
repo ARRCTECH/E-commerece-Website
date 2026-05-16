@@ -1,0 +1,389 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Tax Invoice - INV-65178303</title>
+    <style>
+        :root {
+            --primary-color: #1e293b;
+            --secondary-color: #64748b;
+            --border-color: #e2e8f0;
+            --bg-light: #f8fafc;
+            --accent-alert: #b45309;
+            --accent-alert-bg: #fef3c7;
+        }
+
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            margin: 0;
+            padding: 20px;
+            background-color: #f1f5f9;
+            color: var(--primary-color);
+            line-height: 1.5;
+        }
+
+        .invoice-card {
+            max-width: 850px;
+            margin: 0 auto;
+            background: #ffffff;
+            padding: 40px;
+            border-radius: 8px;
+            box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06);
+        }
+
+        /* Header Styling */
+        .header {
+            display: flex;
+            justify-content: space-between;
+            align-items: flex-start;
+            border-bottom: 2px solid var(--border-color);
+            padding-bottom: 20px;
+            margin-bottom: 25px;
+        }
+
+        .brand h1 {
+            margin: 0;
+            font-size: 28px;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+            color: var(--primary-color);
+        }
+
+        .brand p {
+            margin: 4px 0;
+            color: var(--secondary-color);
+            font-size: 14px;
+        }
+
+        .invoice-title-area {
+            text-align: right;
+        }
+
+        .invoice-title-area h2 {
+            margin: 0;
+            font-size: 24px;
+            color: var(--secondary-color);
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+        }
+
+        .badge {
+            display: inline-block;
+            padding: 4px 12px;
+            border-radius: 4px;
+            font-size: 12px;
+            font-weight: bold;
+            margin-top: 8px;
+            text-transform: uppercase;
+        }
+
+        .badge-recipient {
+            background-color: #e2e8f0;
+            color: #334155;
+        }
+
+        .badge-status {
+            background-color: var(--accent-alert-bg);
+            color: var(--accent-alert);
+            border: 1px solid #fcd34d;
+        }
+
+        /* Meta Info Grid */
+        .meta-grid {
+            display: grid;
+            grid-template-columns: repeat(3, 1fr);
+            gap: 15px;
+            background: var(--bg-light);
+            padding: 15px;
+            border-radius: 6px;
+            margin-bottom: 30px;
+        }
+
+        .meta-item span {
+            display: block;
+            font-size: 12px;
+            color: var(--secondary-color);
+            text-transform: uppercase;
+        }
+
+        .meta-item strong {
+            font-size: 15px;
+            color: var(--primary-color);
+        }
+
+        /* Address Grid */
+        .address-grid {
+            display: grid;
+            grid-template-columns: repeat(2, 1fr);
+            gap: 40px;
+            margin-bottom: 35px;
+        }
+
+        .address-box h3 {
+            margin: 0 0 10px 0;
+            font-size: 14px;
+            text-transform: uppercase;
+            color: var(--secondary-color);
+            border-bottom: 1px solid var(--border-color);
+            padding-bottom: 5px;
+        }
+
+        .address-box p {
+            margin: 3px 0;
+            font-size: 14px;
+        }
+
+        /* Tables styling */
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            margin-bottom: 30px;
+        }
+
+        th {
+            background-color: var(--primary-color);
+            color: #ffffff;
+            text-transform: uppercase;
+            font-size: 12px;
+            letter-spacing: 0.5px;
+            padding: 12px;
+            text-align: left;
+        }
+
+        td {
+            padding: 12px;
+            border-bottom: 1px solid var(--border-color);
+            font-size: 14px;
+            vertical-align: top;
+        }
+
+        .text-right {
+            text-align: right;
+        }
+
+        .text-center {
+            text-align: center;
+        }
+
+        /* Split Section for Payment Details and Totals */
+        .summary-section {
+            display: grid;
+            grid-template-columns: 1.2fr 0.8fr;
+            gap: 40px;
+            margin-bottom: 30px;
+        }
+
+        .inner-table {
+            margin: 0;
+        }
+
+        .inner-table th {
+            background-color: #cbd5e1;
+            color: var(--primary-color);
+        }
+
+        .inner-table td {
+            padding: 8px 12px;
+        }
+
+        .grand-total-row {
+            font-weight: bold;
+            font-size: 16px;
+            background-color: var(--bg-light);
+        }
+
+        /* Footer & Terms */
+        .terms {
+            font-size: 12px;
+            color: var(--secondary-color);
+            border-top: 1px solid var(--border-color);
+            padding-top: 15px;
+            margin-bottom: 30px;
+        }
+
+        .terms ol {
+            padding-left: 20px;
+            margin: 5px 0;
+        }
+
+        .footer-msg {
+            text-align: center;
+            font-size: 13px;
+            color: var(--secondary-color);
+            border-top: 2px dashed var(--border-color);
+            padding-top: 20px;
+        }
+
+        .system-meta {
+            font-size: 11px;
+            color: #94a3b8;
+            margin-top: 8px;
+        }
+
+        /* Responsive Tweaks */
+        @media (max-width: 600px) {
+            .header, .meta-grid, .address-grid, .summary-section {
+                grid-template-columns: 1fr;
+                display: block;
+            }
+            .invoice-title-area {
+                text-align: left;
+                margin-top: 15px;
+            }
+            .address-box {
+                margin-bottom: 20px;
+            }
+            .summary-section {
+                margin-top: 20px;
+            }
+        }
+    </style>
+</head>
+<body>
+
+<div class="invoice-card">
+    <header class="header">
+        <div class="brand">
+            <h1>FACTORY SALE</h1>
+            <p><strong>Premium Fashion Store</strong></p>
+            <p>123 Fashion Street, Andheri West, Mumbai, Maharashtra - 400058</p>
+            <p>GSTIN: 27ABCDE1234F125 | PAN: ABCDE1234F</p>
+            <p>support@factorysale.com | +91 9876543210 | www.factorysale.com</p>
+        </div>
+        <div class="invoice-title-area">
+            <h2>TAX INVOICE</h2>
+            <span class="badge badge-recipient">Original for Recipient</span>
+            <div><span class="badge badge-status">Partially Paid</span></div>
+        </div>
+    </header>
+
+    <section class="meta-grid">
+        <div class="meta-item">
+            <span>Invoice No</span>
+            <strong>INV-65178303</strong>
+        </div>
+        <div class="meta-item">
+            <span>Order ID &amp; Date</span>
+            <strong>#FH-1778665178303</strong>
+            <div style="font-size: 13px; color: var(--primary-color);">13 May 2026</div>
+        </div>
+        <div class="meta-item">
+            <span>Invoice Date</span>
+            <strong>14 May 2026</strong>
+        </div>
+    </section>
+
+    <section class="address-grid">
+        <div class="address-box">
+            <h3>Billing Address</h3>
+            <p><strong>Revon Jeans</strong></p>
+            <p>csiber chowk kolhapur</p>
+            <p>Kolhapur, Maharastra, 416004</p>
+            <p>Phone: +918261871026</p>
+            <p>Email: admin1@gmail.com</p>
+        </div>
+        <div class="address-box">
+            <h3>Shipping Address</h3>
+            <p><strong>Revon Jeans</strong></p>
+            <p>csiber chowk kolhapur</p>
+            <p>Kolhapur, Maharastra, 416004</p>
+            <p>Phone: +918261871026</p>
+            <p>Email: admin1@gmail.com</p>
+            <p style="margin-top: 8px;"><strong>Type:</strong> REGULAR | PARTIAL_COD</p>
+        </div>
+    </section>
+
+    <table class="items-table">
+        <thead>
+            <tr>
+                <th style="width: 5%;" class="text-center">#</th>
+                <th style="width: 55%;">Description</th>
+                <th style="width: 10%;" class="text-center">HSN</th>
+                <th style="width: 8%;" class="text-center">Qty</th>
+                <th style="width: 12%;" class="text-right">Unit Price</th>
+                <th style="width: 10%;" class="text-right">Amount</th>
+            </tr>
+        </thead>
+        <tbody>
+            <tr>
+                <td class="text-center">1</td>
+                <td>
+                    <strong>The Indian Garage Co Men Regular Fit Solid Full Sleeves Spread Collar Casual Shirt</strong><br>
+                    <span style="color: var(--secondary-color); font-size: 12px;">(BULK_PACK | White)</span>
+                </td>
+                <td class="text-center">6109</td>
+                <td class="text-center">1</td>
+                <td class="text-right">Rs. 1,200.00 <span style="font-size: 11px; color: var(--secondary-color); d-block">(/pc)</span></td>
+                <td class="text-right">Rs. 1,200.00</td>
+            </tr>
+        </tbody>
+    </table>
+
+    <div class="summary-section">
+        <div>
+            <table class="inner-table">
+                <thead>
+                    <tr>
+                        <th colspan="2">Payment Details</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    <tr>
+                        <td><strong>Method</strong></td>
+                        <td>PARTIAL COD</td>
+                    </tr>
+                    <tr>
+                        <td><strong>Status</strong></td>
+                        <td><span style="color: var(--accent-alert); font-weight: bold;">PARTIALLY PAID</span></td>
+                    </tr>
+                    <tr>
+                        <td>Online (30%)</td>
+                        <td>Rs. 360.00</td>
+                    </tr>
+                    <tr>
+                        <td>COD on Delivery</td>
+                        <td><strong>Rs. 840.00</strong></td>
+                    </tr>
+                </tbody>
+            </table>
+        </div>
+
+        <div>
+            <table class="inner-table">
+                <tbody>
+                    <tr>
+                        <td>Subtotal</td>
+                        <td class="text-right">Rs. 1,200.00</td>
+                    </tr>
+                    <tr>
+                        <td>Shipping</td>
+                        <td class="text-right">Rs. 0.00</td>
+                    </tr>
+                    <tr class="grand-total-row">
+                        <td>GRAND TOTAL</td>
+                        <td class="text-right" style="color: #0f172a;">Rs. 1,200.00</td>
+                    </tr>
+                </tbody>
+            </table>
+        </div>
+    </div>
+
+    <footer class="terms">
+        <strong>Terms &amp; Conditions:</strong>
+        <ol>
+            <li>Goods once sold will be taken back as per return policy.</li>
+            <li>Computer generated invoice no signature required.</li>
+            <li>Subject to Mumbai jurisdiction. E.&amp;Ο.Ε.</li>
+        </ol>
+    </footer>
+
+    <div class="footer-msg">
+        <p>Thank you for shopping with <strong>FACTORY SALE!</strong></p>
+        <div class="system-meta">
+            Generated on 14/5/2026, 8:46:10 pm | GSTIN 27ABCDE1234F1Z5
+        </div>
+    </div>
+</div>
+</body>
+</html>

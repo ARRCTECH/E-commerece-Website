@@ -68,8 +68,8 @@ const ProductDetailPage = () => {
 
   // Build unified media array (images first, then videos – you can reorder as needed)
   const mediaItems = [
-    ...(currentProduct?.images?.map(img => ({ type: 'image', url: img.url, alt: currentProduct.name, id: img._id })) || []),
-    ...(currentProduct?.videos?.map(vid => ({ type: 'video', url: vid.url, alt: currentProduct.name, id: vid._id })) || [])
+    ...(currentProduct?.images?.map(img => ({ type: 'image', url: img?.url, alt: currentProduct.name, id: img._id })) || []),
+    ...(currentProduct?.videos?.map(vid => ({ type: 'video', url: vid?.url, alt: currentProduct.name, id: vid._id })) || [])
   ];
 
   const formatDescription = (description) => {
@@ -424,7 +424,7 @@ const ProductDetailPage = () => {
                   <div className="relative">
                     {item.type === 'image' ? (
                       <img
-                        src={item.url}
+                        src={item?.url}
                         alt={item.alt}
                         className="w-full h-auto aspect-square object-cover -mb-8"
                         loading="lazy"
@@ -432,7 +432,7 @@ const ProductDetailPage = () => {
                       />
                     ) : (
                       <video
-                        src={item.url}
+                        src={item?.url}
                         controls
                         className="w-full h-auto aspect-square object-cover -mb-8"
                         poster={currentProduct.images?.[0]?.url || ''}
@@ -473,14 +473,14 @@ const ProductDetailPage = () => {
                   >
                     {item.type === 'image' ? (
                       <img
-                        src={item.url}
+                        src={item?.url}
                         alt={`${item.alt} ${idx + 1}`}
                         className="w-full h-full object-cover"
                       />
                     ) : (
                       <div className="relative w-full h-full bg-gray-900 flex items-center justify-center">
                         <video
-                          src={item.url}
+                          src={item?.url}
                           className="w-full h-full object-cover"
                           muted
                           preload="metadata"
@@ -501,7 +501,7 @@ const ProductDetailPage = () => {
                 <div className="relative bg-gray-50 rounded-xl overflow-hidden group">
                   {mediaItems[selectedMediaIndex]?.type === 'image' ? (
                     <motion.img
-                      src={mediaItems[selectedMediaIndex].url}
+                      src={mediaItems[selectedMediaIndex]?.url}
                       alt={currentProduct.name}
                       className="w-full h-auto max-w-full object-contain cursor-zoom-in"
                       onClick={() => setShowImageModal(true)}
@@ -512,7 +512,7 @@ const ProductDetailPage = () => {
                     />
                   ) : (
                     <video
-                      src={mediaItems[selectedMediaIndex].url}
+                      src={mediaItems[selectedMediaIndex]?.url}
                       controls
                       className="w-full h-auto max-w-full object-contain"
                       poster={currentProduct.images?.[0]?.url || ''}
