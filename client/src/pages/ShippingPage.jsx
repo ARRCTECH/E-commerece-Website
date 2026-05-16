@@ -4,7 +4,7 @@ const ShippingPage = () => {
     <div className="max-w-4xl px-4 py-12 mx-auto">
       <h1 className="mb-8 text-4xl font-bold text-center text-red-600">Shipping Policy</h1>
       <p className="max-w-3xl mx-auto mb-8 text-lg text-center text-gray-700">
-        At Ksauni Bliss, we're committed to getting your orders to you as quickly and safely as possible. Please read
+        At Factory Sale, we're committed to getting your orders to you as quickly and safely as possible. Please read
         our shipping policy to understand how we handle shipping and delivery.
       </p>
       <section className="mb-10">
@@ -101,7 +101,7 @@ const ShippingPage = () => {
         <div className="p-6 bg-purple-50 border-l-4 border-purple-500 rounded-lg">
           <p className="text-gray-700">
             Please ensure that all shipping details (including your address, phone number, and email) are correct when
-            placing your order. Ksauni Bliss is not responsible for delivery issues due to incorrect or incomplete
+            placing your order. Factory Sale is not responsible for delivery issues due to incorrect or incomplete
             information provided by the customer.
           </p>
         </div>

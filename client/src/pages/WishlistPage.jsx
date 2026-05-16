@@ -172,8 +172,8 @@ const WishlistPage = () => {
           )}
         </div>
 
-        {/* Header */}
-        <motion.div
+        
+        {/* <motion.div
           initial={{ opacity: 0, y: 14 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ duration: 0.5, ease: [0.22, 1, 0.36, 1] }}
@@ -188,7 +188,7 @@ const WishlistPage = () => {
           <p className="mt-3 text-xs sm:text-sm tracking-[0.2em] uppercase text-neutral-500">
             {items.length} {items.length === 1 ? "Item" : "Items"} · Saved with love
           </p>
-        </motion.div>
+        </motion.div> */}
 
         {/* Empty state */}
         {items.length === 0 ? (

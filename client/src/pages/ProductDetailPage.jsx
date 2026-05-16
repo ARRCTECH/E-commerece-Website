@@ -445,7 +445,7 @@ const ProductDetailPage = () => {
             </Swiper>
 
             <div className="px-2">
-              <p className="text-lg font-bold text-gray-900">{currentProduct.brand || "Ksauni Bliss"}</p>
+              <p className="text-lg font-bold text-gray-900">{currentProduct.brand || "Factory Sale"}</p>
               <p className="text-sm text-gray-600 mt-1">{currentProduct.name}</p>
               <div className="flex items-center gap-2 mt-2">
                 <span className="text-2xl font-bold text-gray-900">₹{displayPrice?.toLocaleString()}</span>
@@ -719,7 +719,7 @@ const ProductDetailPage = () => {
           <div className="hidden lg:block space-y-1">
             <div className="flex items-start justify-between">
               <div className="hidden lg:block mb-1">
-                <p className="text-lg font-semibold text-gray-900"><span>{currentProduct.brand || "Ksauni Bliss"}</span></p>
+                <p className="text-lg font-semibold text-gray-900"><span>{currentProduct.brand || "Factory Sale"}</span></p>
                 {currentProduct.name && (
                   <p className="text-base text-gray-600 mb-5">{typeof currentProduct.name === "string" ? currentProduct.name : JSON.stringify(currentProduct.name)}</p>
                 )}

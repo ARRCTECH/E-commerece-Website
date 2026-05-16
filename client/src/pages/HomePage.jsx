@@ -126,21 +126,44 @@ const HomePage = () => {
   return (
     <div className="flex flex-col">
       <PromoBanners />
+            <HeroBanner />
+
       {/* <FlatDiscount /> */}
             <FeaturedCategories />
+<CategoryBanner/>
 
-      <HeroBanner />
             <TrendingProducts />
+<ReferralProgram/>
 
       {/* <KsauniTshirtStyle /> */}
       {/* <PriceSelection /> */}
 <NewArrivals />
-<CategoryBanner/>
+
+      <InnovationList />
 
       <Oversized899 />
       {/* <TopPicksShowcase/> */}
+      {/* <FandomShop /> */}
 <ReferralProgram/>
       
+
+      {/* Brand of India Banner - moved to last position before footer */}
+      {/* <div className="mx-auto w-full max-w-md sm:max-w-lg md:max-w-3xl lg:max-w-5xl xl:max-w-7xl 2xl:max-w-screen-2xl">
+        <div className="my-8 bg-red-600">
+          <BrandIndia />
+        </div>
+      </div> */}
+
+
+
+
+      {/* {popupVisible && popupBanner && (
+        <Popup
+          banner={popupBanner}
+          visible={popupVisible}
+          onClose={() => setPopupVisible(false)}
+        />
+      )} */}
       <InnovationList />
       
     </div>

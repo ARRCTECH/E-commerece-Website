@@ -7,13 +7,13 @@ const TermsPage = () => {
       id: "acceptance",
       title: "Acceptance of Terms",
       icon: FileText,
-      content: "By accessing or using the Ksauni Bliss website (www.Factory Sale.com), you agree to be bound by these Terms of Service and any other terms that may apply. If you do not agree to these terms, please do not use the website or purchase products.",
+      content: "By accessing or using the Factory Sale website (www.Factory Sale.com), you agree to be bound by these Terms of Service and any other terms that may apply. If you do not agree to these terms, please do not use the website or purchase products.",
     },
     {
       id: "changes",
       title: "Changes to Terms",
       icon: AlertTriangle,
-      content: "Ksauni Bliss reserves the right to update, modify, or change these Terms of Service at any time. Any changes will take effect immediately upon posting on this page. Please check periodically for updates. Your continued use of the site after changes have been made constitutes your acceptance of the revised terms.",
+      content: "Factory Sale reserves the right to update, modify, or change these Terms of Service at any time. Any changes will take effect immediately upon posting on this page. Please check periodically for updates. Your continued use of the site after changes have been made constitutes your acceptance of the revised terms.",
     },
     {
       id: "eligibility",
@@ -43,7 +43,7 @@ const TermsPage = () => {
       id: "shipping",
       title: "Shipping and Delivery",
       icon: Truck,
-      content: "Ksauni Bliss strives to ship orders promptly. However, shipping times and availability are subject to stock and delivery service providers. Shipping fees are calculated at checkout and may vary depending on your location and the shipping method selected. We are not responsible for any delays caused by third-party delivery services.",
+      content: "Factory Sale strives to ship orders promptly. However, shipping times and availability are subject to stock and delivery service providers. Shipping fees are calculated at checkout and may vary depending on your location and the shipping method selected. We are not responsible for any delays caused by third-party delivery services.",
     },
     {
       id: "returns",
@@ -55,7 +55,7 @@ const TermsPage = () => {
       id: "intellectual",
       title: "Intellectual Property",
       icon: Shield,
-      content: "All content on the Ksauni Bliss website, including logos, designs, text, images, and trademarks, is the property of Ksauni Bliss or its licensors and is protected by intellectual property laws. You may not use, reproduce, or distribute any of our content without prior written permission.",
+      content: "All content on the Factory Sale website, including logos, designs, text, images, and trademarks, is the property of Factory Sale or its licensors and is protected by intellectual property laws. You may not use, reproduce, or distribute any of our content without prior written permission.",
     },
     {
       id: "conduct",
@@ -71,13 +71,13 @@ const TermsPage = () => {
       id: "liability",
       title: "Limitation of Liability",
       icon: Shield,
-      content: "Ksauni Bliss is not liable for any indirect, incidental, special, or consequential damages arising from your use of the website or our products. Our liability is limited to the amount you paid for the product(s) in question.",
+      content: "Factory Sale is not liable for any indirect, incidental, special, or consequential damages arising from your use of the website or our products. Our liability is limited to the amount you paid for the product(s) in question.",
     },
     {
       id: "indemnification",
       title: "Indemnification",
       icon: Shield,
-      content: "You agree to indemnify and hold harmless Ksauni Bliss, its employees, affiliates, and partners from any claims, damages, or expenses (including legal fees) arising from your use of the website, violation of these terms, or infringement of any third-party rights.",
+      content: "You agree to indemnify and hold harmless Factory Sale, its employees, affiliates, and partners from any claims, damages, or expenses (including legal fees) arising from your use of the website, violation of these terms, or infringement of any third-party rights.",
     },
     {
       id: "privacy",
@@ -89,7 +89,7 @@ const TermsPage = () => {
       id: "third-party",
       title: "Third-Party Links",
       icon: Globe,
-      content: "The Ksauni Bliss website may contain links to third-party websites or services that are not controlled by us. We are not responsible for the content or privacy practices of third-party websites. Clicking on those links is done at your own risk.",
+      content: "The Factory Sale website may contain links to third-party websites or services that are not controlled by us. We are not responsible for the content or privacy practices of third-party websites. Clicking on those links is done at your own risk.",
     },
     {
       id: "governing",
@@ -146,9 +146,9 @@ const TermsPage = () => {
               transition={{ duration: 0.6 }}
               className="p-8 mb-8 bg-white shadow-lg rounded-xl"
             >
-              <h2 className="mb-4 text-2xl font-bold text-gray-800">Welcome to Ksauni Bliss</h2>
+              <h2 className="mb-4 text-2xl font-bold text-gray-800">Welcome to Factory Sale</h2>
               <p className="mb-4 leading-relaxed text-gray-600">
-                Welcome to Ksauni Bliss! By using our website, making purchases, or interacting with our services, you agree to follow these Terms of Service. Please read them carefully.
+                Welcome to Factory Sale! By using our website, making purchases, or interacting with our services, you agree to follow these Terms of Service. Please read them carefully.
               </p>
             </motion.div>
             {/* Terms Sections */}

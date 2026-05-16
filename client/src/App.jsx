@@ -55,6 +55,11 @@ function AppContent() {
 
   const isCartPage = location.pathname === "/cart"
   const isCheckoutPage = location.pathname === "/checkout"
+  
+  // Check if current route is admin or digital marketer
+  const isAdminRoute = location.pathname.startsWith("/admin")
+  const isDigitalMarketerRoute = location.pathname.startsWith("/digitalMarketer")
+  const isDashboardRoute = isAdminRoute || isDigitalMarketerRoute
 
   useEffect(() => {
     const isValidEnvironment = validateEnvironment()
@@ -100,39 +105,29 @@ function AppContent() {
     return () => unsubscribe()
   }, [dispatch])
 
-  // // Show loading state while auth is initializing
-  // if (!initialized || !appReady) {
-  //   return (
-  //     <div className="flex items-center justify-center min-h-screen bg-white">
-  //       <div className="text-center">
-  //         <div className="w-12 h-12 mx-auto mb-4 border-4 border-blue-500 border-t-transparent rounded-full animate-spin"></div>
-  //         <p className="text-gray-600">Loading...</p>
-  //       </div>
-  //     </div>
-  //   )
-  // }
-
   return (
     <div className="App">
       <ToastProvider />
       <NetworkStatus />
       <main className="main-content">
-        <div className={isCartPage ? "hidden md:block" : ""}>
-          <div className={isCheckoutPage ? "hidden md:block" : ""}>
-            <Navbar />
+        {/* Only show Navbar on non-dashboard routes */}
+        {!isDashboardRoute && (
+          <div className={isCartPage ? "hidden md:block" : ""}>
+            <div className={isCheckoutPage ? "hidden md:block" : ""}>
+              <Navbar />
+            </div>
           </div>
-        </div>
+        )}
+        
         <Suspense fallback={<div className="flex items-center justify-center py-10 text-gray-600">Loading…</div>}>
           <Routes>
             {/* Public Routes */}
             <Route path="/" element={<HomePage />} />
             <Route path="/login" element={<LoginPage />} />
-            <Route path="/login" element={<LoginPage />} />
-<Route path="/register" element={<LoginPage />} />
-<Route path="/signup" element={<LoginPage />} />
+            <Route path="/register" element={<LoginPage />} />
+            <Route path="/signup" element={<LoginPage />} />
             <Route path="/products" element={<ProductsPage />} />
             <Route path="/products/:category" element={<ProductsPage />} />
-            {/* <Route path="/product/:id" element={<ProductDetailPage />} /> */}
             <Route path="/product/:slug" element={<ProductDetailPage />} />
             <Route path="/search" element={<SearchResultsPage />} />
             <Route path="/about" element={<AboutUsPage />} />
@@ -145,12 +140,12 @@ function AppContent() {
             <Route path="/shipping" element={<ShippingPage />} />
             {/* Protected Routes */}
             <Route path="/cart" element={<CartPage />} />
-            <Route path="/checkout" element={<CheckoutPage />}  />
+            <Route path="/checkout" element={<CheckoutPage />} />
             <Route path="/profile" element={<ProfilePage />} />
             <Route path="/orders" element={<MyOrdersPage />} />
             <Route path="/wishlist" element={<WishlistPage />} />
             <Route path="/order-confirmation/:orderId" element={<OrderConfirmationPage />} />
-            <Route path="/order/:orderId" element={<OrderDetailsPage />} /> {/* New Route */}
+            <Route path="/order/:orderId" element={<OrderDetailsPage />} />
             {/* Admin Routes */}
             <Route
               path="/admin/*"
@@ -193,11 +188,15 @@ function AppContent() {
           </Routes>
         </Suspense>
       </main>
-      <div className={isCartPage ? "hidden md:block" : ""}>
-        <div className={isCheckoutPage ? "hidden md:block" : ""}>
-          <Footer />
+      
+      {/* Only show Footer on non-dashboard routes */}
+      {!isDashboardRoute && (
+        <div className={isCartPage ? "hidden md:block" : ""}>
+          <div className={isCheckoutPage ? "hidden md:block" : ""}>
+            <Footer />
+          </div>
         </div>
-      </div>
+      )}
     </div>
   )
 }

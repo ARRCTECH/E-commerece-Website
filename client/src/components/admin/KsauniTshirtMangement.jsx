@@ -18,7 +18,7 @@ const KsauniTshirtManagement = () => {
   // Form states
   const [imageFile, setImageFile] = useState(null);
   const [imagePreview, setImagePreview] = useState("");
-  const [altText, setAltText] = useState("Ksauni Tshirt Style");
+  const [altText, setAltText] = useState("Factory sale");
   const [order, setOrder] = useState(0);
   const [isActive, setIsActive] = useState(true);
   useEffect(() => {
@@ -78,7 +78,7 @@ const KsauniTshirtManagement = () => {
       resetForm();
       setShowModal(false);
     } catch (error) {
-      console.error("Error saving Ksauni Tshirt:", error);
+      console.error("Error saving factory sale Tshirt:", error);
     } finally {
       setUploading(false);
     }
@@ -96,7 +96,7 @@ const KsauniTshirtManagement = () => {
   const openEditModal = (tshirt) => {
     setEditingTshirt(tshirt);
     setImagePreview(tshirt.image.url);
-    setAltText(tshirt.image.alt || "Ksauni Tshirt Style");
+    setAltText(tshirt.image.alt || "factory sale");
     setOrder(tshirt.order || 0);
     setIsActive(tshirt.isActive);
     setShowModal(true);
@@ -105,7 +105,7 @@ const KsauniTshirtManagement = () => {
   const resetForm = () => {
     setImageFile(null);
     setImagePreview("");
-    setAltText("Ksauni Tshirt Style");
+    setAltText("factory sale");
     setOrder(0);
     setIsActive(true);
     setEditingTshirt(null);
@@ -114,13 +114,13 @@ const KsauniTshirtManagement = () => {
     <div className="space-y-6">
       {/* Header */}
       <div className="flex items-center justify-between">
-        <h1 className="text-2xl font-bold text-gray-900">Ksauni Tshirt Style Management</h1>
+        <h1 className="text-2xl font-bold text-gray-900">factory sale Management</h1>
         <button
           onClick={() => {
             setShowModal(true);
             dispatch(clearError());
           }}
-          className="flex items-center px-4 py-2 space-x-2 text-white bg-blue-600 rounded-lg hover:bg-blue-700"
+          className="flex items-center px-4 py-2 space-x-2 text-white bg-red-600 rounded-lg hover:bg-red-700"
         >
           <Plus className="w-4 h-4" />
           <span>Add Image</span>
