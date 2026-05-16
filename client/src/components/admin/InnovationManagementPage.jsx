@@ -119,7 +119,7 @@ const InnovationManagementPage = () => {
   const priorities = ["Low", "Medium", "High", "Critical"];
   const statuses = ["Draft", "In Progress", "Review", "Approved", "Implemented"];
   return (
-    <div className="space-y-6">
+    <div className="space-y-6">F
       {/* Header */}
       <div className="flex items-center justify-between">
         <h1 className="text-2xl font-bold text-gray-900">Innovation Management</h1>

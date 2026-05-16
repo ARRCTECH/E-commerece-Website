@@ -49,9 +49,9 @@ export default function TopPicksShowcase() {
           </div>
           
           <h2 className="text-3xl sm:text-4xl lg:text-5xl font-light text-neutral-900 tracking-tight">
-            Most{" "}
+            Trending{" "}
             <span className="font-medium text-neutral-900">
-              Wanted
+              Now
             </span>
           </h2>
         </div>

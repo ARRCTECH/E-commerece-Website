@@ -86,7 +86,7 @@ const HeroBanner = () => {
 
   if (isLoading) {
     return (
-      <div className="relative min-h-[60vh] bg-red-200 via-[#161617] to-black overflow-hidden">
+      <div className="relative min-h-[60vh] bg-gradient-to-b from-[#0b0b0c] via-[#161617] to-black overflow-hidden">
         <div className="absolute inset-0 bg-gradient-to-br from-amber-500/10 via-transparent to-transparent animate-pulse" />
         <div className="relative z-10 flex flex-col items-center justify-center min-h-[60vh] px-4">
           <div className="w-16 h-16 rounded-full border-2 border-amber-500/30 border-t-amber-500 animate-spin" />
@@ -136,8 +136,15 @@ const HeroBanner = () => {
   return (
     <div className="relative bg-gradient-to-b from-[#0b0b0c] via-[#161617] to-black overflow-hidden py-8 sm:py-12 lg:py-16">
       {/* Premium gradient overlays - subtle */}
+      <div className="absolute inset-0 bg-[radial-gradient(ellipse_60%_50%_at_85%_15%,rgba(245,158,11,0.08),transparent_60%)] pointer-events-none" />
+      <div className="absolute inset-0 bg-[radial-gradient(ellipse_50%_40%_at_10%_85%,rgba(180,83,9,0.1),transparent_60%)] pointer-events-none" />
       
-      
+      {/* Decorative top border */}
+      <div className="absolute top-0 left-1/2 -translate-x-1/2 flex items-center gap-3 pt-4 text-white/30 z-10">
+        <span className="w-12 h-px bg-gradient-to-r from-transparent via-amber-500/40 to-transparent" />
+        <Sparkles className="w-2 h-2 text-amber-500 animate-pulse" />
+        <span className="w-12 h-px bg-gradient-to-l from-transparent via-amber-500/40 to-transparent" />
+      </div>
 
       <div className="relative z-10 flex flex-col lg:grid lg:grid-cols-12 gap-8 lg:gap-6 px-4 sm:px-6 lg:px-8 mx-auto max-w-[1600px]">
         {/* LEFT — Editorial section */}
@@ -147,7 +154,17 @@ const HeroBanner = () => {
           initial="hidden"
           animate="visible"
         >
-          
+          <motion.div
+            variants={textVariants}
+            custom={0}
+            className="inline-flex self-center lg:self-start items-center gap-2 px-3 py-1.5 rounded-full border border-amber-500/30 bg-gradient-to-r from-amber-950/20 to-transparent backdrop-blur-sm text-[8px] sm:text-[9px] tracking-[0.4em] uppercase text-amber-300/90"
+          >
+            <span className="relative flex w-1.5 h-1.5">
+              <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-amber-500 opacity-75" />
+              <span className="relative inline-flex rounded-full h-1.5 w-1.5 bg-amber-500" />
+            </span>
+            New Arrivals
+          </motion.div>
 
           <motion.h4
             variants={textVariants}
@@ -238,7 +255,7 @@ const HeroBanner = () => {
 
             <div
               ref={carouselRef}
-              className="flex px-1 py-2 space-x-4 overflow-x-scroll scrollbar-hide scroll-smooth"
+              className="flex px-1 py-4 space-x-4 overflow-x-scroll scrollbar-hide scroll-smooth"
               style={{ scrollSnapType: "x mandatory" }}
               onScroll={() => {
                 if (carouselRef.current) {

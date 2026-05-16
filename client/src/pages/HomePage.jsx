@@ -13,7 +13,6 @@ import CategoryBanner from "../components/CategoryBanner";
 import InnovationList from "../components/admin/InnovationList";
 import KsauniTshirtStyle from "../components/admin/KsauniTshirtStyle";
 import FeaturedHighlight from "../components/FeaturedHighlight";
-import Testimonials from "../components/Testimonials";
 import Popup from "../components/Popup";
 // import BrandIndia from "../components/BrandIndia";
 import TopPicksShowcase from "../components/TopPicksShowCase";
