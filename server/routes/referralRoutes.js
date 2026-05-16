@@ -1,13 +1,11 @@
 const express = require('express');
 const router = express.Router();
 const {
-  getConfig,
-  updateReferredBy,
-  updateReferredTo
+  getReferralConfig,
+  updateReferralConfig,
 } = require('../controllers/referralController');
 
-router.get('/', getConfig);
-router.put('/referred-by', updateReferredBy);
-router.put('/referred-to', updateReferredTo);
+router.get('/', getReferralConfig);
+router.put('/referral', updateReferralConfig);
 
 module.exports = router;

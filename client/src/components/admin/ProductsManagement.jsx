@@ -899,7 +899,6 @@ const ProductsManagement = () => {
                     </div>
                   )}
                 </div>
-
                 {/* Sizes Section */}
                 <div>
                   <label className="block mb-2 text-sm font-medium text-gray-700">Sizes</label>

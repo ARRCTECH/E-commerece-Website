@@ -3,6 +3,7 @@
 import { useState, useEffect } from "react";
 import { useDispatch, useSelector } from "react-redux";
 import { motion, AnimatePresence } from "framer-motion";
+import axios from "axios";
 import {
   User,
   Camera,
@@ -79,7 +80,6 @@ const ProfilePage = () => {
     pincode: "",
     isDefault: false,
   });
-
   useEffect(() => {
     if (user) {
       setProfileData({
@@ -95,7 +95,35 @@ const ProfilePage = () => {
       });
     }
   }, [user]);
+const [dataforreferral,setDataforreferral] = useState(null);
+const [totalEarning,setTotalEarning] = useState(0);
 
+const getTotalEarning= async ()=>{
+  try{
+    const res=await axios.post(`${import.meta.env.VITE_API_URL}/referral-total-earning`,{userId:user._id}); 
+    setTotalEarning(res.data.data.totalEarning); 
+  }catch(error){
+    console.error("Error calculating total earning:", error);
+  }
+}
+console.log(totalEarning)
+
+  const getReferralDetails = async () => {
+    try {
+      const res = await axios.post(
+        `${import.meta.env.VITE_API_URL}/referral/fetchReferral`,
+         { userId : user._id },   
+      );
+      setDataforreferral(res.data.data);
+    } catch (error) {
+      console.error("Error:", error.response?.data || error.message);
+    }
+  };
+  useEffect(() => {
+    getReferralDetails();
+    getTotalEarning();
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [user._id]);
   useEffect(() => {
     dispatch(fetchUserOrders({ limit: 5 }));
     dispatch(fetchWishlist());
@@ -274,7 +302,7 @@ const ProfilePage = () => {
           <div className="relative mb-8 overflow-hidden bg-white rounded-2xl shadow-xl">
             <div className="absolute top-0 right-0 w-80 h-80 bg-gradient-to-br from-red-500/10 to-rose-500/5 rounded-full -mt-40 -mr-40 blur-3xl" />
             <div className="absolute bottom-0 left-0 w-80 h-80 bg-gradient-to-tr from-amber-500/5 to-red-500/5 rounded-full -mb-40 -ml-40 blur-3xl" />
-            
+
             <div className="relative p-6 sm:p-8">
               <div className="flex flex-col items-center gap-6 md:flex-row md:items-start">
                 {/* Avatar */}
@@ -334,11 +362,10 @@ const ProfilePage = () => {
                         <button
                           key={tab.id}
                           onClick={() => setActiveTab(tab.id)}
-                          className={`w-full flex-shrink-0 flex items-center gap-3 px-4 py-3 rounded-xl text-left text-sm font-medium transition-all duration-300 ${
-                            isActive
-                              ? "bg-gradient-to-r from-gray-900 to-gray-800 text-white shadow-lg"
-                              : "text-gray-600 hover:bg-gray-50 hover:text-gray-900"
-                          }`}
+                          className={`w-full flex-shrink-0 flex items-center gap-3 px-4 py-3 rounded-xl text-left text-sm font-medium transition-all duration-300 ${isActive
+                            ? "bg-gradient-to-r from-gray-900 to-gray-800 text-white shadow-lg"
+                            : "text-gray-600 hover:bg-gray-50 hover:text-gray-900"
+                            }`}
                         >
                           <Icon className={`w-5 h-5 ${isActive ? "text-white" : "text-gray-400"}`} />
                           <span>{tab.label}</span>
@@ -573,7 +600,7 @@ const ProfilePage = () => {
                                 <div className="flex items-start justify-between gap-3">
                                   <div className="flex-1 min-w-0">
                                     <p className="font-semibold text-gray-900">
-                                      {addr.fullName} 
+                                      {addr.fullName}
                                       <span className="mx-2 text-gray-300">•</span>
                                       <span className="text-xs font-medium text-gray-500 uppercase">{addr.type}</span>
                                     </p>
@@ -632,13 +659,12 @@ const ProfilePage = () => {
                                   <div className="flex items-center gap-4">
                                     <span className="text-lg font-bold text-gray-900">₹{order.pricing?.total || 0}</span>
                                     <span
-                                      className={`px-3 py-1 rounded-full text-xs font-semibold capitalize ${
-                                        order.status === "delivered"
-                                          ? "bg-green-50 text-green-700 ring-1 ring-green-200"
-                                          : order.status === "shipped"
+                                      className={`px-3 py-1 rounded-full text-xs font-semibold capitalize ${order.status === "delivered"
+                                        ? "bg-green-50 text-green-700 ring-1 ring-green-200"
+                                        : order.status === "shipped"
                                           ? "bg-blue-50 text-blue-700 ring-1 ring-blue-200"
                                           : "bg-amber-50 text-amber-700 ring-1 ring-amber-200"
-                                      }`}
+                                        }`}
                                     >
                                       {order.status}
                                     </span>
@@ -723,11 +749,10 @@ const ProfilePage = () => {
                             </div>
                             <button
                               onClick={() => setShowPasswordForm(!showPasswordForm)}
-                              className={`px-4 py-2 text-sm font-semibold rounded-xl transition-all ${
-                                showPasswordForm
-                                  ? "text-gray-700 bg-white border border-gray-200 hover:bg-gray-50"
-                                  : "text-white bg-gradient-to-r from-gray-900 to-gray-800 shadow-md hover:shadow-lg hover:scale-[1.02]"
-                              }`}
+                              className={`px-4 py-2 text-sm font-semibold rounded-xl transition-all ${showPasswordForm
+                                ? "text-gray-700 bg-white border border-gray-200 hover:bg-gray-50"
+                                : "text-white bg-gradient-to-r from-gray-900 to-gray-800 shadow-md hover:shadow-lg hover:scale-[1.02]"
+                                }`}
                             >
                               {showPasswordForm ? "Cancel" : "Change Password"}
                             </button>
@@ -801,11 +826,11 @@ const ProfilePage = () => {
                             <div className="relative p-6 overflow-hidden bg-gradient-to-br from-gray-900 to-gray-800 rounded-2xl shadow-xl">
                               <div className="absolute top-0 right-0 w-32 h-32 bg-white/5 rounded-full -mt-16 -mr-16 blur-2xl" />
                               <p className="relative text-sm font-medium text-gray-300">Total Referrals</p>
-                              <p className="relative mt-2 text-4xl font-bold text-white">{user?.totalReferrals || 0}</p>
+                              <p className="relative mt-2 text-4xl font-bold text-white">{dataforreferral?.numberOfReferrals || 0}</p>
                             </div>
                             <div className="relative p-6 overflow-hidden bg-white border border-gray-200 rounded-2xl shadow-lg">
                               <p className="text-sm font-medium text-gray-500">Referral Earnings</p>
-                              <p className="mt-2 text-4xl font-bold text-gray-900">₹{user?.referralEarnings || 0}</p>
+                              <p className="mt-2 text-4xl font-bold text-gray-900">₹{totalEarning}</p>
                             </div>
                           </div>
 
