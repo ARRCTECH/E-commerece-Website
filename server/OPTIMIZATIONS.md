@@ -1,6 +1,6 @@
 # Server-Side Optimizations Documentation
 
-This document outlines the server-side performance optimizations implemented in the Ksauni Bliss e-commerce platform.
+This document outlines the server-side performance optimizations implemented in the Factory Sale e-commerce platform.
 
 ## Implemented Optimizations
 

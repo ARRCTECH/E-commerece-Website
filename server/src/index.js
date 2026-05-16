@@ -137,12 +137,10 @@ app.get("/api/health", (req, res) => {
   })
 })
 
-
-
 // Routes
 app.use("/api/auth", require("../routes/auth"))
 app.use("/api/products", require("../routes/product"))
-app.use("/api/categories", require("../routes/categories")) // Corrected from categories to category based on previous block
+app.use("/api/categories", require("../routes/categories")) 
 app.use("/api/cart", require("../routes/cart"))
 app.use("/api/reviews", require("../routes/review"))
 app.use("/api/wishlist", require("../routes/wishlist"))
@@ -152,7 +150,6 @@ app.use("/api/innovations", require("../routes/innovation"))
 // app.use("/api/returns", require("../routes/return"))
 app.use("/api/admin", require("../routes/admin"))
 app.use("/api/digital-marketer", require("../routes/digitalMarketer"))
-// app.use("/api/shiprocket", require("../routes/shiprocket"))
 app.use("/api/popup-setting", require("../routes/popupSetting"))
 app.use("/api/ksauni-tshirts",require("../routes/ksaunitshirtstyle"))
 app.use( "/api/reason" ,require("../routes/reasonRoutes"));
@@ -163,6 +160,8 @@ app.use("/api/referral-total-earning", require("../routes/referraltotalamount"))
 
 app.use("/api/partial-cod", require("../routes/partialCodRoutes"));
 app.use("/api/orders", require("../routes/order"));
+app.use('/api/webhooks/shipmozo', require("../services/shipmozoWebhook"));
+
 // app.use("/api/topten", require("../routes/topten"))
 app.use((err, req, res, next) => {
   console.error("❌ Server Error:", err)

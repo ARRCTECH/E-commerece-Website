@@ -9,7 +9,7 @@ const ksauniTshirtSchema = new mongoose.Schema(
       },
       alt: {
         type: String,
-        default: "Ksauni Tshirt Style",
+        default: "Factory sale",
       },
     },
     order: {

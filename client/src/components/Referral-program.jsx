@@ -35,7 +35,6 @@ export default function ReferralProgram() {
   const dispatch = useDispatch();
   const { user, isLoading } = useSelector((state) => state.auth);
 
-  // Always fetch fresh profile when logged in
   useEffect(() => {
     if (user) {
       dispatch(getProfile());
@@ -45,6 +44,8 @@ export default function ReferralProgram() {
   const handleSignUp = () => {
     navigate("/register");
   };
+
+  // Logged-in user with referral code
   if (user && user.myreferralCode) {
     const referralLink = `${window.location.origin}/register?ref=${user.myreferralCode}`;
     const shareText = "Join now using my referral link and get exciting rewards! 🚀";
@@ -140,7 +141,7 @@ export default function ReferralProgram() {
                 </div>
               )}
 
-              {/* Additional Referral Info (from ProfilePage) */}
+              {/* Additional Referral Info */}
               {(user.referredBy || user.expireReferralDate) && (
                 <div className="bg-amber-50/50 rounded-2xl p-5 mb-8 border border-amber-100">
                   <div className="flex flex-wrap items-center justify-between gap-3">
@@ -189,7 +190,7 @@ export default function ReferralProgram() {
                     </span>
                   </div>
 
-                  {/* Social Share Grid (same as ProfilePage) */}
+                  {/* Social Share Grid */}
                   <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-3">
                     <a href={shareUrls.whatsapp} target="_blank" rel="noreferrer" className="flex items-center justify-center gap-2 px-3 py-2.5 bg-neutral-50 hover:bg-neutral-100 rounded-xl text-neutral-700 text-sm font-medium transition border border-neutral-200">
                       <MessageCircle className="w-4 h-4" /> WhatsApp
@@ -250,7 +251,7 @@ export default function ReferralProgram() {
     );
   }
 
-  // If user is not logged in, show original marketing version
+  // Non-logged-in marketing version
   return (
     <div className="w-full">
       <section className="relative bg-gradient-to-r from-neutral-900 via-neutral-800 to-neutral-900 overflow-hidden">
@@ -260,7 +261,7 @@ export default function ReferralProgram() {
         </div>
         <div className="absolute inset-0 bg-[linear-gradient(45deg,transparent_25%,rgba(255,255,255,0.02)_50%,transparent_75%)] bg-[size:20px_20px]" />
 
-        <div className="relative px-4 py-10 sm:px-6 lg:px-8">
+        <div className="relative px-4 py-10 sm:py-10 lg:py-14">
           <div className="max-w-7xl mx-auto">
             <div className="flex flex-col lg:flex-row items-center justify-between gap-8">
               <div className="flex items-center gap-5 flex-1">
@@ -301,10 +302,10 @@ export default function ReferralProgram() {
                 onClick={handleSignUp}
                 whileHover={{ scale: 1.02 }}
                 whileTap={{ scale: 0.98 }}
-                className="group relative overflow-hidden bg-gradient-to-r from-amber-500 to-amber-600 text-white px-8 py-4 font-semibold tracking-wide transition-all duration-300 cursor-pointer rounded-full shadow-lg hover:shadow-amber-500/25"
+                className="group relative overflow-hidden bg-gradient-to-r from-amber-500 to-amber-600 text-white px-8 py-4 font-semibold transition-all duration-300 cursor-pointer rounded-full shadow-lg hover:shadow-amber-500/25"
               >
                 <span className="relative z-10 flex items-center gap-2 text-sm uppercase tracking-[0.15em]">
-                  Sign up Now
+                  Get Your Referral Link
                   <ArrowUpRight className="w-4 h-4 group-hover:translate-x-0.5 group-hover:-translate-y-0.5 transition-transform" />
                 </span>
                 <div className="absolute inset-0 bg-gradient-to-r from-amber-600 to-amber-700 opacity-0 group-hover:opacity-100 transition-opacity duration-300" />
@@ -326,10 +327,6 @@ export default function ReferralProgram() {
                   Premium Benefits
                 </span>
               </div>
-              <h3 className="text-3xl sm:text-4xl font-serif text-neutral-900 font-light">
-                What <span className="font-semibold text-amber-600">awaits</span> you
-              </h3>
-              <div className="mt-4 h-px w-16 bg-gradient-to-r from-amber-500 to-transparent mx-auto" />
             </div>
 
             <div className="grid grid-cols-1 md:grid-cols-3 gap-8 lg:gap-12">

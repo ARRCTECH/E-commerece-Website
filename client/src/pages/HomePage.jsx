@@ -5,7 +5,6 @@ import HeroBanner from "../components/HeroBanner";
 import PriceSelection from "../components/PriceSelection";
 import FeaturedCategories from "../components/FeaturedCategories";
 import TrendingProducts from "../components/TrendingProducts";
-import FandomShop from "../components/FandomShop";
 import NewArrivals from "../components/NewArrivals";
 import Oversized899 from "../components/Oversized899";
 import PromoBanners from "../components/PromoBanners";
@@ -13,9 +12,7 @@ import CategoryBanner from "../components/CategoryBanner";
 import InnovationList from "../components/admin/InnovationList";
 import KsauniTshirtStyle from "../components/admin/KsauniTshirtStyle";
 import FeaturedHighlight from "../components/FeaturedHighlight";
-import Testimonials from "../components/Testimonials";
 import Popup from "../components/Popup";
-// import BrandIndia from "../components/BrandIndia";
 import TopPicksShowcase from "../components/TopPicksShowCase";
 import FlatDiscount from "../components/FlatDiscount";
 import {
@@ -129,23 +126,26 @@ const HomePage = () => {
   return (
     <div className="flex flex-col">
       <PromoBanners />
+            <HeroBanner />
+
       {/* <FlatDiscount /> */}
             <FeaturedCategories />
+<CategoryBanner/>
 
-      <HeroBanner />
             <TrendingProducts />
+<ReferralProgram/>
 
       {/* <KsauniTshirtStyle /> */}
       {/* <PriceSelection /> */}
 <NewArrivals />
-<CategoryBanner/>
+
+      <InnovationList />
 
       <Oversized899 />
       {/* <TopPicksShowcase/> */}
-<ReferralProgram/>
       {/* <FandomShop /> */}
+<ReferralProgram/>
       
-      <InnovationList />
 
       {/* Brand of India Banner - moved to last position before footer */}
       {/* <div className="mx-auto w-full max-w-md sm:max-w-lg md:max-w-3xl lg:max-w-5xl xl:max-w-7xl 2xl:max-w-screen-2xl">
@@ -164,6 +164,8 @@ const HomePage = () => {
           onClose={() => setPopupVisible(false)}
         />
       )} */}
+      <InnovationList />
+      
     </div>
   );
 };
