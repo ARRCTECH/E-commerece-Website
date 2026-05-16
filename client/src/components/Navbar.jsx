@@ -175,6 +175,10 @@ const Navbar = () => {
   const isProductDetailPage = location.pathname.startsWith("/product/");
   const isCartPage = location.pathname === "/cart";
 
+  const handleActiveButton = () => {
+    localStorage.removeItem("activeButton");
+  };
+
   return (
     <>
       {/* Main Navbar Wrapper */}
@@ -360,7 +364,7 @@ const Navbar = () => {
                             
                             {/* Menu Items */}
                             <div className="p-2">
-                              <button onClick={() => { navigate("/profile"); setShowUserMenu(false); }} className="flex items-center gap-3 w-full px-3 py-2.5 text-sm text-gray-700 rounded-xl hover:bg-red-50 hover:text-red-600 transition group">
+                              <button onClick={() => { navigate("/profile"); setShowUserMenu(false); handleActiveButton(); }} className="flex items-center gap-3 w-full px-3 py-2.5 text-sm text-gray-700 rounded-xl hover:bg-red-50 hover:text-red-600 transition group">
                                 <div className="w-8 h-8 rounded-lg bg-gray-100 group-hover:bg-red-100 flex items-center justify-center transition">
                                   <User size={16} className="text-gray-600 group-hover:text-red-500" />
                                 </div>
