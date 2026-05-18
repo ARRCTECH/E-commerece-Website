@@ -126,26 +126,25 @@ const HomePage = () => {
   return (
     <div className="flex flex-col">
       <PromoBanners />
-            <HeroBanner />
+      {/* <HeroBanner /> */}
 
       {/* <FlatDiscount /> */}
-            <FeaturedCategories />
-<CategoryBanner/>
-
-            <TrendingProducts />
-<ReferralProgram/>
-
+      <FeaturedCategories />
+      <HeroBanner />
+      <TrendingProducts />
+      <CategoryBanner />
       {/* <KsauniTshirtStyle /> */}
       {/* <PriceSelection /> */}
-<NewArrivals />
+      <NewArrivals />
+      <ReferralProgram />
 
       <InnovationList />
 
       <Oversized899 />
       {/* <TopPicksShowcase/> */}
       {/* <FandomShop /> */}
-<ReferralProgram/>
-      
+      <ReferralProgram />
+
 
       {/* Brand of India Banner - moved to last position before footer */}
       {/* <div className="mx-auto w-full max-w-md sm:max-w-lg md:max-w-3xl lg:max-w-5xl xl:max-w-7xl 2xl:max-w-screen-2xl">
@@ -165,7 +164,7 @@ const HomePage = () => {
         />
       )} */}
       <InnovationList />
-      
+
     </div>
   );
 };
