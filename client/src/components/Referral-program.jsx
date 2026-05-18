@@ -14,23 +14,16 @@ import {
   ArrowUpRight,
   Lock,
   Copy,
-  Mail,
-  Facebook,
-  Twitter,
-  Linkedin,
-  Send,
-  TrendingUp,
   Award,
   UserPlus,
-  CheckCircle,
   Share2,
   Users,
   Wallet,
+  CheckCircle,
 } from "lucide-react";
 import { motion, useInView } from "framer-motion";
 import { getProfile } from "../store/slices/authSlice";
 
-// CountUp component with proper React imports
 const CountUp = ({ value, duration = 1 }) => {
   const [count, setCount] = useState(0);
   const ref = useRef(null);
@@ -69,189 +62,175 @@ export default function ReferralProgram() {
     navigate("/register");
   };
 
-  // Logged-in user with referral code
   if (user && user.myreferralCode) {
     const referralLink = `${window.location.origin}/register?ref=${user.myreferralCode}`;
-    const shareText = "Join me on this platform and get exclusive rewards! 🎁";
+    const shareText = "Join me and get exclusive rewards! 🎁";
 
     const copyToClipboard = (text) => {
       navigator.clipboard.writeText(text);
       toast.success("Copied to clipboard!");
     };
 
-    const shareUrls = {
-      whatsapp: `https://wa.me/?text=${encodeURIComponent(`${shareText} ${referralLink}`)}`,
-      telegram: `https://t.me/share/url?url=${encodeURIComponent(referralLink)}&text=${encodeURIComponent(shareText)}`,
-      email: `mailto:?subject=${encodeURIComponent("Join me")}&body=${encodeURIComponent(`${shareText}\n\n${referralLink}`)}`,
-      facebook: `https://www.facebook.com/sharer/sharer.php?u=${encodeURIComponent(referralLink)}`,
-      twitter: `https://twitter.com/intent/tweet?text=${encodeURIComponent(`${shareText} ${referralLink}`)}`,
-      linkedin: `https://www.linkedin.com/sharing/share-offsite/?url=${encodeURIComponent(referralLink)}`,
-    };
-
     const handleActiveButton = (id) => {
       localStorage.setItem("activeButton", id);
-    }
+    };
 
     return (
       <div className="w-full bg-neutral-50">
-        {/* Hero Section with Glass Effect */}
-        <section className="relative bg-gradient-to-br from-neutral-900 via-neutral-800 to-neutral-900 overflow-hidden">
-          <div className="absolute inset-0 bg-[radial-gradient(circle_at_center,_rgba(255,255,255,0.03)_1px,_transparent_1px)] bg-[length:20px_20px]" />
-          <div className="absolute top-0 -right-32 w-72 h-72 bg-amber-500 rounded-full blur-[100px] opacity-20" />
-          <div className="absolute -bottom-32 -left-32 w-80 h-80 bg-amber-600 rounded-full blur-[120px] opacity-20" />
-
-          <div className="relative px-4 py-12 sm:px-6 lg:px-8">
-            <div className="max-w-7xl mx-auto">
-              <div className="flex flex-col lg:flex-row items-center justify-between gap-8">
-                <div className="flex items-center gap-5">
-                  <div className="relative">
-                    <div className="absolute inset-0 bg-amber-500 rounded-full blur-xl opacity-50 animate-pulse" />
-                    <div className="relative bg-gradient-to-br from-amber-400 to-amber-600 rounded-full p-4 shadow-xl">
-                      <UserPlus className="w-8 h-8 text-white" />
-                    </div>
-                  </div>
-                  <div>
-                    <div className="flex items-center gap-3 flex-wrap mb-2">
-                      <span className="text-xs font-bold tracking-wider text-amber-400 uppercase bg-white/10 px-3 py-1 rounded-full backdrop-blur-sm">
-                        Your Referral Club
-                      </span>
-                      <span className="text-xs font-medium text-white/60 flex items-center gap-1">
-                        <Crown className="w-3 h-3 text-amber-400" />
-                        Active Member
-                      </span>
-                    </div>
-                    <h1 className="text-white text-3xl sm:text-4xl lg:text-5xl font-light tracking-tight">
-                      <span className="font-serif italic text-amber-400 font-semibold">Share & Earn</span>{" "}
-                      <span className="text-white/90">rewards</span>
-                    </h1>
-                    <p className="text-white/50 text-sm max-w-md mt-2">
-                      Invite friends, get up to <strong className="text-amber-400">₹500 per referral</strong>.
-                      Track your earnings in real time.
-                    </p>
-                  </div>
+        <section className="relative bg-gradient-to-r from-neutral-900 to-neutral-800 overflow-hidden">
+          <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-12 sm:py-16">
+            <div className="flex flex-col lg:flex-row items-center justify-between gap-8">
+              <div className="text-center lg:text-left">
+                <div className="inline-flex items-center gap-2 bg-amber-500/10 rounded-full px-3 py-1 mb-4">
+                  <Gift className="w-3.5 h-3.5 text-amber-400" />
+                  <span className="text-[10px] font-medium text-amber-400 uppercase tracking-wider">Refer & Earn</span>
                 </div>
+                <h1 className="text-3xl sm:text-4xl lg:text-5xl font-light text-white tracking-tight">
+                  Share & Earn{" "}
+                  <span className="font-serif italic text-amber-400 font-semibold">₹500</span>
+                </h1>
+                <p className="text-white/50 text-sm max-w-md mt-3">
+                  Invite friends, earn <span className="text-amber-400">₹500 per referral</span>. Track earnings in real time.
+                </p>
                 <button
                   onClick={() => navigate("/profile") || handleActiveButton("referral")}
-                  className="group relative overflow-hidden bg-gradient-to-r from-amber-500 to-amber-600 text-white px-6 py-3 font-semibold rounded-full shadow-lg hover:shadow-amber-500/30 transition-all duration-300 flex items-center gap-2 text-sm"
+                  className="mt-6 bg-gradient-to-r from-amber-500 to-amber-600 text-white px-6 py-2.5 rounded-full font-semibold text-sm shadow-lg hover:shadow-amber-500/30 transition-all duration-300 inline-flex items-center gap-2"
                 >
-                  <span>Get Your Referral Link</span>
-                  <ArrowUpRight className="w-4 h-4 group-hover:translate-x-0.5 group-hover:-translate-y-0.5 transition" />
+                  Get Your Link <ArrowUpRight className="w-3.5 h-3.5" />
                 </button>
+              </div>
+
+              <div className="bg-white/5 backdrop-blur-sm border border-white/10 rounded-2xl p-5 w-full max-w-sm">
+                <div className="flex items-center justify-between mb-4 pb-3 border-b border-white/10">
+                  <span className="text-white/60 text-xs uppercase tracking-wider">Referral Stats</span>
+                  <span className="text-amber-400 text-[10px] font-mono">LIVE</span>
+                </div>
+                <div className="space-y-3">
+                  <div className="flex justify-between items-center">
+                    <span className="text-white/50 text-xs">Your Code</span>
+                    <div className="flex items-center gap-2">
+                      <code className="bg-white/10 px-2 py-1 rounded text-amber-400 text-xs font-mono">
+                        {user?.myreferralCode}
+                      </code>
+                      <button onClick={() => copyToClipboard(user?.myreferralCode)} className="p-1 rounded bg-white/10 hover:bg-white/20">
+                        <Copy className="w-3 h-3 text-white/60" />
+                      </button>
+                    </div>
+                  </div>
+                  <div className="flex justify-between items-center">
+                    <span className="text-white/50 text-xs">Referrals</span>
+                    <span className="text-white font-semibold text-sm">
+                      <CountUp value={user?.referralCount || 0} /> / 10
+                    </span>
+                  </div>
+                  <div className="space-y-1">
+                    <div className="flex justify-between text-[10px]">
+                      <span className="text-white/50">Progress</span>
+                      <span className="text-amber-400">{Math.min(100, ((user?.referralCount || 0) / 10) * 100)}%</span>
+                    </div>
+                    <div className="h-1 bg-white/10 rounded-full overflow-hidden">
+                      <div className="h-full bg-gradient-to-r from-amber-500 to-amber-600 rounded-full transition-all duration-500" style={{ width: `${Math.min(100, ((user?.referralCount || 0) / 10) * 100)}%` }} />
+                    </div>
+                  </div>
+                  <div className="flex justify-between items-center pt-2 border-t border-white/10">
+                    <span className="text-white/50 text-xs">Earnings</span>
+                    <span className="text-amber-400 font-bold text-lg">₹<CountUp value={user?.referralEarnings || 0} /></span>
+                  </div>
+                </div>
               </div>
             </div>
           </div>
         </section>
-        {/* How It Works */}
-        <section className="px-4 py-16 sm:px-6 lg:px-8 bg-white">
-          <div className="max-w-7xl mx-auto text-center">
-            <div className="inline-flex items-center gap-2 px-4 py-2 rounded-full bg-amber-100 text-amber-700 text-xs font-semibold tracking-wide mb-6">
-              <Shield className="w-3.5 h-3.5" />
-              SIMPLE PROCESS
+
+        <section className="px-4 py-12 max-w-7xl mx-auto">
+          <div className="text-center mb-8">
+            <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-amber-100 text-amber-700 text-[10px] font-semibold tracking-wide mb-4">
+              <Shield className="w-3 h-3" /> SIMPLE PROCESS
             </div>
-            <h2 className="text-3xl sm:text-4xl font-serif text-neutral-900 mb-4">
-              How <span className="text-amber-600">It Works</span>
-            </h2>
-            <p className="text-neutral-500 max-w-2xl mx-auto mb-12">
-              Three easy steps to start earning rewards
-            </p>
-            <div className="grid md:grid-cols-3 gap-8">
-              {[
-                { icon: <Share2 />, title: "Share Your Link", desc: "Send your unique referral link to friends via social media, email, or direct message." },
-                { icon: <UserPlus />, title: "Friend Signs Up", desc: "They register using your link and get a welcome discount." },
-                { icon: <Award />, title: "Earn Rewards", desc: "You receive rewards instantly credited to your account balance." },
-              ].map((step, idx) => (
-                <motion.div
-                  key={idx}
-                  initial={{ opacity: 0, y: 30 }}
-                  whileInView={{ opacity: 1, y: 0 }}
-                  transition={{ delay: idx * 0.1 }}
-                  viewport={{ once: true }}
-                  className="group relative bg-neutral-50 rounded-2xl p-8 border border-neutral-100 hover:border-amber-200 hover:shadow-xl transition-all duration-300"
-                >
-                  <div className="absolute -top-4 left-1/2 -translate-x-1/2 bg-amber-500 text-white w-8 h-8 rounded-full flex items-center justify-center font-bold text-sm shadow-lg">
-                    {idx + 1}
-                  </div>
-                  <div className="text-amber-500 w-12 h-12 mx-auto mb-4 group-hover:scale-110 transition">
-                    {step.icon}
-                  </div>
-                  <h3 className="text-xl font-semibold text-neutral-800 mb-2">{step.title}</h3>
-                  <p className="text-neutral-500 text-sm">{step.desc}</p>
-                </motion.div>
-              ))}
-            </div>
+            <h2 className="text-2xl font-serif text-neutral-900">How It Works</h2>
+          </div>
+          <div className="grid md:grid-cols-3 gap-6">
+            {[
+              { icon: <Share2 />, title: "Share Link", desc: "Send your unique referral link to friends" },
+              { icon: <UserPlus />, title: "Friend Signs Up", desc: "They register using your link" },
+              { icon: <Award />, title: "Earn Rewards", desc: "Get ₹500 credited to your wallet" },
+            ].map((step, idx) => (
+              <div key={idx} className="text-center p-6 bg-white rounded-2xl border border-neutral-100 hover:border-amber-200 hover:shadow-lg transition">
+                <div className="w-12 h-12 bg-amber-100 rounded-full flex items-center justify-center mx-auto mb-3 text-amber-600">{step.icon}</div>
+                <h3 className="font-semibold text-neutral-800 mb-1">{step.title}</h3>
+                <p className="text-neutral-500 text-sm">{step.desc}</p>
+              </div>
+            ))}
           </div>
         </section>
       </div>
     );
   }
 
-  // Non-logged-in marketing version with interactive mock
   return (
     <div className="w-full bg-neutral-50">
-      {/* Hero */}
-      <section className="relative bg-gradient-to-br from-neutral-900 via-neutral-800 to-neutral-900 overflow-hidden">
-        <div className="absolute inset-0 bg-[radial-gradient(circle_at_center,_rgba(255,255,255,0.03)_1px,_transparent_1px)] bg-[length:20px_20px]" />
-        <div className="relative px-4 py-16 sm:px-6 lg:px-8 text-center">
-          <div className="max-w-4xl mx-auto">
-            <motion.div
-              initial={{ scale: 0.9, opacity: 0 }}
-              animate={{ scale: 1, opacity: 1 }}
-              transition={{ duration: 0.5 }}
-              className="inline-flex items-center gap-2 bg-white/10 backdrop-blur-sm rounded-full px-4 py-1.5 mb-6"
-            >
-              <Gift className="w-4 h-4 text-amber-400" />
-              <span className="text-xs font-medium text-white">Limited time offer</span>
-            </motion.div>
-            <h1 className="text-4xl sm:text-5xl lg:text-6xl font-light text-white tracking-tight">
-              Refer & Earn <span className="font-serif italic text-amber-400 font-semibold">₹7500</span>
-            </h1>
-            <p className="text-white/60 text-lg max-w-2xl mx-auto mt-4 mb-8">
-              Invite your friends, earn rewards on every successful signup.
-              They get a welcome bonus, you get credits.
-            </p>
-            <motion.button
-              whileHover={{ scale: 1.02 }}
-              whileTap={{ scale: 0.98 }}
-              onClick={handleSignUp}
-              className="bg-gradient-to-r from-amber-500 to-amber-600 text-white px-8 py-4 rounded-full font-semibold shadow-xl hover:shadow-amber-500/30 transition flex items-center gap-2 mx-auto"
-            >
-              Sign Up <ArrowUpRight className="w-4 h-4" />
-            </motion.button>
-          </div>
-        </div>
-      </section>
+     <section className="relative bg-gradient-to-r from-neutral-900 to-neutral-800">
+  <div className="w-full px-4 sm:px-6 lg:px-8 py-6 sm:py-8">
+    <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between w-full max-w-5xl mx-auto">
 
-      {/* Feature Cards */}
-      <section className="px-4 py-20 max-w-7xl mx-auto">
-        <div className="text-center mb-12">
-          <h2 className="text-3xl font-serif text-neutral-900">Why join our referral program?</h2>
-          <p className="text-neutral-500 mt-2">Exclusive perks for early members</p>
+      {/* Left Side */}
+      <div className="max-w-md text-center sm:text-left mx-auto sm:mx-0">
+        <div className="inline-flex items-center gap-2 bg-amber-500/10 rounded-full px-3 py-0.5 mb-2">
+          <Gift className="w-3 h-3 text-amber-400" />
+          <span className="text-[9px] font-medium text-amber-400 uppercase tracking-wider">
+            Limited Time
+          </span>
         </div>
-        <div className="grid md:grid-cols-3 gap-8">
+
+        <h1 className="text-2xl sm:text-3xl lg:text-4xl font-light text-white tracking-tight">
+          Refer & Earn{" "}
+          <span className="font-serif italic text-amber-400 font-semibold">
+            ₹7500
+          </span>
+        </h1>
+
+        <p className="text-white/50 text-xs sm:text-sm mt-1 max-w-md mx-auto sm:mx-0">
+          Invite friends, earn rewards on every successful signup.
+        </p>
+      </div>
+
+      {/* Right Side */}
+      <div className="flex-shrink-0 mt-4 sm:mt-0 flex justify-center sm:justify-end">
+        <button
+          onClick={handleSignUp}
+          className="bg-gradient-to-r from-amber-500 to-amber-600 text-white px-7 py-3 rounded-full font-semibold text-sm shadow-lg hover:shadow-amber-500/30 transition inline-flex items-center gap-2 whitespace-nowrap"
+        >
+          Sign Up <ArrowUpRight className="w-4 h-4" />
+        </button>
+      </div>
+
+    </div>
+  </div>
+</section>
+
+      <section className="px-4 py-12 max-w-7xl mx-auto">
+        <div className="text-center mb-6 sm:mb-8">
+          <h2 className="text-xl sm:text-2xl font-serif text-neutral-900">Why Join?</h2>
+        </div>
+
+        <div className="grid grid-cols-3 gap-2 sm:gap-5">
           {[
-            { icon: <Package />, title: "Referral Code", value: "SHOPWITH10", desc: "Share this code with friends" },
-            { icon: <Sparkles />, title: "Special Offers", desc: "App‑only deals & first order discount" },
+            { icon: <Package />, title: "Referral Code", desc: "Share this code with friends" },
+            { icon: <Sparkles />, title: "Special Offers", desc: "First order discount" },
             { icon: <Lock />, title: "Secure Payment", desc: "128‑bit SSL encryption" },
           ].map((feature, i) => (
-            <motion.div
+            <div
               key={i}
-              initial={{ opacity: 0, y: 20 }}
-              whileInView={{ opacity: 1, y: 0 }}
-              transition={{ delay: i * 0.1 }}
-              viewport={{ once: true }}
-              className="bg-white rounded-2xl p-8 text-center border border-neutral-200 shadow-sm hover:shadow-lg transition"
+              className="text-center p-2 sm:p-5 bg-white rounded-xl border border-amber-200 transition hover:shadow-md"
             >
-              <div className="w-14 h-14 bg-amber-100 rounded-full flex items-center justify-center mx-auto mb-4 text-amber-600">
+              <div className="w-8 h-8 sm:w-10 sm:h-10 bg-amber-100 rounded-full flex items-center justify-center mx-auto mb-1 sm:mb-2 text-amber-600">
                 {feature.icon}
               </div>
-              <h3 className="text-xl font-semibold mb-2">{feature.title}</h3>
-              {feature.value && (
-                <div className="bg-neutral-100 inline-block px-4 py-1 rounded-full text-sm font-mono text-amber-700 mb-3">
-                  {feature.value}
-                </div>
-              )}
-              <p className="text-neutral-500 text-sm">{feature.desc}</p>
-            </motion.div>
+              <h3 className="font-semibold text-neutral-800 text-[10px] sm:text-sm mb-0.5 sm:mb-1">
+                {feature.title}
+              </h3>
+              <p className="hidden sm:block text-neutral-500 text-xs">{feature.desc}</p>
+            </div>
           ))}
         </div>
       </section>

@@ -7,7 +7,7 @@ import { fetchAllInnovations, createInnovation, updateInnovation, deleteInnovati
 const InnovationManagement = () => {
   const dispatch = useDispatch();
   const { innovations: allInnovations, loading: isLoading, error } = useSelector((state) => state.innovations || { innovations: [], loading: false, error: null });
-  
+
   const [showModal, setShowModal] = useState(false);
   const [editingInnovation, setEditingInnovation] = useState(null);
   const [searchTerm, setSearchTerm] = useState("");
@@ -34,16 +34,16 @@ const InnovationManagement = () => {
 
   const handleSubmit = async (e) => {
     e.preventDefault();
-    
+
     const formDataToSend = new FormData();
     formDataToSend.append("title", formData.title);
     formDataToSend.append("category", formData.category);
     formDataToSend.append("isActive", formData.isActive);
-    
+
     if (imageFile) {
       formDataToSend.append("image", imageFile);
     }
-    
+
     try {
       if (editingInnovation) {
         await dispatch(updateInnovation({ id: editingInnovation._id, formData: formDataToSend })).unwrap();
@@ -156,9 +156,8 @@ const InnovationManagement = () => {
               <div className="p-4">
                 <div className="flex items-center justify-between mb-2">
                   <span
-                    className={`inline-flex px-2 py-1 text-xs font-semibold rounded-full ${
-                      innovation.isActive ? "bg-green-100 text-green-800" : "bg-red-100 text-red-800"
-                    }`}
+                    className={`inline-flex px-2 py-1 text-xs font-semibold rounded-full ${innovation.isActive ? "bg-green-100 text-green-800" : "bg-red-100 text-red-800"
+                      }`}
                   >
                     {innovation.isActive ? "Active" : "Inactive"}
                   </span>
@@ -252,6 +251,13 @@ const InnovationManagement = () => {
                       />
                     </div>
                   )}
+
+                  <div className="mt-3 p-3 bg-blue-50 border border-blue-200 rounded-lg">
+                    <p className="text-xs font-semibold text-blue-800 mb-1">📸 Image Guidelines:</p>
+                    <ul className="text-xs text-blue-700 space-y-0.5">
+                      <li>📐 <strong>Recommended size:</strong> 1200 × 1600 pixels (3:4 ratio, portrait)</li>
+                    </ul>
+                  </div>
                 </div>
 
                 {/* isActive Checkbox */}

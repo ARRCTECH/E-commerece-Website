@@ -5,6 +5,7 @@ import { Link } from "react-router-dom";
 import { useState } from "react";
 import {
   Facebook,
+  ChevronDown,
   Instagram,
   Youtube,
   Mail,
@@ -22,6 +23,7 @@ import { FaPinterest } from "react-icons/fa";
 
 const Footer = () => {
   const { categories } = useSelector((state) => state.categories || {});
+  const [showShopMenu, setShowShopMenu] = useState(false);
   const [email, setEmail] = useState("");
   const [subscribed, setSubscribed] = useState(false);
 
@@ -48,7 +50,7 @@ const Footer = () => {
         <div className="absolute -top-48 left-1/2 h-[520px] w-[820px] -translate-x-1/2 rounded-full bg-[radial-gradient(closest-side,rgba(244,63,94,0.12),transparent_70%)] blur-2xl" />
         <div className="absolute -bottom-40 -left-24 h-[360px] w-[360px] rounded-full bg-[radial-gradient(closest-side,rgba(217,119,6,0.12),transparent_70%)] blur-3xl" />
         <div className="absolute -bottom-32 -right-24 h-[400px] w-[400px] rounded-full bg-[radial-gradient(closest-side,rgba(236,72,153,0.1),transparent_70%)] blur-3xl" />
-        
+
         {/* Subtle grid pattern */}
         <div
           className="absolute inset-0 opacity-[0.04]"
@@ -90,8 +92,8 @@ const Footer = () => {
       </div>
 
       <div className="relative mx-auto max-w-7xl px-4 sm:px-6 lg:px-8 pt-12 pb-8">
-        
-        
+
+
 
         {/* ============ Main Grid ============ */}
         <div className="grid gap-10 lg:grid-cols-12">
@@ -145,11 +147,39 @@ const Footer = () => {
               </div>
             </div>
           </div>
+          <div className="block md:hidden w-full border-t border-white/10 pt-4">
+            <button
+              onClick={() => setShowShopMenu(!showShopMenu)}
+              className="flex w-full items-center justify-between text-left"
+            >
+              <h3 className="text-xs font-semibold uppercase tracking-[0.2em] text-white">Shop</h3>
+              <ChevronDown className={`h-4 w-4 text-neutral-400 transition-transform duration-300 ${showShopMenu ? "rotate-180" : ""}`} />
+            </button>
+
+            {showShopMenu && (
+              <div className="mt-3 space-y-2 pb-2 max-h-60 overflow-y-auto">
+                {categories?.length > 0 ? (
+                  categories.slice(0, 10).map((cat) => (
+                    <Link
+                      key={cat._id || cat.name}
+                      to={`/products?category=${cat.slug || cat._id}`}
+                      className="block py-2 text-sm text-neutral-400 transition hover:text-rose-400 border-b border-white/5 last:border-0"
+                      onClick={() => setShowShopMenu(false)}
+                    >
+                      {cat.name}
+                    </Link>
+                  ))
+                ) : (
+                  <p className="text-sm text-neutral-500 py-2">Loading...</p>
+                )}
+              </div>
+            )}
+          </div>
 
           {/* Link Columns */}
           <div className="lg:col-span-8 grid grid-cols-2 gap-8 sm:grid-cols-3">
             {/* Categories */}
-            <div>
+            <div className="hidden sm:block">
               <FooterHeading>Shop</FooterHeading>
               <ul className="mt-5 space-y-2.5 text-[13px]">
                 {categories?.length > 0 ? (
@@ -166,6 +196,35 @@ const Footer = () => {
               </ul>
             </div>
 
+            <div className="block md:hidden">
+              <FooterHeading>Connect</FooterHeading>
+              <ul className="mt-5 space-y-3 text-[13px]">
+                <li className="flex items-start gap-3 text-neutral-400">
+                  <ContactIcon><MapPin className="h-3.5 w-3.5" /></ContactIcon>
+                  <span>Delhi, India</span>
+                </li>
+                <li>
+                  <a
+                    href="tel:9211891719"
+                    className="flex items-start gap-3 text-neutral-400 transition hover:text-white"
+                  >
+                    <ContactIcon><Phone className="h-3.5 w-3.5" /></ContactIcon>
+                    <span>+91 9211 891 719</span>
+                  </a>
+                </li>
+                <li>
+                  <a
+                    href="mailto:support@FactorySale.com"
+                    className="flex items-start gap-3 break-all text-neutral-400 transition hover:text-white"
+                  >
+                    <ContactIcon><Mail className="h-3.5 w-3.5" /></ContactIcon>
+                    <span>support@FactorySale.com</span>
+                  </a>
+                </li>
+              </ul>
+            </div>
+
+
             {/* Quick Links */}
             <div>
               <FooterHeading>Company</FooterHeading>
@@ -179,7 +238,7 @@ const Footer = () => {
             </div>
 
             {/* Contact */}
-            <div className="col-span-2 sm:col-span-1">
+            <div className="hidden sm:block col-span-2 sm:col-span-1">
               <FooterHeading>Connect</FooterHeading>
               <ul className="mt-5 space-y-3 text-[13px]">
                 <li className="flex items-start gap-3 text-neutral-400">
