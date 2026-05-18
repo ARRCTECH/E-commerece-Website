@@ -37,7 +37,7 @@ export default function NewArrivals() {
   return (
     <section className="py-10 sm:py-14 bg-neutral-100">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-        
+
         {/* Header — Clean, minimal */}
         <div className="text-center mb-12 lg:mb-16">
           <div className="inline-flex items-center gap-2 mb-4">
@@ -47,14 +47,14 @@ export default function NewArrivals() {
             </span>
             <span className="w-6 h-px bg-neutral-400" />
           </div>
-          
+
           <h2 className="text-3xl sm:text-4xl lg:text-5xl font-light text-neutral-900 tracking-tight">
             New{" "}
             <span className="font-medium text-neutral-900">
               Arrivals
             </span>
           </h2>
-          
+
           <p className="mt-3 text-sm text-neutral-500 max-w-md mx-auto">
             The latest styles, just landed
           </p>
@@ -75,7 +75,7 @@ export default function NewArrivals() {
                 className="group block"
               >
                 <div className="relative">
-                  
+
                   {/* Image Container */}
                   <div className="relative aspect-[3/4] overflow-hidden bg-neutral-200">
                     <img
@@ -85,7 +85,7 @@ export default function NewArrivals() {
                     />
 
                     {/* New Badge */}
-                    <div className="absolute top-3 left-3">
+                    <div className="absolute top-3 left-3 z-10">
                       <span className="text-[10px] font-medium text-white bg-emerald-600 px-2 py-0.5">
                         NEW
                       </span>
@@ -93,20 +93,57 @@ export default function NewArrivals() {
 
                     {/* Discount Badge */}
                     {discountPercentage > 0 && (
-                      <div className="absolute top-3 right-3">
+                      <div className="absolute top-3 right-3 z-10">
                         <span className="text-[10px] font-medium text-white bg-neutral-900 px-2 py-0.5">
                           -{discountPercentage}%
                         </span>
                       </div>
                     )}
+
+                    {/* HOVER OVERLAY - Product Info shows on hover */}
+                    <div className="absolute inset-0 bg-gradient-to-t from-black/95 via-black/70 to-transparent opacity-0 group-hover:opacity-100 transition-all duration-500 ease-out flex flex-col justify-end p-5">
+                      {/* Product Name */}
+                      <h3 className="text-white text-sm sm:text-base md:text-lg font-semibold line-clamp-2 transform translate-y-4 group-hover:translate-y-0 transition-all duration-300 delay-100">
+                        {product.name}
+                      </h3>
+
+                      {/* Price Section */}
+                      <div className="flex items-center gap-2 mt-2 transform translate-y-4 group-hover:translate-y-0 transition-all duration-300 delay-150">
+                        <span className="text-amber-400 text-lg sm:text-xl md:text-2xl font-bold">
+                          ₹{product.price.toLocaleString()}
+                        </span>
+                        {discountPercentage > 0 && (
+                          <span className="text-white/50 text-sm line-through">
+                            ₹{product.originalPrice.toLocaleString()}
+                          </span>
+                        )}
+                      </div>
+
+                      {/* Discount Badge in Overlay (if any) */}
+                      {discountPercentage > 0 && (
+                        <div className="mt-2 transform translate-y-4 group-hover:translate-y-0 transition-all duration-300 delay-200">
+                          <span className="inline-block text-[10px] font-semibold text-green-400 bg-green-400/20 px-2 py-0.5 rounded">
+                            Save {discountPercentage}%
+                          </span>
+                        </div>
+                      )}
+
+                      {/* Shop Now Indicator */}
+                      <div className="mt-3 flex items-center gap-1 transform translate-y-4 group-hover:translate-y-0 transition-all duration-300 delay-250">
+                        <span className="text-[10px] tracking-wider uppercase text-white/60 group-hover:text-amber-400 transition-colors">
+                          Shop Now
+                        </span>
+                        <ArrowUpRight className="w-3 h-3 text-white/60 group-hover:text-amber-400 group-hover:translate-x-0.5 group-hover:-translate-y-0.5 transition-all duration-300" />
+                      </div>
+                    </div>
                   </div>
 
-                  {/* Product Info — Minimal */}
-                  <div className="mt-3 space-y-1 text-center">
-                    <h3 className="text-[13px] font-normal text-neutral-700 line-clamp-1 group-hover:text-neutral-900 transition-colors">
+                  {/* Original Info - Hidden on hover */}
+                  <div className="mt-3 space-y-1 text-center group-hover:opacity-0 transition-opacity duration-300">
+                    <h3 className="text-[13px] font-normal text-neutral-700 line-clamp-1">
                       {product.name}
                     </h3>
-                    
+
                     <div className="flex items-center justify-center gap-2">
                       <span className="text-[14px] font-medium text-neutral-900">
                         ₹{product.price.toLocaleString()}
@@ -128,10 +165,14 @@ export default function NewArrivals() {
         <div className="text-center mt-12">
           <Link
             to="/products?sort=newest"
-            className="inline-flex items-center gap-2 text-[12px] tracking-[0.2em] uppercase text-neutral-800 hover:text-neutral-900 transition-colors group"
+            className="group relative inline-flex items-center gap-2 px-6 py-2 rounded-full bg-gradient-to-r from-red-600 to-red-500 text-white text-[10px] font-semibold uppercase tracking-[0.25em] overflow-hidden shadow-lg shadow-red-500/20 active:scale-95 transition-all duration-300"
           >
-            View All New Arrivals
-            <ArrowUpRight className="w-3.5 h-3.5 group-hover:translate-x-0.5 group-hover:-translate-y-0.5 transition-transform duration-300" />
+            <span className="relative z-10">View All New Arrivals</span>
+            <span className="relative z-10 w-5 h-5 rounded-full bg-white text-red-500 flex items-center justify-center transition-all duration-300 group-hover:rotate-45 group-hover:scale-110">
+              <ArrowUpRight size={10} />
+            </span>
+            <span className="absolute inset-0 bg-gradient-to-r from-red-700 to-red-600 translate-y-full group-hover:translate-y-0 transition-transform duration-300" />
+            <span className="absolute inset-0 rounded-full bg-white/20 opacity-0 scale-0 transition-transform duration-500 group-active:scale-100 group-active:opacity-100" />
           </Link>
         </div>
       </div>
