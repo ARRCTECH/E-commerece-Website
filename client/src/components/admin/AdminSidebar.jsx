@@ -26,7 +26,8 @@ const AdminSidebar = ({ sidebarOpen, setSidebarOpen, userRole }) => {
     { name: "Factory Sale Mens Style", href: "/admin/ksaunitshirtstyle", icon: SparklesIcon },
     {name: "Partial COD", href: "/admin/partial-cod", icon: TicketIcon},
     { name: "Feedback", href: "/admin/cancellation", icon: QuestionMarkCircleIcon } ,
-    { name: "Referrals", href: "/admin/referral", icon: UserPlus }
+    { name: "ReferralsConfiguration", href: "/admin/referral-configuration", icon: UserPlus },
+    { name: "ReferralManagement", href: "/admin/referral-management", icon: UserPlus }
   ];
   // Admin-only navigation items
   const adminOnlyNavigation = [

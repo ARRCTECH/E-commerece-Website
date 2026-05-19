@@ -24,16 +24,30 @@ import {
   createPartialCodOrder,
   verifyPartialCodPayment,
 } from "../store/slices/orderSlice";
-import { validateCoupon, removeCoupon, clearError as clearCouponError, fetchAvailableCoupons } from "../store/slices/couponSlice";
+import {
+  validateCoupon,
+  removeCoupon,
+  clearError as clearCouponError,
+  fetchAvailableCoupons,
+} from "../store/slices/couponSlice";
 import { fetchCart } from "../store/slices/cartSlice";
 import { useCheckoutData } from "../components/checkout/useCheckoutData";
-import { AddressPopup, AddressList } from "../components/checkout/AddressComponents";
-import { PaymentModal, CongratulationsModal, ExitWarningModal } from "../components/checkout/CheckoutModals";
+import {
+  AddressPopup,
+  AddressList,
+} from "../components/checkout/AddressComponents";
+import {
+  PaymentModal,
+  CongratulationsModal,
+  ExitWarningModal,
+} from "../components/checkout/CheckoutModals";
+
 const CheckoutPage = () => {
   const dispatch = useDispatch();
   const navigate = useNavigate();
   const location = useLocation();
   const rzpInstanceRef = useRef(null);
+  const congratTimeoutRef = useRef(null);
   const API_URL = import.meta.env.VITE_API_URL || "http://localhost:5000/api";
 
   const user = useSelector(selectUser);
@@ -47,21 +61,66 @@ const CheckoutPage = () => {
   const couponError = useSelector((state) => state.coupons.error);
   const couponLoading = useSelector((state) => state.coupons.loading);
 
-
   const {
-    isBuyNow, isBulkBuyNow, buyNowProduct, clearBuyNowData,
-    addresses, selectedAddress, setSelectedAddress, showAddressPopup, editingAddress,
-    deleteAddress, setDefaultAddress, startEditing, startAdding, cancelEditing, handleSaveAddress,
-    showPaymentModal, setShowPaymentModal, showCongratulationsPopup, setShowCongratulationsPopup,
-    congratulationsData, setCongratulationsData, showExitWarning, setShowExitWarning,
-    showExitWarningS, setShowExitWarningS, couponCode, setCouponCode, coupons, setCoupons,
-    filterYCoupon, filterNCoupon
+    isBuyNow,
+    isBulkBuyNow,
+    buyNowProduct,
+    clearBuyNowData,
+    addresses,
+    selectedAddress,
+    setSelectedAddress,
+    showAddressPopup,
+    editingAddress,
+    deleteAddress,
+    setDefaultAddress,
+    startEditing,
+    startAdding,
+    cancelEditing,
+    handleSaveAddress,
+    showPaymentModal,
+    setShowPaymentModal,
+    showCongratulationsPopup,
+    setShowCongratulationsPopup,
+    congratulationsData,
+    setCongratulationsData,
+    showExitWarning,
+    setShowExitWarning,
+    showExitWarningS,
+    setShowExitWarningS,
+    couponCode,
+    setCouponCode,
+    coupons,
+    setCoupons,
+    filterYCoupon,
+    filterNCoupon,
   } = useCheckoutData(location, user);
 
   const [partialPercentage, setPartialPercentage] = useState(30);
   const [partialCodEnabled, setPartialCodEnabled] = useState(false);
+  const [percentage, setPercentage] = useState(0);
+  const [discountValue, setDiscountValue] = useState(0);
+  const [razorpayLoaded, setRazorpayLoaded] = useState(!!window.Razorpay);
 
-  const token = localStorage.getItem('authToken');
+  const token = localStorage.getItem("authToken");
+
+  // Load Razorpay script if not present
+  useEffect(() => {
+    if (window.Razorpay) {
+      setRazorpayLoaded(true);
+      return;
+    }
+    const script = document.createElement("script");
+    script.src = "https://checkout.razorpay.com/v1/checkout.js";
+    script.async = true;
+    script.onload = () => setRazorpayLoaded(true);
+    script.onerror = () => toast.error("Failed to load payment gateway");
+    document.body.appendChild(script);
+    return () => {
+      if (script.parentNode) script.parentNode.removeChild(script);
+    };
+  }, []);
+
+  // Fetch partial COD settings
   useEffect(() => {
     const fetchPartialCodSettings = async () => {
       try {
@@ -78,111 +137,143 @@ const CheckoutPage = () => {
     fetchPartialCodSettings();
   }, [API_URL]);
 
+  // Fetch all available coupons from backend
   useEffect(() => {
     const fetchCoupons = async () => {
+      if (!token) return;
       try {
-        const response = await fetch(`${API_URL}/coupons/available`, { headers: { 'Authorization': `Bearer ${token}` } });
+        const response = await fetch(`${API_URL}/coupons/available`, {
+          headers: { Authorization: `Bearer ${token}` },
+        });
         const data = await response.json();
         setCoupons(data.coupons || data);
-      } catch (err) { console.error('🔴 Error fetching coupons:', err); }
+      } catch (err) {
+        console.error("🔴 Error fetching coupons:", err);
+      }
     };
     fetchCoupons();
-  }, [token, API_URL]);
+  }, [token, API_URL, setCoupons]);
 
-  const [percentage, setPercentage] = useState(0);
-  const [discountValue, setDiscountValue] = useState(0);
-
-  const getReferralDetails = async () => {
+  // Fetch referral discount details
+  const getReferralDetails = useCallback(async () => {
+    if (!user?._id) return;
     try {
-      const res = await axios.post(`${API_URL}/referral/fetchReferral`, { userId: user._id });
+      const res = await axios.post(
+        `${API_URL}/referral/updatefetchReferralwithoutSaving`,
+        { userId: user._id }
+      );
       setPercentage(res.data.data.percentageValue);
       setDiscountValue(res.data.data.discountValue);
     } catch (error) {
       console.error("Error fetching referral details:", error);
     }
-  }
+  }, [user?._id, API_URL]);
+
   useEffect(() => {
     getReferralDetails();
-  }, [dispatch]);
+  }, [getReferralDetails]);
 
-  useEffect(() => {
-    dispatch(removeCoupon());
-    setCouponCode("");
-    if (rzpInstanceRef.current) {
-      rzpInstanceRef.current.close();
-      rzpInstanceRef.current = null;
-    }
-    return () => {
-      if (rzpInstanceRef.current) {
-        rzpInstanceRef.current.close();
-      }
-    };
-  }, [dispatch]);
-
-  useEffect(() => {
-    if (Object.keys(user).length !== 0) {
-      dispatch(fetchAvailableCoupons());
-    }
-  }, [dispatch, user]);
-
-  useEffect(() => {
-    if (appliedCoupon && appliedCoupon.discountAmount > 0) {
-      setCongratulationsData({ couponCode: appliedCoupon.code, savingsAmount: appliedCoupon.discountAmount });
-      setShowCongratulationsPopup(true);
-      setTimeout(() => setShowCongratulationsPopup(false), 4000);
-    }
-  }, [appliedCoupon]);
-
-  useEffect(() => {
-    const couponCodeY = filterYCoupon[0]?.code;
-    if (couponCodeY) {
-      setCongratulationsData({ couponCode: couponCodeY, savingsAmount: calculateFinalPricing.freediscount });
-      setShowCongratulationsPopup(true);
-      setTimeout(() => setShowCongratulationsPopup(false), 4000);
-    }
-  }, [filterYCoupon[0]?.code]);
-
+  // Fetch cart if not buy‑now mode and cart empty
   useEffect(() => {
     if (!isBuyNow && !cartItems.length) {
       dispatch(fetchCart());
     }
   }, [dispatch, cartItems.length, isBuyNow]);
-  let referralDiscount = 0
+
+  // Clear any leftover errors on mount
+  useEffect(() => {
+    dispatch(clearError());
+    dispatch(clearCouponError());
+  }, [dispatch]);
+
+  // Cleanup on unmount: close Razorpay and clear timeouts
+  useEffect(() => {
+    return () => {
+      if (rzpInstanceRef.current) {
+        rzpInstanceRef.current.close();
+        rzpInstanceRef.current = null;
+      }
+      if (congratTimeoutRef.current) {
+        clearTimeout(congratTimeoutRef.current);
+      }
+    };
+  }, []);
+
+  // Show congratulations popup when a coupon is applied
+  useEffect(() => {
+    if (appliedCoupon && appliedCoupon.discountAmount > 0) {
+      setCongratulationsData({
+        couponCode: appliedCoupon.code,
+        savingsAmount: appliedCoupon.discountAmount,
+      });
+      setShowCongratulationsPopup(true);
+      if (congratTimeoutRef.current) clearTimeout(congratTimeoutRef.current);
+      congratTimeoutRef.current = setTimeout(() => {
+        setShowCongratulationsPopup(false);
+      }, 4000);
+    }
+  }, [appliedCoupon, setCongratulationsData, setShowCongratulationsPopup]);
+
+
+  // Calculate final pricing – all logic inside useMemo, no external mutations
   const calculateFinalPricing = useMemo(() => {
-    let subtotal = isBuyNow && buyNowProduct ? buyNowProduct.product.price * buyNowProduct.quantity : cartSummary.subtotal || 0;
+    const subtotal = isBuyNow && buyNowProduct
+      ? buyNowProduct.product.price * buyNowProduct.quantity
+      : cartSummary.subtotal || 0;
+
+    let referralDiscount = 0;
     if (percentage) {
       referralDiscount += Math.round(subtotal * (percentage / 100));
     }
     if (discountValue) {
       referralDiscount += Math.round(discountValue);
     }
+
     const shippingCharges = subtotal >= 399 ? 0 : 99;
     const discount = appliedCoupon?.discountAmount || 0;
-    const freediscount = filterYCoupon[0]?.discountType == "flat" ? filterYCoupon[0]?.discountValue : Math.round(subtotal * (filterYCoupon[0]?.discountValue) / 100) || 0;
+    const freediscount = filterYCoupon[0]?.discountType === "flat"
+      ? filterYCoupon[0]?.discountValue
+      : Math.round(subtotal * (filterYCoupon[0]?.discountValue || 0) / 100);
+
     const totalSaving = discount + freediscount;
-    const totalValue = Math.round(subtotal + shippingCharges - discount - freediscount - referralDiscount);
-    const result = { subtotal, shippingCharges, discount, totalSaving, total: totalValue > 0 ? totalValue : 0, freediscount, referralDiscount };
-    return result;
-  }, [cartSummary.subtotal, appliedCoupon, isBuyNow, buyNowProduct, filterYCoupon]);
-  const updateEarnings = async () => {
-    try {
-      const res = await axios.put(`${API_URL}/referral-total-earning/update`, {
-        userId: user._id,
-        amount: calculateFinalPricing.referralDiscount
-      });
-      if (!res) {
-        await axios.post(`${API_URL}/referral-total-earning/create`, {
-          userId: user._id,
-          amount: calculateFinalPricing.referralDiscount
-        });
-      }
-    } catch (error) {
-      console.error("Error updating referral total earning:", error);
-    }
-  }
+    const totalValue = Math.round(
+      subtotal + shippingCharges - discount - freediscount - referralDiscount
+    );
+
+    return {
+      subtotal,
+      shippingCharges,
+      discount,
+      totalSaving,
+      total: totalValue > 0 ? totalValue : 0,
+      freediscount,
+      referralDiscount,
+    };
+  }, [
+    cartSummary.subtotal,
+    appliedCoupon,
+    isBuyNow,
+    buyNowProduct,
+    filterYCoupon,
+    percentage,
+    discountValue,
+  ]);
+
+  // Free discount popup (from filterYCoupon)
   useEffect(() => {
-    updateEarnings()
-  }, [calculateFinalPricing.referralDiscount]);
+    const code = filterYCoupon[0]?.code;
+    if (code) {
+      setCongratulationsData({
+        couponCode: code,
+        savingsAmount: calculateFinalPricing.freediscount,
+      });
+      setShowCongratulationsPopup(true);
+      if (congratTimeoutRef.current) clearTimeout(congratTimeoutRef.current);
+      congratTimeoutRef.current = setTimeout(() => {
+        setShowCongratulationsPopup(false);
+      }, 4000);
+    }
+  }, [filterYCoupon, calculateFinalPricing.freediscount]);
 
   const getDisplayItems = useCallback(() => {
     if (isBuyNow && buyNowProduct) {
@@ -196,29 +287,37 @@ const CheckoutPage = () => {
           selectedColors: buyNowProduct.selectedColors,
           totalPieces: buyNowProduct.totalPieces,
           pricePerSet: buyNowProduct.pricePerSet,
-          piecesPerSet: buyNowProduct.piecesPerSet
+          piecesPerSet: buyNowProduct.piecesPerSet,
         }];
       }
-      return [{ product: buyNowProduct.product, quantity: buyNowProduct.quantity, size: buyNowProduct.size, color: buyNowProduct.color }];
+      return [{
+        product: buyNowProduct.product,
+        quantity: buyNowProduct.quantity,
+        size: buyNowProduct.size,
+        color: buyNowProduct.color,
+      }];
     }
     return cartItems;
   }, [isBuyNow, buyNowProduct, cartItems]);
 
-  const validateOrder = () => {
+  const validateOrder = useCallback(() => {
     if (!selectedAddress) {
-      alert("Please select a shipping address");
+      toast.error("Please select a shipping address");
       return false;
     }
     if (!getDisplayItems().length) {
-      alert("No items to order");
+      toast.error("No items to order");
       return false;
     }
     return true;
-  };
+  }, [selectedAddress, getDisplayItems]);
 
   const createOrderData = useCallback(() => {
-    const data = {
-      items: getDisplayItems().map(item => ({
+    // Normalize phone number: remove any existing +91
+    let phone = selectedAddress?.phoneNumber || "";
+    phone = phone.replace(/^\+91/, "");
+    return {
+      items: getDisplayItems().map((item) => ({
         productId: item.product?._id,
         quantity: item.quantity,
         size: item.size,
@@ -228,107 +327,149 @@ const CheckoutPage = () => {
         totalSets: item.quantity,
         totalPieces: item.totalPieces,
         piecesPerSet: item.piecesPerSet,
-        pricePerSet: item.pricePerSet
+        pricePerSet: item.pricePerSet,
       })),
-      shippingAddress: { ...selectedAddress, phoneNumber: `+91${selectedAddress.phoneNumber}` },
+      shippingAddress: {
+        ...selectedAddress,
+        phoneNumber: `+91${phone}`,
+      },
       couponCode: appliedCoupon?.code || "",
-      isBuyNow: isBuyNow
+      isBuyNow: isBuyNow,
     };
-    return data;
   }, [getDisplayItems, selectedAddress, appliedCoupon, isBuyNow]);
 
-  const handlePlaceOrder = () => {
-    if (rzpInstanceRef.current) {
-      rzpInstanceRef.current.close();
-      rzpInstanceRef.current = null;
+  // Update referral earnings after successful order
+  const updateReferralEarnings = useCallback(async () => {
+    if (!calculateFinalPricing.referralDiscount) return;
+    try {
+      await axios.put(`${API_URL}/referral/updatefetchReferral`, { userId: user._id });
+      await axios.put(`${API_URL}/referral-total-earning/update`, {
+        userId: user._id,
+        amount: calculateFinalPricing.referralDiscount,
+      });
+    } catch (error) {
+      // If update fails, try to create a new record
+      try {
+        await axios.post(`${API_URL}/referral-total-earning/create`, {
+          userId: user._id,
+          amount: calculateFinalPricing.referralDiscount,
+        });
+      } catch (createErr) {
+        console.error("Failed to create referral earnings record", createErr);
+      }
     }
+  }, [user._id, calculateFinalPricing.referralDiscount, API_URL]);
+
+  // ------ ORDER HANDLERS ------
+  const handlePlaceOrder = async () => {
     if (!validateOrder()) return;
+    if (!razorpayLoaded) {
+      toast.error("Payment gateway is still loading. Please try again.");
+      return;
+    }
+
+    // Clear previous errors
+    dispatch(clearError());
+    setShowPaymentModal(false); // close modal once order creation starts
 
     const orderPayload = {
       amount: calculateFinalPricing.total,
       freediscount: calculateFinalPricing.freediscount,
-      ...createOrderData()
+      referralDiscount: calculateFinalPricing.referralDiscount,
+      ...createOrderData(),
     };
 
-    dispatch(createRazorpayOrder(orderPayload)).then((result) => {
-      if (result.type === "order/createRazorpayOrder/fulfilled") {
-        const { razorpayOrder: razorpayOrderData, orderId, orderSummary } = result.payload;
-        const options = {
-          key: import.meta.env.VITE_RAZORPAY_KEY_ID,
-          amount: razorpayOrderData.amount,
-          currency: razorpayOrderData.currency,
-          name: "Factory Sale",
-          description: "Factory Sale Purchase",
-          order_id: razorpayOrderData.id,
-          handler: async (response) => {
-            try {
-              const verifyResult = await dispatch(verifyPayment({
+    try {
+      const result = await dispatch(createRazorpayOrder(orderPayload)).unwrap();
+      const { razorpayOrder: razorpayOrderData, orderId, orderSummary } = result;
+
+      const options = {
+        key: import.meta.env.VITE_RAZORPAY_KEY_ID,
+        amount: razorpayOrderData.amount,
+        currency: razorpayOrderData.currency,
+        name: "Factory Sale",
+        description: "Factory Sale Purchase",
+        order_id: razorpayOrderData.id,
+        handler: async (response) => {
+          try {
+            const verifyResult = await dispatch(
+              verifyPayment({
                 razorpay_order_id: response.razorpay_order_id,
                 razorpay_payment_id: response.razorpay_payment_id,
-                razorpay_signature: response.razorpay_signature
-              })).unwrap();
-              toast.success("Order placed successfully!");
-              clearBuyNowData();
-              navigate(`/order-confirmation/${verifyResult.order.id || orderId}`);
-            } catch (err) {
-              toast.error("Payment successful but verification pending. Contact support.");
-            }
-          },
-          prefill: {
-            name: selectedAddress?.fullName,
-            email: selectedAddress?.email || user?.email,
-            contact: `+91${selectedAddress?.phoneNumber}`
-          },
-          theme: { color: "#ec4899" },
-          modal: {
-            ondismiss: () => {
-              rzpInstanceRef.current = null;
-            }
+                razorpay_signature: response.razorpay_signature,
+              })
+            ).unwrap();
+            toast.success("Order placed successfully!");
+            await updateReferralEarnings();
+            clearBuyNowData();
+            navigate(`/order-confirmation/${verifyResult.order.id || orderId}`);
+          } catch (err) {
+            toast.error("Payment successful but verification pending. Contact support.");
+          } finally {
+            rzpInstanceRef.current = null;
           }
-        };
+        },
+        prefill: {
+          name: selectedAddress?.fullName,
+          email: selectedAddress?.email || user?.email,
+          contact: `+91${selectedAddress?.phoneNumber?.replace(/^\+91/, "")}`,
+        },
+        theme: { color: "#ec4899" },
+        modal: {
+          ondismiss: () => {
+            rzpInstanceRef.current = null;
+            toast("Payment cancelled", { icon: "⚠️" });
+          },
+        },
+      };
 
-        if (window.Razorpay) {
-          const razorpay = new window.Razorpay(options);
-          rzpInstanceRef.current = razorpay;
-          razorpay.open();
-        } else {
-          alert("Payment gateway not available. Please try again.");
-        }
-      } else {
-        toast.error(result.payload || "Failed to create order");
-      }
-    });
-
-    setShowPaymentModal(false);
+      const razorpay = new window.Razorpay(options);
+      rzpInstanceRef.current = razorpay;
+      razorpay.open();
+    } catch (error) {
+      toast.error(error?.message || "Failed to create order");
+      setShowPaymentModal(true); // reopen modal on failure
+    }
   };
 
-  const handlePlaceCodOrder = () => {
-    if (rzpInstanceRef.current) {
-      rzpInstanceRef.current.close();
-      rzpInstanceRef.current = null;
-    }
+  const handlePlaceCodOrder = async () => {
     if (!validateOrder()) return;
-    const orderPayload = { amount: Math.round(calculateFinalPricing.total || 0), freediscount: calculateFinalPricing.freediscount, ...createOrderData() };
-    dispatch(placeCodOrder(orderPayload)).then((result) => {
-      if (result.type === "order/placeCodOrder/fulfilled") {
-        clearBuyNowData();
-        navigate(`/order-confirmation/${result.payload.order.id}`);
-      } else {
-        alert("Failed to place COD order. Please try again.");
-      }
-    });
+    dispatch(clearError());
+    setShowPaymentModal(false);
+
+    const orderPayload = {
+      amount: Math.round(calculateFinalPricing.total || 0),
+      freediscount: calculateFinalPricing.freediscount,
+      referralDiscount: calculateFinalPricing.referralDiscount,
+      ...createOrderData(),
+    };
+
+    try {
+      const result = await dispatch(placeCodOrder(orderPayload)).unwrap();
+      toast.success("COD order placed successfully!");
+      await updateReferralEarnings();
+      clearBuyNowData();
+      navigate(`/order-confirmation/${result.payload?.order?.id || result.order?.id}`);
+    } catch (error) {
+      toast.error(error?.message || "Failed to place COD order");
+      setShowPaymentModal(true);
+    }
   };
 
   const handlePartialCodOrder = async () => {
-    if (!validateOrder()) {
-      toast.error("Please select a shipping address");
+    if (!validateOrder()) return;
+    if (!razorpayLoaded) {
+      toast.error("Payment gateway is still loading. Please try again.");
       return;
     }
+
+    dispatch(clearError());
+    setShowPaymentModal(false);
 
     const onlineAmount = Math.round(calculateFinalPricing.total * partialPercentage / 100);
     const codAmount = calculateFinalPricing.total - onlineAmount;
     const orderPayload = {
-      items: getDisplayItems().map(item => ({
+      items: getDisplayItems().map((item) => ({
         productId: item.product?._id,
         quantity: item.quantity,
         size: item.size,
@@ -338,19 +479,22 @@ const CheckoutPage = () => {
         totalSets: item.quantity,
         totalPieces: item.totalPieces,
         piecesPerSet: item.piecesPerSet,
-        pricePerSet: item.pricePerSet
+        pricePerSet: item.pricePerSet,
       })),
-      shippingAddress: { ...selectedAddress, phoneNumber: `+91${selectedAddress.phoneNumber}` },
+      shippingAddress: {
+        ...selectedAddress,
+        phoneNumber: `+91${selectedAddress?.phoneNumber?.replace(/^\+91/, "")}`,
+      },
       couponCode: appliedCoupon?.code || "",
       totalAmount: calculateFinalPricing.total,
       onlineAmount: onlineAmount,
       codAmount: codAmount,
       partialPercentage: partialPercentage,
-      freediscount: calculateFinalPricing.freediscount
+      freediscount: calculateFinalPricing.freediscount,
+      referralDiscount: calculateFinalPricing.referralDiscount,
     };
 
     try {
-      setShowPaymentModal(false);
       const result = await dispatch(createPartialCodOrder(orderPayload)).unwrap();
       const options = {
         key: import.meta.env.VITE_RAZORPAY_KEY_ID,
@@ -361,60 +505,62 @@ const CheckoutPage = () => {
         order_id: result.razorpayOrder.id,
         handler: async (response) => {
           try {
-            await dispatch(verifyPartialCodPayment({
-              razorpay_order_id: response.razorpay_order_id,
-              razorpay_payment_id: response.razorpay_payment_id,
-              razorpay_signature: response.razorpay_signature
-            })).unwrap();
+            await dispatch(
+              verifyPartialCodPayment({
+                razorpay_order_id: response.razorpay_order_id,
+                razorpay_payment_id: response.razorpay_payment_id,
+                razorpay_signature: response.razorpay_signature,
+              })
+            ).unwrap();
             toast.success("Order placed successfully!");
+            await updateReferralEarnings();
             clearBuyNowData();
             navigate(`/order-confirmation/${result.orderId}`);
           } catch (err) {
             toast.error("Payment successful but verification pending. Contact support.");
+          } finally {
+            rzpInstanceRef.current = null;
           }
         },
         prefill: {
           name: selectedAddress?.fullName,
           email: selectedAddress?.email || user?.email,
-          contact: `+91${selectedAddress?.phoneNumber}`
+          contact: `+91${selectedAddress?.phoneNumber?.replace(/^\+91/, "")}`,
         },
         theme: { color: "#ec4899" },
         modal: {
           ondismiss: () => {
             rzpInstanceRef.current = null;
-          }
-        }
+            toast("Payment cancelled", { icon: "⚠️" });
+          },
+        },
       };
-
       const razorpay = new window.Razorpay(options);
       rzpInstanceRef.current = razorpay;
       razorpay.open();
-
     } catch (error) {
       toast.error(error?.message || "Failed to process partial COD");
       setShowPaymentModal(true);
     }
   };
 
-  const handleBackButton = () => {
-    setShowExitWarning(true);
-  };
-
+  // ----- EXIT HANDLERS -----
+  const handleBackButton = () => setShowExitWarning(true);
   const handleContinueCheckout = () => {
     setShowExitWarning(false);
     setShowExitWarningS(false);
   };
-
-  const handleExitButton = () => {
-    setShowExitWarningS(true);
-  };
-
+  const handleExitButton = () => setShowExitWarningS(true);
   const handleSaveAndExit = async (reasons) => {
-    try { await axios.post(`${API_URL}/reason/cancellation`, { cancellationReasons: reasons }); }
-    catch (error) { console.error("Failed to save reasons:", error); }
-    navigate('/cart');
+    try {
+      await axios.post(`${API_URL}/reason/cancellation`, { cancellationReasons: reasons });
+    } catch (error) {
+      console.error("Failed to save reasons:", error);
+    }
+    navigate("/cart");
   };
 
+  // Block back navigation
   useEffect(() => {
     window.history.pushState({ page: 1 }, "", window.location.href);
     const onBackButtonEvent = (e) => {
@@ -428,33 +574,65 @@ const CheckoutPage = () => {
 
   const displayItems = getDisplayItems();
   const hasItems = displayItems.length > 0;
-  const showPartialCodOption = partialCodEnabled && (isBulkBuyNow || displayItems.some(item => item.isBulkProduct));
+  const showPartialCodOption =
+    partialCodEnabled &&
+    (isBulkBuyNow || displayItems.some((item) => item.isBulkProduct));
+
   if (!hasItems && !orderLoading.creating) {
     return (
       <div className="flex items-center justify-center min-h-screen">
         <div className="text-center">
           <ShoppingBag className="w-16 h-16 mx-auto mb-4 text-gray-400" />
           <h2 className="text-xl font-bold mb-2">No items to checkout</h2>
-          <button onClick={() => { clearBuyNowData(); navigate("/"); }} className="px-6 py-2 bg-red-600 text-white rounded-xl">Continue Shopping</button>
+          <button
+            onClick={() => {
+              clearBuyNowData();
+              navigate("/");
+            }}
+            className="px-6 py-2 bg-red-600 text-white rounded-xl"
+          >
+            Continue Shopping
+          </button>
         </div>
       </div>
     );
   }
+
   return (
     <div className="min-h-screen bg-gray-50 pb-12">
       <div className="max-w-7xl mx-auto px-4 py-8">
-        <button onClick={handleBackButton} className="mb-4 flex items-center gap-2 text-gray-600"><FontAwesomeIcon icon={faArrowLeft} /> Back</button>
+        <button
+          onClick={handleBackButton}
+          className="mb-4 flex items-center gap-2 text-gray-600"
+        >
+          <FontAwesomeIcon icon={faArrowLeft} /> Back
+        </button>
         <h1 className="text-3xl font-bold text-center mb-8">Checkout</h1>
 
-        {(orderError || couponError) && <div className="mb-4 p-3 bg-red-50 text-red-700 rounded-xl text-center">{orderError || couponError}</div>}
+        {(orderError || couponError) && (
+          <div className="mb-4 p-3 bg-red-50 text-red-700 rounded-xl text-center">
+            {orderError || couponError}
+          </div>
+        )}
 
         <div className="grid lg:grid-cols-3 gap-8">
           {/* Left Column */}
           <div className="lg:col-span-2 space-y-6">
+            {/* Address Section */}
             <div className="bg-white rounded-xl p-6 shadow-sm">
               <div className="flex justify-between items-center mb-4">
-                <div className="flex items-center"><MapPin className="w-5 h-5 mr-2 text-red-600" /><h2 className="text-lg font-semibold">Shipping Address</h2></div>
-                {addresses.length > 0 && <button onClick={startAdding} className="flex items-center text-red-600"><Plus className="w-4 h-4 mr-1" />Add New</button>}
+                <div className="flex items-center">
+                  <MapPin className="w-5 h-5 mr-2 text-red-600" />
+                  <h2 className="text-lg font-semibold">Shipping Address</h2>
+                </div>
+                {addresses.length > 0 && (
+                  <button
+                    onClick={startAdding}
+                    className="flex items-center text-red-600"
+                  >
+                    <Plus className="w-4 h-4 mr-1" /> Add New
+                  </button>
+                )}
               </div>
               <AddressList
                 addresses={addresses}
@@ -467,28 +645,83 @@ const CheckoutPage = () => {
               />
             </div>
 
+            {/* Coupon Section */}
             <div className="bg-white rounded-xl p-6 shadow-sm">
-              <div className="flex items-center mb-4"><Tag className="w-5 h-5 mr-2 text-red-600" /><h2 className="text-lg font-semibold">Apply Coupon</h2></div>
+              <div className="flex items-center mb-4">
+                <Tag className="w-5 h-5 mr-2 text-red-600" />
+                <h2 className="text-lg font-semibold">Apply Coupon</h2>
+              </div>
               {appliedCoupon ? (
                 <div className="flex justify-between items-center p-3 bg-green-50 rounded-lg">
                   <span className="font-semibold">{appliedCoupon.code}</span>
                   <span>-₹{appliedCoupon.discountAmount}</span>
-                  <button onClick={() => dispatch(removeCoupon())} className="text-red-500">Remove</button>
+                  <button
+                    onClick={() => dispatch(removeCoupon())}
+                    className="text-red-500"
+                  >
+                    Remove
+                  </button>
                 </div>
               ) : (
                 <div className="flex gap-2">
-                  <input type="text" value={couponCode} onChange={(e) => setCouponCode(e.target.value.toUpperCase())} placeholder="Enter promo code" className="flex-1 px-4 py-2 border rounded-lg" />
-                  <button onClick={() => dispatch(validateCoupon({ code: couponCode, cartTotal: calculateFinalPricing.subtotal }))} disabled={!couponCode.trim() || couponLoading?.validating} className="px-6 py-2 bg-red-600 text-white rounded-lg disabled:opacity-50">Apply</button>
+                  <input
+                    type="text"
+                    value={couponCode}
+                    onChange={(e) => setCouponCode(e.target.value.toUpperCase())}
+                    placeholder="Enter promo code"
+                    className="flex-1 px-4 py-2 border rounded-lg"
+                  />
+                  <button
+                    onClick={() =>
+                      dispatch(
+                        validateCoupon({
+                          code: couponCode,
+                          cartTotal: calculateFinalPricing.subtotal,
+                        })
+                      )
+                    }
+                    disabled={!couponCode.trim() || couponLoading?.validating}
+                    className="px-6 py-2 bg-red-600 text-white rounded-lg disabled:opacity-50"
+                  >
+                    Apply
+                  </button>
                 </div>
               )}
+
               {filterNCoupon.length > 0 && (
                 <div className="mt-4 space-y-2">
-                  {displayItems.map(item => filterNCoupon.filter(c => item.product?.category?.name === c.couponcategories).map(coupon => (
-                    <div key={coupon.code} className="p-3 border rounded-lg flex justify-between items-center">
-                      <div><p className="font-medium">{coupon.code}</p><p className="text-xs text-gray-500">Min ₹{coupon.minOrderValue}</p></div>
-                      <button onClick={() => dispatch(validateCoupon({ code: coupon.code, cartTotal: calculateFinalPricing.subtotal }))} className="px-3 py-1 bg-red-600 text-white text-sm rounded">Apply</button>
-                    </div>
-                  )))}
+                  {displayItems.map((item) =>
+                    filterNCoupon
+                      .filter(
+                        (c) => item.product?.category?.name === c.couponcategories
+                      )
+                      .map((coupon) => (
+                        <div
+                          key={coupon.code}
+                          className="p-3 border rounded-lg flex justify-between items-center"
+                        >
+                          <div>
+                            <p className="font-medium">{coupon.code}</p>
+                            <p className="text-xs text-gray-500">
+                              Min ₹{coupon.minOrderValue}
+                            </p>
+                          </div>
+                          <button
+                            onClick={() =>
+                              dispatch(
+                                validateCoupon({
+                                  code: coupon.code,
+                                  cartTotal: calculateFinalPricing.subtotal,
+                                })
+                              )
+                            }
+                            className="px-3 py-1 bg-red-600 text-white text-sm rounded"
+                          >
+                            Apply
+                          </button>
+                        </div>
+                      ))
+                  )}
                 </div>
               )}
             </div>
@@ -499,42 +732,110 @@ const CheckoutPage = () => {
             <div className="bg-white rounded-xl p-6 shadow-sm sticky top-24">
               <div className="flex justify-between items-center mb-4">
                 <h2 className="text-lg font-bold">Order Summary</h2>
-                <div className="flex items-center text-xs text-green-600"><Truck className="w-3 h-3 mr-1" />{calculateFinalPricing.shippingCharges === 0 ? "Free Shipping" : "Shipping: ₹99"}</div>
+                <div className="flex items-center text-xs text-green-600">
+                  <Truck className="w-3 h-3 mr-1" />
+                  {calculateFinalPricing.shippingCharges === 0
+                    ? "Free Shipping"
+                    : "Shipping: ₹99"}
+                </div>
               </div>
+
               <div className="space-y-3 max-h-60 overflow-y-auto mb-4">
                 {displayItems.map((item, idx) => (
                   <div key={idx} className="flex gap-3 p-2 bg-gray-50 rounded-lg">
-                    <img src={item.product?.images?.[0]?.url} className="w-16 h-16 object-cover rounded" alt={item.product?.name} />
+                    <img
+                      src={item.product?.images?.[0]?.url}
+                      className="w-16 h-16 object-cover rounded"
+                      alt={item.product?.name}
+                    />
                     <div>
                       <h3 className="font-semibold">{item.product?.name}</h3>
-                      <p className="text-sm text-gray-600">Qty: {item.quantity} | Size: {item.size || "M"} | Color: {item.color || "-"}</p>
-                      <p className="font-bold">₹{item.product?.price * item.quantity}</p>
+                      <p className="text-sm text-gray-600">
+                        Qty: {item.quantity} | Size: {item.size || "M"} | Color:{" "}
+                        {item.color || "-"}
+                      </p>
+                      <p className="font-bold">
+                        ₹{item.product?.price * item.quantity}
+                      </p>
                     </div>
                   </div>
                 ))}
               </div>
+
               <div className="space-y-2 border-t pt-4">
-                <div className="flex justify-between"><span>Subtotal</span><span>₹{calculateFinalPricing.subtotal}</span></div>
-                {calculateFinalPricing.discount > 0 && <div className="flex justify-between text-green-600"><span>Coupon Discount</span><span>-₹{calculateFinalPricing.discount}</span></div>}
-                {calculateFinalPricing.freediscount > 0 && <div className="flex justify-between text-blue-600"><span>Free Discount</span><span>-₹{calculateFinalPricing.freediscount}</span></div>}
-                {calculateFinalPricing.referralDiscount > 0 && <div className="flex justify-between text-blue-600"><span>Referral Discount Applied</span><span>-₹{calculateFinalPricing.referralDiscount}</span></div>}
-                <div className="flex justify-between"><span>Shipping</span><span>{calculateFinalPricing.shippingCharges === 0 ? "FREE" : `₹${calculateFinalPricing.shippingCharges}`}</span></div>
-                <div className="flex justify-between pt-2 border-t"><span className="font-bold">Total</span><span className="text-xl font-bold text-red-600">₹{calculateFinalPricing.total}</span></div>
+                <div className="flex justify-between">
+                  <span>Subtotal</span>
+                  <span>₹{calculateFinalPricing.subtotal}</span>
+                </div>
+                {calculateFinalPricing.discount > 0 && (
+                  <div className="flex justify-between text-green-600">
+                    <span>Coupon Discount</span>
+                    <span>-₹{calculateFinalPricing.discount}</span>
+                  </div>
+                )}
+                {calculateFinalPricing.freediscount > 0 && (
+                  <div className="flex justify-between text-blue-600">
+                    <span>Free Discount</span>
+                    <span>-₹{calculateFinalPricing.freediscount}</span>
+                  </div>
+                )}
+                {calculateFinalPricing.referralDiscount > 0 && (
+                  <div className="flex justify-between text-blue-600">
+                    <span>Referral Discount</span>
+                    <span>-₹{calculateFinalPricing.referralDiscount}</span>
+                  </div>
+                )}
+                <div className="flex justify-between">
+                  <span>Shipping</span>
+                  <span>
+                    {calculateFinalPricing.shippingCharges === 0
+                      ? "FREE"
+                      : `₹${calculateFinalPricing.shippingCharges}`}
+                  </span>
+                </div>
+                <div className="flex justify-between pt-2 border-t">
+                  <span className="font-bold">Total</span>
+                  <span className="text-xl font-bold text-red-600">
+                    ₹{calculateFinalPricing.total}
+                  </span>
+                </div>
               </div>
-              <button onClick={() => setShowPaymentModal(true)} className="w-full mt-6 py-3 bg-red-600 text-white rounded-xl font-semibold">Proceed to Payment</button>
-              <div className="mt-4 flex justify-center text-xs text-gray-500"><Shield className="w-4 h-4 mr-1" />Secure Checkout</div>
+
+              <button
+                onClick={() => setShowPaymentModal(true)}
+                className="w-full mt-6 py-3 bg-red-600 text-white rounded-xl font-semibold"
+              >
+                Proceed to Payment
+              </button>
+              <div className="mt-4 flex justify-center text-xs text-gray-500">
+                <Shield className="w-4 h-4 mr-1" /> Secure Checkout
+              </div>
             </div>
           </div>
         </div>
 
+        {/* Mobile sticky button */}
         <div className="fixed bottom-0 left-0 right-0 bg-white border-t p-4 md:hidden">
-          <button onClick={() => setShowPaymentModal(true)} className="w-full py-3 bg-red-600 text-white rounded-xl font-semibold">Proceed to Payment</button>
+          <button
+            onClick={() => setShowPaymentModal(true)}
+            className="w-full py-3 bg-red-600 text-white rounded-xl font-semibold"
+          >
+            Proceed to Payment
+          </button>
         </div>
       </div>
 
       {/* Modals */}
       <AnimatePresence>
-        {showAddressPopup && <AddressPopup isOpen={showAddressPopup} onClose={cancelEditing} onSave={handleSaveAddress} editingAddress={editingAddress} user={user} />}
+        {showAddressPopup && (
+          <AddressPopup
+            isOpen={showAddressPopup}
+            onClose={cancelEditing}
+            onSave={handleSaveAddress}
+            editingAddress={editingAddress}
+            user={user}
+          />
+        )}
       </AnimatePresence>
 
       <PaymentModal
@@ -546,12 +847,32 @@ const CheckoutPage = () => {
         amount={calculateFinalPricing.total}
         showPartialCod={showPartialCodOption}
         partialPercentage={partialPercentage}
-        isBulkProduct={isBulkBuyNow || displayItems.some(item => item.isBulkProduct)}
+        isBulkProduct={isBulkBuyNow || displayItems.some((item) => item.isBulkProduct)}
       />
 
-      <CongratulationsModal isOpen={showCongratulationsPopup} onClose={() => setShowCongratulationsPopup(false)} couponCode={congratulationsData.couponCode} savingsAmount={congratulationsData.savingsAmount} />
-      <ExitWarningModal isOpen={showExitWarning} onContinue={handleContinueCheckout} onExit={handleExitButton} message={{ title: "Wait! Don't Go Yet!", description: "You're about to leave behind an exclusive FREE GIFT!" }} />
-      <ExitWarningModal isOpen={showExitWarningS} onContinue={handleContinueCheckout} onExit={handleSaveAndExit} type="survey" />
+      <CongratulationsModal
+        isOpen={showCongratulationsPopup}
+        onClose={() => setShowCongratulationsPopup(false)}
+        couponCode={congratulationsData.couponCode}
+        savingsAmount={congratulationsData.savingsAmount}
+      />
+
+      <ExitWarningModal
+        isOpen={showExitWarning}
+        onContinue={handleContinueCheckout}
+        onExit={handleExitButton}
+        message={{
+          title: "Wait! Don't Go Yet!",
+          description: "You're about to leave behind an exclusive FREE GIFT!",
+        }}
+      />
+
+      <ExitWarningModal
+        isOpen={showExitWarningS}
+        onContinue={handleContinueCheckout}
+        onExit={handleSaveAndExit}
+        type="survey"
+      />
     </div>
   );
 };

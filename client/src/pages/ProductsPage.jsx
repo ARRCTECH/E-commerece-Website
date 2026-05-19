@@ -184,7 +184,6 @@ const ProductsPage = () => {
     <div className="min-h-screen bg-gray-50">
       <div className="px-4 py-2 pt-2 mx-auto md:pt-8">
         <div className="flex flex-col gap-6 md:flex-row">
-          {/* Desktop Filters Sidebar */}
           <aside className="hidden md:block md:w-64 lg:w- top-[100px] h-[calc(80vh-10px)] rounded-md">
             <ProductFilters
               key={categorySlug || "all"}
@@ -194,12 +193,9 @@ const ProductsPage = () => {
               onClearFilters={clearAllFilters}
             />
           </aside>
-
-          {/* Products Grid */}
           <main className="flex-1 rounded-xl">
             {isLoading ? (
               <div className="flex items-center justify-center py-20">
-                {/* <Preloader /> */}
               </div>
             ) : error ? (
               <div className="flex flex-col items-center justify-center py-20 text-center">
@@ -247,8 +243,6 @@ const ProductsPage = () => {
           </main>
         </div>
       </div>
-
-      {/* Mobile Filter Modal */}
       <AnimatePresence>
         {showFilters && (
           <motion.div
@@ -301,5 +295,4 @@ const ProductsPage = () => {
     </div>
   )
 }
-
 export default ProductsPage

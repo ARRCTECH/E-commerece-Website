@@ -415,6 +415,14 @@ const OrderDetailsPage = () => {
                             </span>
                           </div>
                         )}
+                        {(order.pricing?.referralDiscount || order.referralDiscount) > 0 && (
+                          <div className="flex justify-between text-neutral-600">
+                            <span>Referral Discount</span>
+                            <span className="font-medium text-purple-600">
+                              − ₹{order.pricing?.referralDiscount || order.referralDiscount || 0}
+                            </span>
+                          </div>
+                        )}
                         {order.discount > 0 && (
                           <div className="flex justify-between text-neutral-600">
                             <span>Coupon Discount</span>

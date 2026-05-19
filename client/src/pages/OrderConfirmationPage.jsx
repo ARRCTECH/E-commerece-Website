@@ -74,15 +74,17 @@ const OrderConfirmationPage = () => {
     }, 0);
     const subtotal = p.subtotal ?? o.subtotal ?? calcItemsSubtotal;
     const freediscount = p.freediscount ?? o.freediscount ?? 0;
+    const referralDiscount = p.referralDiscount ?? o.referralDiscount ?? 0;
     const shippingCharges = p.shippingCharges ?? o.shippingCharge ?? 0;
     const discount = p.discount ?? 0;
-    const total = Math.round(subtotal + Number(shippingCharges || 0) - Number(discount || 0) - Number(freediscount || 0));
+    const total = Math.round(subtotal + Number(shippingCharges || 0) - Number(discount || 0) - Number(freediscount || 0) - Number(referralDiscount || 0));
     return {
       subtotal,
       shippingCharges,
       discount,
       total,
-      freediscount
+      freediscount,
+      referralDiscount
     };
   }, [currentOrder]);
 
@@ -437,6 +439,12 @@ const OrderConfirmationPage = () => {
                   <div className="flex justify-between text-blue-600">
                     <span>Special Discount</span>
                     <span>-₹{Math.round(safePricing.freediscount)}</span>
+                  </div>
+                )}
+                {Number(safePricing.referralDiscount) > 0 && (
+                  <div className="flex justify-between text-purple-600">
+                    <span>Referral Discount</span>
+                    <span>-₹{Math.round(safePricing.referralDiscount)}</span>
                   </div>
                 )}
                 <div className="flex justify-between border-t border-gray-100 pt-2 text-base font-bold">

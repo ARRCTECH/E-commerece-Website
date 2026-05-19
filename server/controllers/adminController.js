@@ -327,6 +327,44 @@ const updateUserRole = async (req, res) => {
     })
   }
 }
+const deleteSingleReferralDetails = async (req, res) => {
+  try {
+    const { userId, referralId } = req.body;
+    if (!userId || !referralId) {
+      return res.status(400).json({ 
+        success: false, 
+        message: "Missing userId or referralId" 
+      });
+    }
+    const updatedUser = await User.findByIdAndUpdate(
+      userId,
+      { 
+        $unset: { 
+          [`referredTo.${referralId}`]: 1 
+        } 
+      },
+      { new: true } 
+    );
+    if (!updatedUser) {
+      return res.status(404).json({ 
+        success: false, 
+        message: "User not found" 
+      });
+    }
+    res.status(200).json({
+      success: true,
+      message: "Referral deleted successfully",
+      data: updatedUser 
+    });
+  } catch (error) {
+    console.error("Error deleting referral:", error);
+    res.status(500).json({
+      success: false,
+      message: "Failed to delete referral details",
+      error: error.message
+    });
+  }
+}
 
 const deleteUser = async (req, res) => {
   try {
@@ -670,6 +708,48 @@ const deleteCoupon = async (req, res) => {
   }
 }
 
+const updateReferralDetails = async (req, res) => {
+  try {
+    const { userId, referralId, newAmount, newType } = req.body;
+    if (!userId || !referralId || newAmount === undefined || !newType) {
+      return res.status(400).json({
+        success: false,
+        message: "Missing required fields: userId, referralId, newAmount, or newType"
+      });
+    }
+    const updatedUser = await User.findByIdAndUpdate(
+      userId,
+      {
+        $set: {
+          [`referredTo.${referralId}.amount`]: newAmount,
+          [`referredTo.${referralId}.type`]: newType
+        }
+      },
+      { new: true } 
+    );
+    if (!updatedUser) {
+      return res.status(404).json({
+        success: false,
+        message: "User not found"
+      });
+    }
+    res.status(200).json({
+      success: true,
+      message: "Referral amount and type updated successfully",
+      data: updatedUser
+    });
+  } catch (error) {
+    console.error("Update error:", error);
+    res.status(500).json({
+      success: false,
+      message: "Failed to update referral details",
+      error: error.message
+    });
+  }
+};
+
+module.exports = { updateReferralDetails };
+
 module.exports = {
   getDashboardStats,
   getAllUsers,
@@ -681,4 +761,6 @@ module.exports = {
   createCoupon,
   updateCoupon,
   deleteCoupon,
-}
+  deleteSingleReferralDetails,
+  updateReferralDetails
+} 

@@ -26,6 +26,7 @@ const shapeOrder = (o) => {
   const discount = o.discount ?? (o.pricing && o.pricing.discount) ?? 0;
   const total = o.total ?? (o.pricing && o.pricing.total) ?? subtotal + shippingCharge - discount;
   const freediscount = o.freediscount ?? (o.pricing && o.pricing.freediscount) ?? 0;
+  const referralDiscount = o.referralDiscount ?? (o.pricing && o.pricing.referralDiscount) ?? 0;
 
   return {
     ...(o.toObject?.() ?? o),
@@ -35,7 +36,8 @@ const shapeOrder = (o) => {
       shipping: shippingCharge,
       discount,
       total,
-      freediscount
+      freediscount,
+      referralDiscount
     },
   };
 };
@@ -133,7 +135,7 @@ const createRazorpayOrder = async (req, res) => {
     console.log("Request body:", JSON.stringify(req.body, null, 2));
     
     const userId = req.user?.userId || null;
-    const { items, shippingAddress, couponCode, selectedShippingRate, amount, freediscount } = req.body;
+    const { items, shippingAddress, couponCode, selectedShippingRate, amount, freediscount, referralDiscount } = req.body;
 
     if (!items || !Array.isArray(items) || items.length === 0) {
       return res.status(400).json({ success: false, message: "Cart items are required" });
@@ -207,7 +209,7 @@ const createRazorpayOrder = async (req, res) => {
     const total = Math.round(amount || (subtotal + shippingCharges - discount));
     const orderNumber = `FH-${Date.now()}`;
 
-    console.log("💰 Order Summary:", { subtotal, shippingCharges, discount, total, freediscount });
+    console.log("💰 Order Summary:", { subtotal, shippingCharges, discount, total, freediscount, referralDiscount });
 
     const razorpayOrder = await razorpay.orders.create({
       amount: Math.round(total * 100),
@@ -230,6 +232,7 @@ const createRazorpayOrder = async (req, res) => {
       subtotal,
       shippingCharge: shippingCharges,
       freediscount: freediscount || 0,
+      referralDiscount: referralDiscount || 0,
       discount,
       total,
       pricing: { 
@@ -239,6 +242,7 @@ const createRazorpayOrder = async (req, res) => {
         discount, 
         total, 
         freediscount: freediscount || 0, 
+        referralDiscount: referralDiscount || 0,  
         selectedShippingRate 
       },
       coupon: couponDetails,
@@ -263,7 +267,7 @@ const createRazorpayOrder = async (req, res) => {
           orderNumber,
           items: validatedItems.map(({ _id, __v, ...rest }) => rest),
           shippingAddress,
-          pricing: { subtotal, shippingCharges, tax: 0, discount, total, freediscount: freediscount || 0, selectedShippingRate },
+          pricing: { subtotal, shippingCharges, tax: 0, discount, total, freediscount: freediscount || 0, referralDiscount: referralDiscount || 0, selectedShippingRate },
           coupon: couponDetails,
           paymentInfo: { razorpayOrderId: razorpayOrder.id, method: "RAZORPAY", status: "pending" },
           status: "PLACED",
@@ -290,6 +294,7 @@ const createRazorpayOrder = async (req, res) => {
         orderNumber, 
         total, 
         freediscount: freediscount || 0, 
+        referralDiscount: referralDiscount || 0,
         items: validatedItems.length, 
         isGuest: !userId 
       },
@@ -692,6 +697,7 @@ const verifyPaymentAndCreateOrder = async (req, res) => {
           discount: order.discount,
           total: order.total,
           freediscount: order.freediscount,
+          referralDiscount: order.pricing?.referralDiscount || 0
         },
       },
     });
@@ -723,6 +729,7 @@ const verifyPaymentAndCreateOrder = async (req, res) => {
             price: item.price
           })),
           totalAmount: freshOrder.total,
+          referralDiscount: freshOrder.pricing?.referralDiscount || 0,
           paymentType: "PREPAID",
           weight: 200  // grams (dummy)
         };
@@ -767,7 +774,7 @@ const verifyPaymentAndCreateOrder = async (req, res) => {
 const placeCodOrder = async (req, res) => {
   try {
     const userId = req.user?.userId || null;
-    const { items, shippingAddress, couponCode, selectedShippingRate, amount, freediscount } = req.body;
+    const { items, shippingAddress, couponCode, selectedShippingRate, amount, freediscount, referralDiscount } = req.body;
 
     if (!items || !Array.isArray(items) || items.length === 0) {
       return res.status(400).json({ success: false, message: "Cart items are required" });
@@ -832,9 +839,10 @@ const placeCodOrder = async (req, res) => {
       subtotal,
       shippingCharge: shippingCharges,
       freediscount: freediscount || 0,
+      referralDiscount:referralDiscount || 0,
       discount,
       total,
-      pricing: { subtotal, shippingCharges, tax: 0, discount, total, freediscount, selectedShippingRate },
+      pricing: { subtotal, shippingCharges, tax: 0, discount, total, freediscount, referralDiscount, selectedShippingRate },
       coupon: couponDetails,
       paymentInfo: { method: "COD", status: "PENDING", razorpayOrderId: orderNumber },
       status: "CONFIRMED",
@@ -874,6 +882,7 @@ const placeCodOrder = async (req, res) => {
           discount: order.discount,
           total: order.total,
           freediscount: order.freediscount,
+          referralDiscount: order.pricing?.referralDiscount || 0
         },
         isGuest: !userId,
         orderId: order._id.toString()

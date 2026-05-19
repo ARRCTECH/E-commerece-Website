@@ -10,6 +10,8 @@ const {
   createCoupon,
   updateCoupon,
   deleteCoupon,
+  deleteSingleReferralDetails,
+  updateReferralDetails
 } = require("../controllers/adminController");
 
 const {
@@ -50,6 +52,8 @@ router.get("/dashboard/stats", adminAuth, getDashboardStats);
 router.get("/users", adminAuth, getAllUsers);
 router.put("/users/:userId/role", adminAuth, updateUserRole);
 router.delete("/users/:userId", adminAuth, deleteUser);
+router.post("/users/referral/delete", adminAuth, deleteSingleReferralDetails);
+router.put("/users/referral/update", adminAuth, updateReferralDetails);
 
 // Order Management (Admin only)
 router.get("/orders", adminAuth, getAllOrders);
