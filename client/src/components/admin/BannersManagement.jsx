@@ -12,6 +12,7 @@ const BannersManagement = () => {
   const [editingBanner, setEditingBanner] = useState(null);
   const [searchTerm, setSearchTerm] = useState("");
   const [filterType, setFilterType] = useState("");
+
   const [formData, setFormData] = useState({
     title: "",
     subtitle: "",
@@ -67,6 +68,17 @@ const BannersManagement = () => {
       console.error("Error saving banner:", error);
     }
   };
+
+  const getDimensionHint = (type) => {
+    if (type === "hero" || type === "category") {
+      return "Recommended: 1920 x 600 pixels (3.2:1 ratio)";
+    }
+    if (type === "promo") {
+      return "Recommended: 800 x 800 pixels (1:1 square)";
+    }
+    return "Recommended: 1920 x 600 pixels";
+  };
+
   const handleDelete = async (bannerId) => {
     if (window.confirm("Are you sure you want to delete this banner?")) {
       try {
@@ -129,7 +141,7 @@ const BannersManagement = () => {
       <div className="p-3 space-y-3 bg-white rounded-lg shadow">
         <div className="flex flex-col space-y-3 sm:flex-row sm:items-center sm:justify-between sm:space-y-0">
           <div className="flex flex-col flex-1 space-y-2 sm:flex-row sm:items-center sm:space-x-3 sm:space-y-0">
-            
+
             <select
               value={filterType}
               onChange={(e) => setFilterType(e.target.value)}
@@ -180,20 +192,18 @@ const BannersManagement = () => {
               <div className="p-3 sm:p-4">
                 <div className="flex flex-col mb-2 space-y-2 sm:flex-row sm:items-center sm:justify-between sm:space-y-0">
                   <span
-                    className={`inline-flex px-2 py-1 text-xs font-semibold rounded-full w-fit ${
-                      banner.type === "hero"
-                        ? "bg-purple-100 text-purple-800"
-                        : banner.type === "promo"
-                          ? "bg-green-100 text-green-800"
-                          : "bg-blue-100 text-blue-800"
-                    }`}
+                    className={`inline-flex px-2 py-1 text-xs font-semibold rounded-full w-fit ${banner.type === "hero"
+                      ? "bg-purple-100 text-purple-800"
+                      : banner.type === "promo"
+                        ? "bg-green-100 text-green-800"
+                        : "bg-blue-100 text-blue-800"
+                      }`}
                   >
                     {banner.type?.charAt(0).toUpperCase() + banner.type?.slice(1)}
                   </span>
                   <span
-                    className={`inline-flex px-2 py-1 text-xs font-semibold rounded-full w-fit ${
-                      banner.isActive ? "bg-green-100 text-green-800" : "bg-red-100 text-red-800"
-                    }`}
+                    className={`inline-flex px-2 py-1 text-xs font-semibold rounded-full w-fit ${banner.isActive ? "bg-green-100 text-green-800" : "bg-red-100 text-red-800"
+                      }`}
                   >
                     {banner.isActive ? "Active" : "Inactive"}
                   </span>
@@ -294,12 +304,12 @@ const BannersManagement = () => {
                       <select
                         value={formData.type}
                         onChange={(e) => setFormData({ ...formData, type: e.target.value })}
-                        className="w-full px-2 py-1 text-sm border border-gray-300 rounded focus:ring-1 focus:ring-blue-500"
+                        className="w-full px-2 py-1 text-sm border border-gray-300 rounded"
                         required
                       >
-                        <option value="hero">Hero Banner</option>
-                        <option value="promo">Promo Banner</option>
-                        <option value="category">Category Banner</option>
+                        <option value="hero">Hero Banner (1920x600)</option>
+                        <option value="category">Category Banner (1920x600)</option>
+                        <option value="promo">Promo Banner (800x800)</option>
                       </select>
                     </div>
                     <div>
@@ -324,7 +334,7 @@ const BannersManagement = () => {
                         className="w-full px-2 py-1 text-sm border border-gray-300 rounded focus:ring-1 focus:ring-blue-500"
                       />
                     </div>
-                    
+
                     <div>
                       <label className="block mb-1 text-xs font-medium text-gray-700">Button Link</label>
                       <input
@@ -382,6 +392,9 @@ const BannersManagement = () => {
                   </div>
                   <div>
                     <label className="block mb-1 text-xs font-medium text-gray-700">Banner Image</label>
+                    <span className="ml-1 text-xs text-gray-400">
+                      ({getDimensionHint(formData.type)})
+                    </span>
                     <input
                       type="file"
                       accept="image/*"

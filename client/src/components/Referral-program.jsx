@@ -1,149 +1,239 @@
 "use client";
 
+import React, { useEffect, useState, useRef } from "react";
 import { useNavigate } from "react-router-dom";
-import { Gift, Sparkles, Crown, ArrowUpRight, Lock, Shield, Users, Wallet, UserPlus, ShoppingBag, CreditCard } from "lucide-react";
-import { motion } from "framer-motion";
+import { useDispatch, useSelector } from "react-redux";
+import toast from "react-hot-toast";
+import {
+  Gift,
+  Package,
+  Sparkles,
+  Crown,
+  Shield,
+  Star,
+  ArrowUpRight,
+  Lock,
+  Copy,
+  Award,
+  UserPlus,
+  Share2,
+  Users,
+  Wallet,
+  CheckCircle,
+} from "lucide-react";
+import { motion, useInView } from "framer-motion";
+import { getProfile } from "../store/slices/authSlice";
+
+const CountUp = ({ value, duration = 1 }) => {
+  const [count, setCount] = useState(0);
+  const ref = useRef(null);
+  const isInView = useInView(ref, { once: true, margin: "-100px" });
+
+  useEffect(() => {
+    if (isInView) {
+      let start = 0;
+      const end = parseInt(value) || 0;
+      if (start === end) return;
+      const incrementTime = (duration * 1000) / end;
+      const timer = setInterval(() => {
+        start += 1;
+        setCount(start);
+        if (start === end) clearInterval(timer);
+      }, incrementTime);
+      return () => clearInterval(timer);
+    }
+  }, [isInView, value, duration]);
+
+  return <span ref={ref}>{count.toLocaleString()}</span>;
+};
 
 export default function ReferralProgram() {
   const navigate = useNavigate();
+  const dispatch = useDispatch();
+  const { user, isLoading } = useSelector((state) => state.auth);
+
+  useEffect(() => {
+    if (user) {
+      dispatch(getProfile());
+    }
+  }, [user, dispatch]);
 
   const handleSignUp = () => {
-    navigate("/signup");
+    navigate("/register");
   };
 
-  const steps = [
-    { 
-      step: "01", 
-      title: "Share", 
-      description: "Share your unique referral link with friends",
-      icon: <Users className="w-5 h-5" />
-    },
-    { 
-      step: "02", 
-      title: "Friend Signs Up", 
-      description: "Your friend creates an account using your link",
-      icon: <UserPlus className="w-5 h-5" />
-    },
-    { 
-      step: "03", 
-      title: "Places Order", 
-      description: "Your friend completes their first purchase",
-      icon: <ShoppingBag className="w-5 h-5" />
-    },
-    { 
-      step: "04", 
-      title: "You Earn", 
-      description: "Get ₹ credited to your wallet instantly",
-      icon: <Wallet className="w-5 h-5" />
-    },
-  ];
+  if (user && user.myreferralCode) {
+    const referralLink = `${window.location.origin}/register?ref=${user.myreferralCode}`;
+    const shareText = "Join me and get exclusive rewards! 🎁";
 
-  return (
-    <div className="w-full bg-gradient-to-br from-neutral-900 via-neutral-800 to-neutral-900">
-      {/* Single Section - Everything in one background */}
-      <div className="relative overflow-hidden">
-        {/* Decorative elements */}
-        <div className="absolute inset-0 opacity-20">
-          <div className="absolute top-0 -right-32 w-96 h-96 rounded-full bg-amber-500 blur-[100px]" />
-          <div className="absolute -bottom-32 -left-32 w-96 h-96 rounded-full bg-amber-600 blur-[100px]" />
-        </div>
-        
-        {/* Subtle pattern overlay */}
-        <div className="absolute inset-0 bg-[linear-gradient(45deg,transparent_25%,rgba(255,255,255,0.02)_50%,transparent_75%)] bg-[size:20px_20px]" />
+    const copyToClipboard = (text) => {
+      navigator.clipboard.writeText(text);
+      toast.success("Copied to clipboard!");
+    };
 
-        <div className="relative px-4 py-10 sm:py-10 lg:py-14">
-          <div className="max-w-7xl mx-auto">
-            
-            {/* Header Section */}
-            <div className="text-center mb-12">
-              {/* Premium Badge */}
-              <div className="inline-flex items-center gap-2 mb-4">
-                <span className="w-8 h-px bg-amber-500/60" />
-                <span className="text-[10px] tracking-[0.3em] uppercase text-amber-400">
-                  Exclusive Access
-                </span>
-                <Sparkles className="w-3 h-3 text-amber-400" />
+    const handleActiveButton = (id) => {
+      localStorage.setItem("activeButton", id);
+    };
+
+    return (
+      <div className="w-full bg-neutral-50">
+        <section className="relative bg-gradient-to-r from-neutral-900 to-neutral-800 overflow-hidden">
+          <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-12 sm:py-16">
+            <div className="flex flex-col lg:flex-row items-center justify-between gap-8">
+              <div className="text-center lg:text-left">
+                <div className="inline-flex items-center gap-2 bg-amber-500/10 rounded-full px-3 py-1 mb-4">
+                  <Gift className="w-3.5 h-3.5 text-amber-400" />
+                  <span className="text-[10px] font-medium text-amber-400 uppercase tracking-wider">Refer & Earn</span>
+                </div>
+                <h1 className="text-3xl sm:text-4xl lg:text-5xl font-light text-white tracking-tight">
+                  Share & Earn{" "}
+                  <span className="font-serif italic text-amber-400 font-semibold">₹500</span>
+                </h1>
+                <p className="text-white/50 text-sm max-w-md mt-3">
+                  Invite friends, earn <span className="text-amber-400">₹500 per referral</span>. Track earnings in real time.
+                </p>
+                <button
+                  onClick={() => navigate("/profile") || handleActiveButton("referral")}
+                  className="mt-6 bg-gradient-to-r from-amber-500 to-amber-600 text-white px-6 py-2.5 rounded-full font-semibold text-sm shadow-lg hover:shadow-amber-500/30 transition-all duration-300 inline-flex items-center gap-2"
+                >
+                  Get Your Link <ArrowUpRight className="w-3.5 h-3.5" />
+                </button>
               </div>
 
-              {/* Main Title */}
-              <h2 className="text-4xl sm:text-5xl lg:text-6xl font-light text-white tracking-tight">
-                Refer &{" "}
-                <span className="font-medium bg-gradient-to-r from-amber-400 to-amber-300 bg-clip-text text-transparent">
-                  Earn
-                </span>
-              </h2>
-              
-              <p className="mt-4 text-white/50 text-sm max-w-md mx-auto">
-                Share the love, earn rewards together
-              </p>
-            </div>
-
-            {/* Steps Grid - 4 Steps */}
-            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6 mb-12">
-              {steps.map((item, idx) => (
-                <div key={idx} className="group">
-                  <div className="text-center">
-                    {/* Step Circle */}
-                    <div className="relative mb-4">
-                      <div className="w-16 h-16 mx-auto rounded-full bg-white/10 backdrop-blur-sm border border-white/20 flex items-center justify-center group-hover:bg-amber-500/20 group-hover:border-amber-500/50 transition-all duration-300">
-                        <div className="text-amber-400 group-hover:text-amber-300 transition-colors">
-                          {item.icon}
-                        </div>
-                      </div>
-                      {/* Connector Line */}
-                      {idx < steps.length - 1 && (
-                        <div className="hidden lg:block absolute top-8 left-[calc(50%+2rem)] right-0 h-px bg-gradient-to-r from-white/20 to-transparent" />
-                      )}
-                      <div className="absolute -top-2 -right-2 w-6 h-6 rounded-full bg-amber-500/30 backdrop-blur-sm flex items-center justify-center">
-                        <span className="text-[9px] font-bold text-amber-300">{item.step}</span>
-                      </div>
+              <div className="bg-white/5 backdrop-blur-sm border border-white/10 rounded-2xl p-5 w-full max-w-sm">
+                <div className="flex items-center justify-between mb-4 pb-3 border-b border-white/10">
+                  <span className="text-white/60 text-xs uppercase tracking-wider">Referral Stats</span>
+                  <span className="text-amber-400 text-[10px] font-mono">LIVE</span>
+                </div>
+                <div className="space-y-3">
+                  <div className="flex justify-between items-center">
+                    <span className="text-white/50 text-xs">Your Code</span>
+                    <div className="flex items-center gap-2">
+                      <code className="bg-white/10 px-2 py-1 rounded text-amber-400 text-xs font-mono">
+                        {user?.myreferralCode}
+                      </code>
+                      <button onClick={() => copyToClipboard(user?.myreferralCode)} className="p-1 rounded bg-white/10 hover:bg-white/20">
+                        <Copy className="w-3 h-3 text-white/60" />
+                      </button>
                     </div>
-                    
-                    {/* Step Content */}
-                    <h4 className="text-sm font-semibold text-white mb-1">{item.title}</h4>
-                    <p className="text-[11px] text-white/40 leading-relaxed max-w-xs mx-auto">
-                      {item.description}
-                    </p>
+                  </div>
+                  <div className="flex justify-between items-center">
+                    <span className="text-white/50 text-xs">Referrals</span>
+                    <span className="text-white font-semibold text-sm">
+                      <CountUp value={user?.referralCount || 0} /> / 10
+                    </span>
+                  </div>
+                  <div className="space-y-1">
+                    <div className="flex justify-between text-[10px]">
+                      <span className="text-white/50">Progress</span>
+                      <span className="text-amber-400">{Math.min(100, ((user?.referralCount || 0) / 10) * 100)}%</span>
+                    </div>
+                    <div className="h-1 bg-white/10 rounded-full overflow-hidden">
+                      <div className="h-full bg-gradient-to-r from-amber-500 to-amber-600 rounded-full transition-all duration-500" style={{ width: `${Math.min(100, ((user?.referralCount || 0) / 10) * 100)}%` }} />
+                    </div>
+                  </div>
+                  <div className="flex justify-between items-center pt-2 border-t border-white/10">
+                    <span className="text-white/50 text-xs">Earnings</span>
+                    <span className="text-amber-400 font-bold text-lg">₹<CountUp value={user?.referralEarnings || 0} /></span>
                   </div>
                 </div>
-              ))}
-            </div>
-
-
-            {/* CTA Button */}
-            <div className="text-center mt-10">
-              <motion.button
-                onClick={handleSignUp}
-                whileHover={{ scale: 1.02 }}
-                whileTap={{ scale: 0.98 }}
-                className="group relative overflow-hidden bg-gradient-to-r from-amber-500 to-amber-600 text-white px-8 py-4 font-semibold transition-all duration-300 cursor-pointer rounded-full shadow-lg hover:shadow-amber-500/25"
-              >
-                <span className="relative z-10 flex items-center gap-2 text-sm uppercase tracking-[0.15em]">
-                  Get Your Referral Link
-                  <ArrowUpRight className="w-4 h-4 group-hover:translate-x-0.5 group-hover:-translate-y-0.5 transition-transform" />
-                </span>
-                <div className="absolute inset-0 bg-gradient-to-r from-amber-600 to-amber-700 opacity-0 group-hover:opacity-100 transition-opacity duration-300" />
-              </motion.button>
-            </div>
-
-            {/* Terms */}
-            <div className="flex items-center justify-center gap-4 mt-8">
-              <div className="flex items-center gap-1.5">
-                <Lock className="w-3 h-3 text-white/80" />
-                <span className="text-[9px] text-white/80 uppercase tracking-wide">Secure & Verified</span>
-              </div>
-              <div className="w-px h-3 bg-white/10" />
-              <div className="flex items-center gap-1.5">
-                <Shield className="w-3 h-3 text-white/80" />
-                <span className="text-[9px] text-white/80 uppercase tracking-wide">Terms Apply</span>
               </div>
             </div>
-            <p className="text-[8px] text-white/80 text-center mt-3">
-              *Reward credited after friend completes first purchase.
-            </p>
           </div>
-        </div>
+        </section>
+
+        <section className="px-4 py-12 max-w-7xl mx-auto">
+          <div className="text-center mb-8">
+            <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-amber-100 text-amber-700 text-[10px] font-semibold tracking-wide mb-4">
+              <Shield className="w-3 h-3" /> SIMPLE PROCESS
+            </div>
+            <h2 className="text-2xl font-serif text-neutral-900">How It Works</h2>
+          </div>
+          <div className="grid md:grid-cols-3 gap-6">
+            {[
+              { icon: <Share2 />, title: "Share Link", desc: "Send your unique referral link to friends" },
+              { icon: <UserPlus />, title: "Friend Signs Up", desc: "They register using your link" },
+              { icon: <Award />, title: "Earn Rewards", desc: "Get ₹500 credited to your wallet" },
+            ].map((step, idx) => (
+              <div key={idx} className="text-center p-6 bg-white rounded-2xl border border-neutral-100 hover:border-amber-200 hover:shadow-lg transition">
+                <div className="w-12 h-12 bg-amber-100 rounded-full flex items-center justify-center mx-auto mb-3 text-amber-600">{step.icon}</div>
+                <h3 className="font-semibold text-neutral-800 mb-1">{step.title}</h3>
+                <p className="text-neutral-500 text-sm">{step.desc}</p>
+              </div>
+            ))}
+          </div>
+        </section>
       </div>
+    );
+  }
+
+  return (
+    <div className="w-full bg-neutral-50">
+     <section className="relative bg-gradient-to-r from-neutral-900 to-neutral-800">
+  <div className="w-full px-4 sm:px-6 lg:px-8 py-6 sm:py-8">
+    <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between w-full max-w-5xl mx-auto">
+
+      {/* Left Side */}
+      <div className="max-w-md text-center sm:text-left mx-auto sm:mx-0">
+        <div className="inline-flex items-center gap-2 bg-amber-500/10 rounded-full px-3 py-0.5 mb-2">
+          <Gift className="w-3 h-3 text-amber-400" />
+          <span className="text-[9px] font-medium text-amber-400 uppercase tracking-wider">
+            Limited Time
+          </span>
+        </div>
+
+        <h1 className="text-2xl sm:text-3xl lg:text-4xl font-light text-white tracking-tight">
+          Refer & Earn{" "}
+          <span className="font-serif italic text-amber-400 font-semibold">
+            ₹7500
+          </span>
+        </h1>
+
+        <p className="text-white/50 text-xs sm:text-sm mt-1 max-w-md mx-auto sm:mx-0">
+          Invite friends, earn rewards on every successful signup.
+        </p>
+      </div>
+
+      {/* Right Side */}
+      <div className="flex-shrink-0 mt-4 sm:mt-0 flex justify-center sm:justify-end">
+        <button
+          onClick={handleSignUp}
+          className="bg-gradient-to-r from-amber-500 to-amber-600 text-white px-7 py-3 rounded-full font-semibold text-sm shadow-lg hover:shadow-amber-500/30 transition inline-flex items-center gap-2 whitespace-nowrap"
+        >
+          Sign Up <ArrowUpRight className="w-4 h-4" />
+        </button>
+      </div>
+
+    </div>
+  </div>
+</section>
+
+      <section className="px-4 py-12 max-w-7xl mx-auto">
+        <div className="text-center mb-6 sm:mb-8">
+          <h2 className="text-xl sm:text-2xl font-serif text-neutral-900">Why Join?</h2>
+        </div>
+
+        <div className="grid grid-cols-3 gap-2 sm:gap-5">
+          {[
+            { icon: <Package />, title: "Referral Code", desc: "Share this code with friends" },
+            { icon: <Sparkles />, title: "Special Offers", desc: "First order discount" },
+            { icon: <Lock />, title: "Secure Payment", desc: "128‑bit SSL encryption" },
+          ].map((feature, i) => (
+            <div
+              key={i}
+              className="text-center p-2 sm:p-5 bg-white rounded-xl border border-amber-200 transition hover:shadow-md"
+            >
+              <div className="w-8 h-8 sm:w-10 sm:h-10 bg-amber-100 rounded-full flex items-center justify-center mx-auto mb-1 sm:mb-2 text-amber-600">
+                {feature.icon}
+              </div>
+              <h3 className="font-semibold text-neutral-800 text-[10px] sm:text-sm mb-0.5 sm:mb-1">
+                {feature.title}
+              </h3>
+              <p className="hidden sm:block text-neutral-500 text-xs">{feature.desc}</p>
+            </div>
+          ))}
+        </div>
+      </section>
     </div>
   );
 }

@@ -1,110 +1,72 @@
 const ReferralConfig = require('../models/ReferralConfig');
-
-// Helper: attach expired flag dynamically
-const addExpiredFlag = (doc) => {
-  if (!doc) return null;
-  const now = new Date();
-  return {
-    ...doc.toObject(),
-    referredBy: {
-      ...doc.referredBy,
-      expired: doc.referredBy.expiry < now
-    },
-    referredTo: {
-      ...doc.referredTo,
-      expired: doc.referredTo.expiry < now
-    }
-  };
-};
-
-// Get current configuration (create default if none)
-exports.getConfig = async (req, res) => {
+const getReferralConfig = async (req, res) => {
   try {
     let config = await ReferralConfig.findOne();
     if (!config) {
-      const defaultExpiry = new Date();
-      defaultExpiry.setDate(defaultExpiry.getDate() + 7);
-      config = new ReferralConfig({
-        referredBy: { active: true, type: 'percentage', value: 10, expiry: defaultExpiry },
-        referredTo: { active: true, type: 'percentage', value: 10, expiry: defaultExpiry }
+      return res.status(200).json({
+        referredBy: {
+          active: true,
+          type: 'percentage',
+          value: 0,
+          daysUntilExpiry: 7,
+        },
       });
-      await config.save();
     }
-    res.json(addExpiredFlag(config));
+    
+    res.status(200).json({
+      referredBy: {
+        active: config.active,
+        type: config.type,
+        value: config.value,
+        daysUntilExpiry: config.daysUntilExpiry,
+      },
+    });
   } catch (error) {
-    res.status(500).json({ message: 'Server error', error: error.message });
+    res.status(500).json({ error: error.message });
   }
 };
 
-// Generic validator for discount object
-const validateDiscount = (discount, fieldName) => {
-  if (!discount) throw new Error(`${fieldName} is required`);
-  if (!['percentage', 'fixed'].includes(discount.type)) {
-    throw new Error(`${fieldName}.type must be 'percentage' or 'fixed'`);
-  }
-  if (typeof discount.value !== 'number' || discount.value < 0) {
-    throw new Error(`${fieldName}.value must be a positive number`);
-  }
-  if (!discount.expiry || isNaN(new Date(discount.expiry))) {
-    throw new Error(`${fieldName}.expiry must be a valid date`);
-  }
-};
-
-// Update referredBy only
-exports.updateReferredBy = async (req, res) => {
+// UPDATE controller – create or update configuration
+const updateReferralConfig = async (req, res) => {
   try {
     const { referredBy } = req.body;
-    validateDiscount(referredBy, 'referredBy');
-
-    const processed = {
-      ...referredBy,
-      expiry: new Date(referredBy.expiry)
-    };
-
+    const { active, type, value, daysUntilExpiry } = referredBy;
+    if (!type || !['percentage', 'fixed'].includes(type)) {
+      return res.status(400).json({ error: 'Invalid type. Must be "percentage" or "fixed".' });
+    }
+    if (typeof value !== 'number' || value <= 0) {
+      return res.status(400).json({ error: 'Value must be a positive number.' });
+    }
+    if (daysUntilExpiry !== undefined) {
+      if (typeof daysUntilExpiry !== 'number' || daysUntilExpiry < 1 || daysUntilExpiry > 366) {
+        return res.status(400).json({ error: 'daysUntilExpiry must be between 1 and 366.' });
+      }
+    }
+    if (active !== undefined && typeof active !== 'boolean') {
+      return res.status(400).json({ error: 'active must be a boolean.' });
+    }
     let config = await ReferralConfig.findOne();
     if (!config) {
-      // create minimal config with default referredTo (active, 10% off, 7 days)
-      const defaultExpiry = new Date();
-      defaultExpiry.setDate(defaultExpiry.getDate() + 7);
-      config = new ReferralConfig({
-        referredBy: processed,
-        referredTo: { active: true, type: 'percentage', value: 10, expiry: defaultExpiry }
-      });
-    } else {
-      config.referredBy = processed;
+      config = new ReferralConfig();
     }
+    if (active !== undefined) config.active = active;
+    if (type) config.type = type;
+    if (value) config.value = value;
+    if (daysUntilExpiry !== undefined) config.daysUntilExpiry = daysUntilExpiry;
     await config.save();
-    res.json(addExpiredFlag(config));
+    res.status(200).json({
+      referredBy: {
+        active: config.active,
+        type: config.type,
+        value: config.value,
+        daysUntilExpiry: config.daysUntilExpiry,
+      },
+    });
   } catch (error) {
-    res.status(400).json({ message: 'Validation error', error: error.message });
+    if (error.name === 'ValidationError') {
+      return res.status(400).json({ error: error.message });
+    }
+    res.status(500).json({ error: error.message });
   }
 };
-
-// Update referredTo only
-exports.updateReferredTo = async (req, res) => {
-  try {
-    const { referredTo } = req.body;
-    validateDiscount(referredTo, 'referredTo');
-
-    const processed = {
-      ...referredTo,
-      expiry: new Date(referredTo.expiry)
-    };
-
-    let config = await ReferralConfig.findOne();
-    if (!config) {
-      const defaultExpiry = new Date();
-      defaultExpiry.setDate(defaultExpiry.getDate() + 7);
-      config = new ReferralConfig({
-        referredBy: { active: true, type: 'percentage', value: 10, expiry: defaultExpiry },
-        referredTo: processed
-      });
-    } else {
-      config.referredTo = processed;
-    }
-    await config.save();
-    res.json(addExpiredFlag(config));
-  } catch (error) {
-    res.status(400).json({ message: 'Validation error', error: error.message });
-  }
-};
+module.exports = { getReferralConfig, updateReferralConfig };

@@ -29,19 +29,12 @@ import { fetchCart } from "../store/slices/cartSlice";
 import { useCheckoutData } from "../components/checkout/useCheckoutData";
 import { AddressPopup, AddressList } from "../components/checkout/AddressComponents";
 import { PaymentModal, CongratulationsModal, ExitWarningModal } from "../components/checkout/CheckoutModals";
-
-console.log("🔵 CheckoutPage.jsx loaded");
-
 const CheckoutPage = () => {
-  console.log("🔵 CheckoutPage component rendering");
-  
   const dispatch = useDispatch();
   const navigate = useNavigate();
   const location = useLocation();
   const rzpInstanceRef = useRef(null);
   const API_URL = import.meta.env.VITE_API_URL || "http://localhost:5000/api";
-
-  console.log("🔵 API_URL:", API_URL);
 
   const user = useSelector(selectUser);
   const cartItems = useSelector(selectCartItems);
@@ -54,9 +47,6 @@ const CheckoutPage = () => {
   const couponError = useSelector((state) => state.coupons.error);
   const couponLoading = useSelector((state) => state.coupons.loading);
 
-  console.log("🔵 User:", user?.email || "Guest");
-  console.log("🔵 Cart items count:", cartItems?.length || 0);
-  console.log("🔵 Cart subtotal:", cartSummary?.subtotal || 0);
 
   const {
     isBuyNow, isBulkBuyNow, buyNowProduct, clearBuyNowData,
@@ -72,20 +62,14 @@ const CheckoutPage = () => {
   const [partialCodEnabled, setPartialCodEnabled] = useState(false);
 
   const token = localStorage.getItem('authToken');
-  console.log("🔵 Token exists:", !!token);
-
-  // Fetch Partial COD settings
   useEffect(() => {
-    console.log("🔵 Fetching Partial COD settings...");
     const fetchPartialCodSettings = async () => {
       try {
         const response = await fetch(`${API_URL}/partial-cod/settings`);
         const data = await response.json();
-        console.log("🔵 Partial COD settings response:", data);
         if (data.success) {
           setPartialPercentage(data.percentage);
           setPartialCodEnabled(data.isEnabled);
-          console.log("🔵 Partial COD enabled:", data.isEnabled, "Percentage:", data.percentage);
         }
       } catch (err) {
         console.error("🔴 Error fetching partial COD settings:", err);
@@ -95,45 +79,54 @@ const CheckoutPage = () => {
   }, [API_URL]);
 
   useEffect(() => {
-    console.log("🔵 Fetching coupons...");
     const fetchCoupons = async () => {
       try {
         const response = await fetch(`${API_URL}/coupons/available`, { headers: { 'Authorization': `Bearer ${token}` } });
         const data = await response.json();
         setCoupons(data.coupons || data);
-        console.log("🔵 Coupons fetched:", data.coupons?.length || 0);
       } catch (err) { console.error('🔴 Error fetching coupons:', err); }
     };
     fetchCoupons();
   }, [token, API_URL]);
 
+  const [percentage, setPercentage] = useState(0);
+  const [discountValue, setDiscountValue] = useState(0);
+
+  const getReferralDetails = async () => {
+    try {
+      const res = await axios.post(`${API_URL}/referral/fetchReferral`, { userId: user._id });
+      setPercentage(res.data.data.percentageValue);
+      setDiscountValue(res.data.data.discountValue);
+    } catch (error) {
+      console.error("Error fetching referral details:", error);
+    }
+  }
   useEffect(() => {
-    console.log("🔵 Removing coupon on mount");
+    getReferralDetails();
+  }, [dispatch]);
+
+  useEffect(() => {
     dispatch(removeCoupon());
     setCouponCode("");
-    if (rzpInstanceRef.current) { 
-      console.log("🔵 Closing existing Razorpay instance");
-      rzpInstanceRef.current.close(); 
-      rzpInstanceRef.current = null; 
+    if (rzpInstanceRef.current) {
+      rzpInstanceRef.current.close();
+      rzpInstanceRef.current = null;
     }
-    return () => { 
+    return () => {
       if (rzpInstanceRef.current) {
-        console.log("🔵 Cleanup: closing Razorpay instance");
-        rzpInstanceRef.current.close(); 
+        rzpInstanceRef.current.close();
       }
     };
   }, [dispatch]);
 
   useEffect(() => {
     if (Object.keys(user).length !== 0) {
-      console.log("🔵 User logged in, fetching available coupons");
       dispatch(fetchAvailableCoupons());
     }
   }, [dispatch, user]);
 
   useEffect(() => {
     if (appliedCoupon && appliedCoupon.discountAmount > 0) {
-      console.log("🔵 Coupon applied:", appliedCoupon.code, "Discount:", appliedCoupon.discountAmount);
       setCongratulationsData({ couponCode: appliedCoupon.code, savingsAmount: appliedCoupon.discountAmount });
       setShowCongratulationsPopup(true);
       setTimeout(() => setShowCongratulationsPopup(false), 4000);
@@ -143,7 +136,6 @@ const CheckoutPage = () => {
   useEffect(() => {
     const couponCodeY = filterYCoupon[0]?.code;
     if (couponCodeY) {
-      console.log("🔵 Free coupon available:", couponCodeY);
       setCongratulationsData({ couponCode: couponCodeY, savingsAmount: calculateFinalPricing.freediscount });
       setShowCongratulationsPopup(true);
       setTimeout(() => setShowCongratulationsPopup(false), 4000);
@@ -152,31 +144,49 @@ const CheckoutPage = () => {
 
   useEffect(() => {
     if (!isBuyNow && !cartItems.length) {
-      console.log("🔵 Fetching cart...");
       dispatch(fetchCart());
     }
   }, [dispatch, cartItems.length, isBuyNow]);
-
+  let referralDiscount = 0
   const calculateFinalPricing = useMemo(() => {
-    console.log("🔵 Calculating final pricing...");
     let subtotal = isBuyNow && buyNowProduct ? buyNowProduct.product.price * buyNowProduct.quantity : cartSummary.subtotal || 0;
-    // const shippingCharges = subtotal >= 399 ? 0 : 99;
-    const shippingCharges = 0;
+    if (percentage) {
+      referralDiscount += Math.round(subtotal * (percentage / 100));
+    }
+    if (discountValue) {
+      referralDiscount += Math.round(discountValue);
+    }
+    const shippingCharges = subtotal >= 399 ? 0 : 99;
     const discount = appliedCoupon?.discountAmount || 0;
-    const freediscount = filterYCoupon[0]?.discountType == "flat" ? filterYCoupon[0]?.discountValue : subtotal * (filterYCoupon[0]?.discountValue) / 100 || 0;
+    const freediscount = filterYCoupon[0]?.discountType == "flat" ? filterYCoupon[0]?.discountValue : Math.round(subtotal * (filterYCoupon[0]?.discountValue) / 100) || 0;
     const totalSaving = discount + freediscount;
-    const totalValue = Math.round(subtotal + shippingCharges - discount - freediscount);
-    const result = { subtotal, shippingCharges, discount, totalSaving, total: totalValue > 0 ? totalValue : 0, freediscount };
-    console.log("🔵 Pricing calculated:", result);
+    const totalValue = Math.round(subtotal + shippingCharges - discount - freediscount - referralDiscount);
+    const result = { subtotal, shippingCharges, discount, totalSaving, total: totalValue > 0 ? totalValue : 0, freediscount, referralDiscount };
     return result;
   }, [cartSummary.subtotal, appliedCoupon, isBuyNow, buyNowProduct, filterYCoupon]);
+  const updateEarnings = async () => {
+    try {
+      const res = await axios.put(`${API_URL}/referral-total-earning/update`, {
+        userId: user._id,
+        amount: calculateFinalPricing.referralDiscount
+      });
+      if (!res) {
+        await axios.post(`${API_URL}/referral-total-earning/create`, {
+          userId: user._id,
+          amount: calculateFinalPricing.referralDiscount
+        });
+      }
+    } catch (error) {
+      console.error("Error updating referral total earning:", error);
+    }
+  }
+  useEffect(() => {
+    updateEarnings()
+  }, [calculateFinalPricing.referralDiscount]);
 
   const getDisplayItems = useCallback(() => {
-    console.log("🔵 Getting display items...");
     if (isBuyNow && buyNowProduct) {
-      console.log("🔵 Buy Now product:", buyNowProduct.product?.name);
       if (buyNowProduct.isBulkProduct) {
-        console.log("🔵 Bulk product detected");
         return [{
           product: buyNowProduct.product,
           quantity: buyNowProduct.totalSets || 1,
@@ -191,23 +201,18 @@ const CheckoutPage = () => {
       }
       return [{ product: buyNowProduct.product, quantity: buyNowProduct.quantity, size: buyNowProduct.size, color: buyNowProduct.color }];
     }
-    console.log("🔵 Cart items count:", cartItems?.length);
     return cartItems;
   }, [isBuyNow, buyNowProduct, cartItems]);
 
   const validateOrder = () => {
-    console.log("🔵 Validating order...");
-    if (!selectedAddress) { 
-      console.log("🔴 No shipping address selected");
-      alert("Please select a shipping address"); 
-      return false; 
+    if (!selectedAddress) {
+      alert("Please select a shipping address");
+      return false;
     }
-    if (!getDisplayItems().length) { 
-      console.log("🔴 No items to order");
-      alert("No items to order"); 
-      return false; 
+    if (!getDisplayItems().length) {
+      alert("No items to order");
+      return false;
     }
-    console.log("🔵 Order validation passed");
     return true;
   };
 
@@ -229,37 +234,25 @@ const CheckoutPage = () => {
       couponCode: appliedCoupon?.code || "",
       isBuyNow: isBuyNow
     };
-    console.log("🔵 Create order data:", data);
     return data;
   }, [getDisplayItems, selectedAddress, appliedCoupon, isBuyNow]);
 
-  // ✅ FIXED: Handle Place Order with Razorpay modal
   const handlePlaceOrder = () => {
-    console.log("🟢🟢🟢 HANDLE PLACE ORDER STARTED 🟢🟢🟢");
-    if (rzpInstanceRef.current) { 
-      console.log("🔵 Closing existing Razorpay instance");
-      rzpInstanceRef.current.close(); 
-      rzpInstanceRef.current = null; 
+    if (rzpInstanceRef.current) {
+      rzpInstanceRef.current.close();
+      rzpInstanceRef.current = null;
     }
     if (!validateOrder()) return;
-    
-    const orderPayload = { 
-      amount: calculateFinalPricing.total, 
-      freediscount: calculateFinalPricing.freediscount, 
-      ...createOrderData() 
+
+    const orderPayload = {
+      amount: calculateFinalPricing.total,
+      freediscount: calculateFinalPricing.freediscount,
+      ...createOrderData()
     };
-    
-    console.log("🟢 Dispatching createRazorpayOrder with:", orderPayload);
-    
-    // ✅ Wait for order creation and then open Razorpay
+
     dispatch(createRazorpayOrder(orderPayload)).then((result) => {
-      console.log("🟢 createRazorpayOrder result:", result);
-      
       if (result.type === "order/createRazorpayOrder/fulfilled") {
         const { razorpayOrder: razorpayOrderData, orderId, orderSummary } = result.payload;
-        console.log("🟢 Razorpay Order received:", razorpayOrderData);
-        
-        // ✅ Open Razorpay modal here
         const options = {
           key: import.meta.env.VITE_RAZORPAY_KEY_ID,
           amount: razorpayOrderData.amount,
@@ -268,19 +261,16 @@ const CheckoutPage = () => {
           description: "Factory Sale Purchase",
           order_id: razorpayOrderData.id,
           handler: async (response) => {
-            console.log("🟢 Razorpay payment success:", response);
             try {
               const verifyResult = await dispatch(verifyPayment({
                 razorpay_order_id: response.razorpay_order_id,
                 razorpay_payment_id: response.razorpay_payment_id,
                 razorpay_signature: response.razorpay_signature
               })).unwrap();
-              
               toast.success("Order placed successfully!");
               clearBuyNowData();
               navigate(`/order-confirmation/${verifyResult.order.id || orderId}`);
             } catch (err) {
-              console.error("Verification failed:", err);
               toast.error("Payment successful but verification pending. Contact support.");
             }
           },
@@ -292,67 +282,51 @@ const CheckoutPage = () => {
           theme: { color: "#ec4899" },
           modal: {
             ondismiss: () => {
-              console.log("🔵 Razorpay modal dismissed");
               rzpInstanceRef.current = null;
             }
           }
         };
-        
+
         if (window.Razorpay) {
           const razorpay = new window.Razorpay(options);
           rzpInstanceRef.current = razorpay;
           razorpay.open();
-          console.log("🟢 Razorpay modal opened");
         } else {
-          console.log("🔴 Razorpay SDK not loaded");
           alert("Payment gateway not available. Please try again.");
         }
       } else {
-        console.log("🔴 createRazorpayOrder failed:", result.error);
         toast.error(result.payload || "Failed to create order");
       }
     });
-    
+
     setShowPaymentModal(false);
   };
 
   const handlePlaceCodOrder = () => {
-    console.log("🟢🟢🟢 HANDLE COD ORDER STARTED 🟢🟢🟢");
-    if (rzpInstanceRef.current) { 
-      console.log("🔵 Closing existing Razorpay instance");
-      rzpInstanceRef.current.close(); 
-      rzpInstanceRef.current = null; 
+    if (rzpInstanceRef.current) {
+      rzpInstanceRef.current.close();
+      rzpInstanceRef.current = null;
     }
     if (!validateOrder()) return;
     const orderPayload = { amount: Math.round(calculateFinalPricing.total || 0), freediscount: calculateFinalPricing.freediscount, ...createOrderData() };
-    console.log("🟢 Dispatching placeCodOrder with:", orderPayload);
     dispatch(placeCodOrder(orderPayload)).then((result) => {
-      console.log("🟢 COD order result:", result);
-      if (result.type === "order/placeCodOrder/fulfilled") { 
-        clearBuyNowData(); 
-        navigate(`/order-confirmation/${result.payload.order.id}`); 
+      if (result.type === "order/placeCodOrder/fulfilled") {
+        clearBuyNowData();
+        navigate(`/order-confirmation/${result.payload.order.id}`);
       } else {
-        console.log("🔴 COD order failed:", result.error);
         alert("Failed to place COD order. Please try again.");
       }
     });
   };
 
-  // ========== ✅ FIXED: PARTIAL COD ORDER ==========
   const handlePartialCodOrder = async () => {
-    console.log("🟢🟢🟢 ========== HANDLE PARTIAL COD ORDER STARTED ========== 🟢🟢🟢");
-    
     if (!validateOrder()) {
-      console.log("🔴 Validation failed");
       toast.error("Please select a shipping address");
       return;
     }
-    
+
     const onlineAmount = Math.round(calculateFinalPricing.total * partialPercentage / 100);
     const codAmount = calculateFinalPricing.total - onlineAmount;
-    
-    console.log("💰 Amounts:", { total: calculateFinalPricing.total, onlineAmount, codAmount, percentage: partialPercentage });
-    
     const orderPayload = {
       items: getDisplayItems().map(item => ({
         productId: item.product?._id,
@@ -374,14 +348,10 @@ const CheckoutPage = () => {
       partialPercentage: partialPercentage,
       freediscount: calculateFinalPricing.freediscount
     };
-    
+
     try {
       setShowPaymentModal(false);
-      
       const result = await dispatch(createPartialCodOrder(orderPayload)).unwrap();
-      
-      console.log("✅ Partial COD order created:", result);
-      
       const options = {
         key: import.meta.env.VITE_RAZORPAY_KEY_ID,
         amount: result.razorpayOrder.amount,
@@ -390,19 +360,16 @@ const CheckoutPage = () => {
         description: `Pay ${partialPercentage}% (₹${onlineAmount}) online, rest ₹${codAmount} on delivery`,
         order_id: result.razorpayOrder.id,
         handler: async (response) => {
-          console.log("✅ Razorpay payment success:", response);
           try {
             await dispatch(verifyPartialCodPayment({
               razorpay_order_id: response.razorpay_order_id,
               razorpay_payment_id: response.razorpay_payment_id,
               razorpay_signature: response.razorpay_signature
             })).unwrap();
-            
             toast.success("Order placed successfully!");
             clearBuyNowData();
             navigate(`/order-confirmation/${result.orderId}`);
           } catch (err) {
-            console.error("Verification failed:", err);
             toast.error("Payment successful but verification pending. Contact support.");
           }
         },
@@ -412,56 +379,48 @@ const CheckoutPage = () => {
           contact: `+91${selectedAddress?.phoneNumber}`
         },
         theme: { color: "#ec4899" },
-        modal: { 
-          ondismiss: () => { 
-            console.log("Modal closed");
-            rzpInstanceRef.current = null; 
-          } 
+        modal: {
+          ondismiss: () => {
+            rzpInstanceRef.current = null;
+          }
         }
       };
-      
+
       const razorpay = new window.Razorpay(options);
       rzpInstanceRef.current = razorpay;
       razorpay.open();
-      
+
     } catch (error) {
-      console.error("🔴 Partial COD Error:", error);
       toast.error(error?.message || "Failed to process partial COD");
       setShowPaymentModal(true);
     }
   };
 
   const handleBackButton = () => {
-    console.log("🔵 Back button clicked");
     setShowExitWarning(true);
   };
-  
-  const handleContinueCheckout = () => { 
-    console.log("🔵 Continue checkout clicked");
-    setShowExitWarning(false); 
-    setShowExitWarningS(false); 
+
+  const handleContinueCheckout = () => {
+    setShowExitWarning(false);
+    setShowExitWarningS(false);
   };
-  
+
   const handleExitButton = () => {
-    console.log("🔵 Exit button clicked");
     setShowExitWarningS(true);
   };
-  
+
   const handleSaveAndExit = async (reasons) => {
-    console.log("🔵 Save and exit with reasons:", reasons);
-    try { await axios.post(`${API_URL}/reason/cancellation`, { cancellationReasons: reasons }); } 
+    try { await axios.post(`${API_URL}/reason/cancellation`, { cancellationReasons: reasons }); }
     catch (error) { console.error("Failed to save reasons:", error); }
     navigate('/cart');
   };
 
   useEffect(() => {
-    console.log("🔵 Setting up back button handler");
     window.history.pushState({ page: 1 }, "", window.location.href);
-    const onBackButtonEvent = (e) => { 
-      console.log("🔵 Popstate event triggered");
-      e.preventDefault(); 
-      handleBackButton(); 
-      window.history.pushState({ page: 1 }, "", window.location.href); 
+    const onBackButtonEvent = (e) => {
+      e.preventDefault();
+      handleBackButton();
+      window.history.pushState({ page: 1 }, "", window.location.href);
     };
     window.addEventListener("popstate", onBackButtonEvent);
     return () => window.removeEventListener("popstate", onBackButtonEvent);
@@ -470,15 +429,7 @@ const CheckoutPage = () => {
   const displayItems = getDisplayItems();
   const hasItems = displayItems.length > 0;
   const showPartialCodOption = partialCodEnabled && (isBulkBuyNow || displayItems.some(item => item.isBulkProduct));
-  
-  console.log("🔵 Show Partial COD option:", showPartialCodOption);
-  console.log("🔵 Partial Percentage:", partialPercentage);
-  console.log("🔵 Partial COD Enabled:", partialCodEnabled);
-  console.log("🔵 Is Bulk Buy Now:", isBulkBuyNow);
-  console.log("🔵 Display items count:", displayItems.length);
-
   if (!hasItems && !orderLoading.creating) {
-    console.log("🔵 No items, showing empty cart");
     return (
       <div className="flex items-center justify-center min-h-screen">
         <div className="text-center">
@@ -489,9 +440,6 @@ const CheckoutPage = () => {
       </div>
     );
   }
-
-  console.log("🔵 Rendering checkout page with", displayItems.length, "items");
-
   return (
     <div className="min-h-screen bg-gray-50 pb-12">
       <div className="max-w-7xl mx-auto px-4 py-8">
@@ -569,6 +517,7 @@ const CheckoutPage = () => {
                 <div className="flex justify-between"><span>Subtotal</span><span>₹{calculateFinalPricing.subtotal}</span></div>
                 {calculateFinalPricing.discount > 0 && <div className="flex justify-between text-green-600"><span>Coupon Discount</span><span>-₹{calculateFinalPricing.discount}</span></div>}
                 {calculateFinalPricing.freediscount > 0 && <div className="flex justify-between text-blue-600"><span>Free Discount</span><span>-₹{calculateFinalPricing.freediscount}</span></div>}
+                {calculateFinalPricing.referralDiscount > 0 && <div className="flex justify-between text-blue-600"><span>Referral Discount Applied</span><span>-₹{calculateFinalPricing.referralDiscount}</span></div>}
                 <div className="flex justify-between"><span>Shipping</span><span>{calculateFinalPricing.shippingCharges === 0 ? "FREE" : `₹${calculateFinalPricing.shippingCharges}`}</span></div>
                 <div className="flex justify-between pt-2 border-t"><span className="font-bold">Total</span><span className="text-xl font-bold text-red-600">₹{calculateFinalPricing.total}</span></div>
               </div>
@@ -608,5 +557,3 @@ const CheckoutPage = () => {
 };
 
 export default CheckoutPage;
-
-console.log("🔵 CheckoutPage.jsx exported successfully");

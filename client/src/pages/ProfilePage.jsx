@@ -1,6 +1,7 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useCallback } from "react";
 import { useDispatch, useSelector } from "react-redux";
 import { motion, AnimatePresence } from "framer-motion";
+import axios from "axios";
 import {
   User,
   Camera,
@@ -78,6 +79,44 @@ const ProfilePage = () => {
     isDefault: false,
   });
 
+  const [dataforreferral, setDataforreferral] = useState(null);
+  const [totalEarning, setTotalEarning] = useState(0);
+
+  // --- Helper functions (memoized) ---
+  const getTotalEarning = useCallback(async () => {
+    if (!user?._id) return;
+    try {
+      const res = await axios.post(`${import.meta.env.VITE_API_URL}/referral-total-earning`, {
+        userId: user._id,
+      });
+      setTotalEarning(res.data.data.totalEarning);
+    } catch (error) {
+      console.error("Error calculating total earning:", error);
+    }
+  }, [user?._id]);
+
+  const getReferralDetails = useCallback(async () => {
+    if (!user?._id) return;
+    try {
+      const res = await axios.post(`${import.meta.env.VITE_API_URL}/referral/fetchReferral`, {
+        userId: user._id,
+      });
+      setDataforreferral(res.data.data);
+    } catch (error) {
+      console.error("Error fetching referral details:", error.response?.data || error.message);
+    }
+  }, [user?._id]);
+
+  // --- Effects ---
+  // 1. Restore active tab from localStorage (only once on mount)
+  useEffect(() => {
+    const savedTab = localStorage.getItem("activeButton");
+    if (savedTab && ["profile", "orders", "security", "referral"].includes(savedTab)) {
+      setActiveTab(savedTab);
+    }
+  }, []);
+
+  // 2. Update profile data when user changes
   useEffect(() => {
     if (user) {
       setProfileData({
@@ -94,11 +133,28 @@ const ProfilePage = () => {
     }
   }, [user]);
 
+  // 3. Fetch referral data and earnings when user ID is available
   useEffect(() => {
-    dispatch(fetchUserOrders({ limit: 5 }));
-    dispatch(fetchWishlist());
-    dispatch(getProfile());
-  }, [dispatch]);
+    if (user?._id) {
+      getReferralDetails();
+      getTotalEarning();
+    }
+  }, [user?._id, getReferralDetails, getTotalEarning]);
+
+  // 4. Fetch orders and wishlist on mount (and when user changes)
+  useEffect(() => {
+    if (user) {
+      dispatch(fetchUserOrders({ limit: 5 }));
+      dispatch(fetchWishlist());
+      dispatch(getProfile());
+    }
+  }, [dispatch, user]);
+
+  // --- Handlers ---
+  const handleTabChange = (tabId) => {
+    setActiveTab(tabId);
+    localStorage.setItem("activeButton", tabId);
+  };
 
   const handleProfileUpdate = async (e) => {
     e.preventDefault();
@@ -234,6 +290,12 @@ const ProfilePage = () => {
     setShowAddressForm(true);
   };
 
+  const copyToClipboard = () => {
+    const referralLink = `${window.location.origin}/register?ref=${user?.myreferralCode}`;
+    navigator.clipboard.writeText(referralLink);
+    toast.success("Link copied to clipboard!");
+  };
+
   const referralLink = `${window.location.origin}/register?ref=${user?.myreferralCode}`;
   const shareText = "Join now using my referral link and get exciting rewards! 🚀";
   const shareUrls = {
@@ -245,11 +307,6 @@ const ProfilePage = () => {
     twitter: `https://twitter.com/intent/tweet?text=${encodeURIComponent(`${shareText} ${referralLink}`)}`,
     linkedin: `https://www.linkedin.com/sharing/share-offsite/?url=${encodeURIComponent(referralLink)}`,
     telegram: `https://t.me/share/url?url=${encodeURIComponent(referralLink)}&text=${encodeURIComponent(shareText)}`,
-  };
-
-  const copyToClipboard = () => {
-    navigator.clipboard.writeText(referralLink);
-    toast.success("Link copied to clipboard!");
   };
 
   const tabs = [
@@ -270,7 +327,7 @@ const ProfilePage = () => {
           {/* Premium Profile Header */}
           <div className="relative mb-8 overflow-hidden bg-white rounded-2xl shadow-xl">
             <div className="absolute top-0 right-0 w-80 h-80 bg-gradient-to-br from-red-500/10 to-rose-500/5 rounded-full -mt-40 -mr-40 blur-3xl" />
-            <div className="absolute bottom-0 left-0 w-80 h-80 bg-gradient-to-tr from-red-500/5 to-red-500/5 rounded-full -mb-40 -ml-40 blur-3xl" />
+            <div className="absolute bottom-0 left-0 w-80 h-80 bg-gradient-to-tr from-amber-500/5 to-red-500/5 rounded-full -mb-40 -ml-40 blur-3xl" />
 
             <div className="relative p-6 sm:p-8">
               <div className="flex flex-col items-center gap-6 md:flex-row md:items-start">
@@ -326,11 +383,12 @@ const ProfilePage = () => {
                       return (
                         <button
                           key={tab.id}
-                          onClick={() => setActiveTab(tab.id)}
-                          className={`w-full flex-shrink-0 flex items-center gap-3 px-4 py-3 rounded-xl text-left text-sm font-medium transition-all duration-300 ${isActive
+                          onClick={() => handleTabChange(tab.id)}
+                          className={`w-full flex-shrink-0 flex items-center gap-3 px-4 py-3 rounded-xl text-left text-sm font-medium transition-all duration-300 ${
+                            isActive
                               ? "bg-gradient-to-r from-red-900 to-red-800 text-white shadow-lg"
                               : "text-gray-600 hover:bg-red-50 hover:text-gray-700"
-                            }`}
+                          }`}
                         >
                           <Icon className={`w-5 h-5 ${isActive ? "text-white" : "text-gray-400"}`} />
                           <span>{tab.label}</span>
@@ -624,12 +682,13 @@ const ProfilePage = () => {
                                   <div className="flex items-center gap-4">
                                     <span className="text-lg font-bold text-gray-700">₹{order.pricing?.total || 0}</span>
                                     <span
-                                      className={`px-3 py-1 rounded-full text-xs font-semibold capitalize ${order.status === "delivered"
+                                      className={`px-3 py-1 rounded-full text-xs font-semibold capitalize ${
+                                        order.status === "delivered"
                                           ? "bg-green-50 text-green-700 ring-1 ring-green-200"
                                           : order.status === "shipped"
-                                            ? "bg-blue-50 text-blue-700 ring-1 ring-blue-200"
-                                            : "bg-amber-50 text-amber-700 ring-1 ring-amber-200"
-                                        }`}
+                                          ? "bg-blue-50 text-blue-700 ring-1 ring-blue-200"
+                                          : "bg-amber-50 text-amber-700 ring-1 ring-amber-200"
+                                      }`}
                                     >
                                       {order.status}
                                     </span>
@@ -668,10 +727,11 @@ const ProfilePage = () => {
                             </div>
                             <button
                               onClick={() => setShowPasswordForm(!showPasswordForm)}
-                              className={`px-4 py-2 text-sm font-semibold rounded-xl transition-all ${showPasswordForm
+                              className={`px-4 py-2 text-sm font-semibold rounded-xl transition-all ${
+                                showPasswordForm
                                   ? "text-gray-700 bg-white border border-gray-200 hover:bg-red-50"
                                   : "text-white bg-gradient-to-r from-red-900 to-red-800 shadow-md hover:shadow-lg hover:scale-[1.02]"
-                                }`}
+                              }`}
                             >
                               {showPasswordForm ? "Cancel" : "Change Password"}
                             </button>
@@ -745,11 +805,11 @@ const ProfilePage = () => {
                             <div className="relative p-6 overflow-hidden bg-gradient-to-br from-red-700 to-red-800 rounded-2xl shadow-xl">
                               <div className="absolute top-0 right-0 w-32 h-32 bg-white/5 rounded-full -mt-16 -mr-16 blur-2xl" />
                               <p className="relative text-sm font-medium text-gray-300">Total Referrals</p>
-                              <p className="relative mt-2 text-4xl font-bold text-white">{user?.totalReferrals || 0}</p>
+                              <p className="relative mt-2 text-4xl font-bold text-white">{dataforreferral?.numberOfReferrals || 0}</p>
                             </div>
                             <div className="relative p-6 overflow-hidden bg-white border border-gray-200 rounded-2xl shadow-lg">
                               <p className="text-sm font-medium text-gray-500">Referral Earnings</p>
-                              <p className="mt-2 text-4xl font-bold text-gray-700">₹{user?.referralEarnings || 0}</p>
+                              <p className="mt-2 text-4xl font-bold text-gray-900">₹{Math.round(totalEarning)}</p>
                             </div>
                           </div>
                           <div className="p-6 bg-white border border-gray-200 rounded-2xl shadow-lg">
