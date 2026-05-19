@@ -30,6 +30,7 @@ import {
 import { fetchPopupSetting } from "../store/slices/popupSlice";
 import ReferralProgram from "../components/Referral-program";
 import D2CHighlight from "../components/D2CHighlight";
+import WhatsAppScrollableComponent from "../components/WhatsAppScrollableComponent";
 
 const HomePage = () => {
   const dispatch = useDispatch();
@@ -133,6 +134,7 @@ const HomePage = () => {
       <FeaturedCategories />
       <HeroBanner />
       <TrendingProducts />
+      <WhatsAppScrollableComponent/>
       {/* <KsauniTshirtStyle /> */}
       {/* <PriceSelection /> */}
       <NewArrivals />
