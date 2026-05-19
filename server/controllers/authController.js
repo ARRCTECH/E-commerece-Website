@@ -314,7 +314,7 @@ const registerWithEmail = async (req, res) => {
           createdAt: user.createdAt,
           expireReferralDate: user.expireReferralDate,
           referredBy: user.referredBy,
-          myrteferralCode: user.myreferralCode,
+    myreferralCode: user.myreferralCode,  // ✅ Correct spelling
         },
         customToken,
         jwtToken,
@@ -760,6 +760,120 @@ const verifyPhoneOTP = async (req, res) => {
 }
 
 // Verify Firebase ID Token
+// const verifyFirebaseToken = async (req, res) => {
+//   try {
+//     const { idToken } = req.body
+
+//     if (!idToken) {
+//       return res.status(400).json({
+//         success: false,
+//         message: "ID token is required",
+//       })
+//     }
+
+//     // Verify Firebase ID token
+//     const decodedToken = await admin.auth().verifyIdToken(idToken)
+//     const firebaseUid = decodedToken.uid
+
+//     // Get Firebase user details
+//     const firebaseUser = await admin.auth().getUser(firebaseUid)
+
+//     // Find or create user in database
+//     let user = await User.findOne({ firebaseUid })
+
+//     if (!user) {
+//       // Create new user for phone authentication
+//       const authMethod = firebaseUser.phoneNumber ? "phone" : "email"
+//       const name =
+//         firebaseUser.displayName || `User ${firebaseUser.phoneNumber?.slice(-4) || firebaseUser.email?.split("@")[0]}`
+
+//       user = new User({
+//         firebaseUid: firebaseUser.uid,
+//         name,
+//         email: firebaseUser.email || null,
+//         phoneNumber: firebaseUser.phoneNumber || null,
+//         authMethod,
+//         isVerified: firebaseUser.emailVerified || !!firebaseUser.phoneNumber,
+//         role: "user",
+//         createdAt: new Date(),
+//         expireReferralDate: user.expireReferralDate,
+//         referredBy: user.referredBy,
+//         myreferralCode: user.myreferralCode,
+//       })
+
+//       await user.save()
+
+//       // Send welcome email for email users
+//       if (authMethod === "email" && firebaseUser.email) {
+//         try {
+//           await sendEmail({
+//             to: firebaseUser.email,
+//             template: "welcome",
+//             data: {
+//               name: user.name,
+//               email: firebaseUser.email,
+//             },
+//           })
+//         } catch (emailError) {
+//           console.error("Failed to send welcome email:", emailError)
+//         }
+//       }
+//     }
+
+//     // Update last login
+//     user.lastLogin = new Date()
+//     await user.save()
+
+//     // Generate JWT token
+//     const jwtToken = jwt.sign(
+//       {
+//         userId: user._id,
+//         firebaseUid: user.firebaseUid,
+//         email: user.email,
+//         phoneNumber: user.phoneNumber,
+//         role: user.role,
+//       },
+//       process.env.JWT_SECRET,
+//       { expiresIn: "7d" }
+//     )
+
+//     res.status(200).json({
+//       success: true,
+//       message: "Token verified successfully",
+//       user: {
+//         _id: user._id,
+//         firebaseUid: user.firebaseUid,
+//         name: user.name,
+//         email: user.email,
+//         phoneNumber: user.phoneNumber,
+//         authMethod: user.authMethod,
+//         role: user.role,
+//         isVerified: user.isVerified,
+//         avatar: user.avatar,
+//         createdAt: user.createdAt,
+//         lastLogin: user.lastLogin,
+//         expireReferralDate: user.expireReferralDate,
+//         referredBy: user.referredBy,
+//         myreferralCode: user.myreferralCode,
+//       },
+//       jwtToken,
+//     })
+//   } catch (error) {
+//     console.error("Token verification error:", error)
+//     if (error.code === "auth/id-token-expired") {
+//       return res.status(401).json({
+//         success: false,
+//         message: "Token has expired",
+//       })
+//     }
+//     res.status(401).json({
+//       success: false,
+//       message: "Invalid token",
+//     })
+//   }
+// }
+
+// ✅ CORRECT CODE
 const verifyFirebaseToken = async (req, res) => {
   try {
     const { idToken } = req.body
@@ -771,60 +885,38 @@ const verifyFirebaseToken = async (req, res) => {
       })
     }
 
-    // Verify Firebase ID token
     const decodedToken = await admin.auth().verifyIdToken(idToken)
     const firebaseUid = decodedToken.uid
-
-    // Get Firebase user details
     const firebaseUser = await admin.auth().getUser(firebaseUid)
 
-    // Find or create user in database
     let user = await User.findOne({ firebaseUid })
 
     if (!user) {
-      // Create new user for phone authentication
       const authMethod = firebaseUser.phoneNumber ? "phone" : "email"
-      const name =
-        firebaseUser.displayName || `User ${firebaseUser.phoneNumber?.slice(-4) || firebaseUser.email?.split("@")[0]}`
+      const name = firebaseUser.displayName || 
+        `User ${firebaseUser.phoneNumber?.slice(-4) || firebaseUser.email?.split("@")[0]}`
 
+      // ✅ FIX: Don't reference user object while creating it
       user = new User({
         firebaseUid: firebaseUser.uid,
-        name,
+        name: name,
         email: firebaseUser.email || null,
         phoneNumber: firebaseUser.phoneNumber || null,
-        authMethod,
+        authMethod: authMethod,
         isVerified: firebaseUser.emailVerified || !!firebaseUser.phoneNumber,
         role: "user",
         createdAt: new Date(),
-        expireReferralDate: user.expireReferralDate,
-        referredBy: user.referredBy,
-        myreferralCode: user.myreferralCode,
+        expireReferralDate: null,      // ✅ Set directly
+        referredBy: null,              // ✅ Set directly
+        myreferralCode: randomReferralCode(), // ✅ Generate new code
       })
 
       await user.save()
-
-      // Send welcome email for email users
-      if (authMethod === "email" && firebaseUser.email) {
-        try {
-          await sendEmail({
-            to: firebaseUser.email,
-            template: "welcome",
-            data: {
-              name: user.name,
-              email: firebaseUser.email,
-            },
-          })
-        } catch (emailError) {
-          console.error("Failed to send welcome email:", emailError)
-        }
-      }
     }
 
-    // Update last login
     user.lastLogin = new Date()
     await user.save()
 
-    // Generate JWT token
     const jwtToken = jwt.sign(
       {
         userId: user._id,
@@ -860,12 +952,6 @@ const verifyFirebaseToken = async (req, res) => {
     })
   } catch (error) {
     console.error("Token verification error:", error)
-    if (error.code === "auth/id-token-expired") {
-      return res.status(401).json({
-        success: false,
-        message: "Token has expired",
-      })
-    }
     res.status(401).json({
       success: false,
       message: "Invalid token",

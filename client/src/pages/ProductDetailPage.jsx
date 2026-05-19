@@ -13,21 +13,12 @@ import "swiper/css/pagination"
 import { Heart, Minus, Plus, X, AlertCircle, Ruler, ShoppingCart } from "lucide-react"
 import { fetchProductById, fetchProductBySlug } from "../store/slices/productSlice"
 import { addToCart, optimisticAddToCart, selectIsAddingToCart } from "../store/slices/cartSlice"
-import {
-  addToWishlist,
-  removeFromWishlist,
-  optimisticAddToWishlist,
-  optimisticRemoveFromWishlist,
-  selectIsAddingToWishlist,
-  selectIsRemovingFromWishlist,
-} from "../store/slices/wishlistSlice"
+import { addToWishlist, removeFromWishlist, optimisticAddToWishlist, optimisticRemoveFromWishlist, selectIsAddingToWishlist, selectIsRemovingFromWishlist, } from "../store/slices/wishlistSlice"
 import ProductReviews from "../components/ProductReviews"
 import RelatedProducts from "../components/RelatedProducts"
 import toast from "react-hot-toast"
-
 const ProductDetailPage = () => {
   const { slug } = useParams()
-
   const dispatch = useDispatch()
   const navigate = useNavigate()
   const { currentProduct, isLoading, error } = useSelector((state) => state.products)
@@ -45,16 +36,11 @@ const ProductDetailPage = () => {
   const [showBuyNowSizeModal, setShowBuyNowSizeModal] = useState(false)
   const [showAddToCartSizeModal, setShowAddToCartSizeModal] = useState(false)
   const [showFullDescription, setShowFullDescription] = useState(false)
-
-  // Bulk product states
   const [showBulkModal, setShowBulkModal] = useState(false)
   const [selectedColors, setSelectedColors] = useState([])
   const [bulkQuantity, setBulkQuantity] = useState(1)
-
   const isInWishlist = wishlistItems.some((item) => item._id === currentProduct?._id)
   const isBulkProduct = currentProduct?.isBulkProduct === true
-
-  // Bulk calculations
   const piecesPerSet = isBulkProduct
     ? (currentProduct?.sizes?.length || 0) * (currentProduct?.bulkConfig?.piecesPerSize || 1)
     : 0
@@ -81,7 +67,6 @@ const ProductDetailPage = () => {
       .filter(line => line.length > 0)
       .join('\n');
   };
-
   useEffect(() => {
     if (slug) {
       dispatch(fetchProductBySlug(slug))
@@ -118,7 +103,6 @@ const ProductDetailPage = () => {
     const sizeData = currentProduct.sizes.find((s) => s.size === selectedSize)
     return sizeData?.stock || 0
   }
-
   const handleColorToggle = (colorName) => {
     if (selectedColors.includes(colorName)) {
       setSelectedColors(selectedColors.filter(c => c !== colorName))
@@ -130,18 +114,15 @@ const ProductDetailPage = () => {
       setSelectedColors([...selectedColors, colorName])
     }
   }
-
   const handleAddToCartClick = () => {
     if (isBulkProduct) {
       setShowBulkModal(true)
       return
     }
-
     if (currentProduct.sizes?.length > 0 && !selectedSize) {
       setShowAddToCartSizeModal(true)
       return false
     }
-
     if (currentProduct.colors?.length && !selectedColor) {
       toast.error("Please select a color")
       return false
@@ -222,7 +203,7 @@ const ProductDetailPage = () => {
       setTimeout(() => { if (bag) bag.style.transform = "scale(1)" }, 200)
     }
   }
-  
+
   const handleBuyNowClick = () => {
     // For bulk product - directly proceed to checkout with selected colors
     if (isBulkProduct) {
@@ -936,8 +917,8 @@ const ProductDetailPage = () => {
                   onClick={handleAddToCartClick}
                   disabled={isAddingToCart || (!isBulkProduct && selectedSize && getSelectedSizeStock() === 0) || (isBulkProduct && selectedColors.length < minColors)}
                   className={`flex-1 flex items-center justify-center gap-2 px-4 py-1 border-2 font-semibold rounded-xl transition-colors disabled:cursor-not-allowed ${((!isBulkProduct && selectedSize && getSelectedSizeStock() === 0) || (isBulkProduct && selectedColors.length < minColors))
-                      ? "bg-gray-100 border-gray-300 text-gray-400"
-                      : "bg-white border-gray-300 text-gray-800 hover:border-gray-400 hover:bg-gray-50"
+                    ? "bg-gray-100 border-gray-300 text-gray-400"
+                    : "bg-white border-gray-300 text-gray-800 hover:border-gray-400 hover:bg-gray-50"
                     } ${isAddingToCart ? "opacity-50" : ""}`}
                 >
                   <ShoppingCart className="w-5 h-5" />
@@ -947,8 +928,8 @@ const ProductDetailPage = () => {
                   onClick={handleBuyNowClick}
                   disabled={isAddingToCart || (!isBulkProduct && selectedSize && getSelectedSizeStock() === 0) || (isBulkProduct && selectedColors.length < minColors)}
                   className={`flex-1 flex items-center justify-center gap-2 px-4 py-1 font-semibold rounded-xl transition-colors disabled:cursor-not-allowed ${((!isBulkProduct && selectedSize && getSelectedSizeStock() === 0) || (isBulkProduct && selectedColors.length < minColors))
-                      ? "bg-gray-400 text-gray-200"
-                      : "bg-red-600 text-white hover:bg-red-700"
+                    ? "bg-gray-400 text-gray-200"
+                    : "bg-red-600 text-white hover:bg-red-700"
                     } ${isAddingToCart ? "opacity-50" : ""}`}
                 >
                   <img src="/buynow1.svg" className="w-8 h-8" />
@@ -984,7 +965,7 @@ const ProductDetailPage = () => {
       </div>
 
       {/* All Modals - unchanged except closures and function names updated */}
-      
+
       {/* Bulk Modal */}
       <AnimatePresence>
         {showBulkModal && isBulkProduct && (
@@ -1037,7 +1018,6 @@ const ProductDetailPage = () => {
                     ))}
                   </div>
                 </div>
-
                 <div className="mb-6">
                   <p className="text-sm font-medium mb-3">Quantity (Sets)</p>
                   <div className="flex items-center gap-3">
@@ -1050,12 +1030,10 @@ const ProductDetailPage = () => {
                     </button>
                   </div>
                 </div>
-
                 <div className="p-4 bg-gray-50 rounded-lg">
                   <div className="flex justify-between mb-2">
                     <span className="text-sm text-gray-600">Total Pieces:</span>
-                    <span className="font-medium">{totalPieces} pcs</span>
-                  </div>
+                    <span className="font-medium">{totalPieces} pcs</span></div>
                   <div className="flex justify-between mb-4">
                     <span className="text-sm text-gray-600">Total Price:</span>
                     <span className="text-xl font-bold text-red-600">₹{totalPrice.toLocaleString()}</span>
@@ -1070,10 +1048,8 @@ const ProductDetailPage = () => {
                 </div>
               </div>
             </motion.div>
-          </motion.div>
-        )}
+          </motion.div>)}
       </AnimatePresence>
-
       {/* Buy Now Size Modal */}
       <AnimatePresence>
         {showBuyNowSizeModal && !isBulkProduct && (
@@ -1082,8 +1058,7 @@ const ProductDetailPage = () => {
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
             exit={{ opacity: 0 }}
-            onClick={() => setShowBuyNowSizeModal(false)}
-          >
+            onClick={() => setShowBuyNowSizeModal(false)}>
             <motion.div
               className="relative bg-white rounded-xl w-full max-w-md max-h-[80vh] overflow-y-auto"
               initial={{ scale: 0.9, y: 20 }}
@@ -1098,7 +1073,6 @@ const ProductDetailPage = () => {
                     <X className="w-5 h-5 text-gray-500" />
                   </button>
                 </div>
-
                 <div className="flex items-center space-x-3 mb-4">
                   <img src={currentProduct.images[0]?.url || "/placeholder.svg"} alt={currentProduct.name} className="w-14 h-14 object-cover rounded-lg" />
                   <div>
@@ -1106,7 +1080,6 @@ const ProductDetailPage = () => {
                     <p className="text-lg font-bold text-gray-900">₹{currentProduct.price.toLocaleString()}</p>
                   </div>
                 </div>
-
                 <div className="mb-6">
                   <div className="flex items-center justify-between mb-3">
                     <h4 className="text-base font-semibold text-gray-800">Select Size</h4>
@@ -1114,36 +1087,29 @@ const ProductDetailPage = () => {
                       <Ruler className="w-4 h-4 mr-1" /> Size Guide
                     </button>
                   </div>
-
                   <div className="grid grid-cols-4 gap-2 mb-4">
                     {currentProduct.sizes.map((s) => (
                       <button
                         key={s.size}
                         onClick={() => setSelectedSize(s.size)}
                         disabled={s.stock === 0}
-                        className={`px-3 py-3 border rounded-lg font-medium text-sm ${selectedSize === s.size ? "border-red-500 bg-red-50 text-red-600" : s.stock === 0 ? "border-gray-200 bg-gray-100 text-gray-400" : "border-gray-300 hover:border-red-400"}`}
-                      >
+                        className={`px-3 py-3 border rounded-lg font-medium text-sm ${selectedSize === s.size ? "border-red-500 bg-red-50 text-red-600" : s.stock === 0 ? "border-gray-200 bg-gray-100 text-gray-400" : "border-gray-300 hover:border-red-400"}`}>
                         {s.size}
                       </button>
                     ))}
                   </div>
-
                   <div className="text-center">
                     <p className="text-sm text-gray-600">{selectedSize ? `Selected: ${selectedSize} - ${getSelectedSizeStock()} available` : "Please select a size"}</p>
                   </div>
                 </div>
-
                 <div className="flex gap-3">
                   <button onClick={() => setShowBuyNowSizeModal(false)} className="flex-1 px-4 py-3 border border-gray-300 rounded-lg">Cancel</button>
                   <button onClick={handleProceedToCheckout} disabled={!selectedSize} className="flex-1 px-4 py-3 rounded-lg bg-red-600 text-white disabled:bg-gray-400">Buy Now</button>
                 </div>
               </div>
             </motion.div>
-          </motion.div>
-        )}
+          </motion.div>)}
       </AnimatePresence>
-
-      {/* Add to Cart Size Modal */}
       <AnimatePresence>
         {showAddToCartSizeModal && !isBulkProduct && (
           <motion.div
@@ -1151,15 +1117,13 @@ const ProductDetailPage = () => {
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
             exit={{ opacity: 0 }}
-            onClick={() => setShowAddToCartSizeModal(false)}
-          >
+            onClick={() => setShowAddToCartSizeModal(false)}>
             <motion.div
               className="relative bg-white rounded-xl w-full max-w-md max-h-[80vh] overflow-y-auto"
               initial={{ scale: 0.9, y: 20 }}
               animate={{ scale: 1, y: 0 }}
               exit={{ scale: 0.9, y: 20 }}
-              onClick={(e) => e.stopPropagation()}
-            >
+              onClick={(e) => e.stopPropagation()}>
               <div className="p-5">
                 <div className="flex items-center justify-between mb-4">
                   <h3 className="text-lg font-bold text-gray-900">Select Size</h3>
@@ -1167,7 +1131,6 @@ const ProductDetailPage = () => {
                     <X className="w-5 h-5 text-gray-500" />
                   </button>
                 </div>
-
                 <div className="flex items-center space-x-3 mb-4">
                   <img src={currentProduct.images[0]?.url || "/placeholder.svg"} alt={currentProduct.name} className="w-14 h-14 object-cover rounded-lg" />
                   <div>
@@ -1175,7 +1138,6 @@ const ProductDetailPage = () => {
                     <p className="text-lg font-bold text-gray-900">₹{currentProduct.price.toLocaleString()}</p>
                   </div>
                 </div>
-
                 <div className="mb-6">
                   <div className="flex items-center justify-between mb-3">
                     <h4 className="text-base font-semibold text-gray-800">Select Size</h4>
@@ -1183,36 +1145,28 @@ const ProductDetailPage = () => {
                       <Ruler className="w-4 h-4 mr-1" /> Size Guide
                     </button>
                   </div>
-
                   <div className="grid grid-cols-4 gap-2 mb-4">
                     {currentProduct.sizes.map((s) => (
                       <button
                         key={s.size}
                         onClick={() => setSelectedSize(s.size)}
                         disabled={s.stock === 0}
-                        className={`px-3 py-3 border rounded-lg font-medium text-sm ${selectedSize === s.size ? "border-red-500 bg-red-50 text-red-600" : s.stock === 0 ? "border-gray-200 bg-gray-100 text-gray-400" : "border-gray-300 hover:border-red-400"}`}
-                      >
+                        className={`px-3 py-3 border rounded-lg font-medium text-sm ${selectedSize === s.size ? "border-red-500 bg-red-50 text-red-600" : s.stock === 0 ? "border-gray-200 bg-gray-100 text-gray-400" : "border-gray-300 hover:border-red-400"}`}>
                         {s.size}
-                      </button>
-                    ))}
+                      </button>))}
                   </div>
-
                   <div className="text-center">
                     <p className="text-sm text-gray-600">{selectedSize ? `Selected: ${selectedSize} - ${getSelectedSizeStock()} available` : "Please select a size"}</p>
                   </div>
                 </div>
-
                 <div className="flex gap-3">
                   <button onClick={() => setShowAddToCartSizeModal(false)} className="flex-1 px-4 py-3 border border-gray-300 rounded-lg">Cancel</button>
                   <button onClick={handleProceedToAddToCart} disabled={!selectedSize} className="flex-1 px-4 py-3 rounded-lg bg-red-600 text-white disabled:bg-gray-400">Add to Cart</button>
                 </div>
               </div>
             </motion.div>
-          </motion.div>
-        )}
+          </motion.div>)}
       </AnimatePresence>
-
-      {/* Image Modal (only for images) */}
       <AnimatePresence>
         {showImageModal && mediaItems[selectedMediaIndex]?.type === 'image' && (
           <motion.div
@@ -1220,19 +1174,15 @@ const ProductDetailPage = () => {
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
             exit={{ opacity: 0 }}
-            onClick={() => setShowImageModal(false)}
-          >
+            onClick={() => setShowImageModal(false)}>
             <button onClick={() => setShowImageModal(false)} className="absolute top-4 right-4 p-2 text-white bg-black/50 rounded-full">
               <X className="w-6 h-6" />
             </button>
             <div className="w-full h-full flex items-center justify-center">
               <img src={mediaItems[selectedMediaIndex]?.url} alt={currentProduct.name} className="w-full h-auto max-h-screen object-contain" />
             </div>
-          </motion.div>
-        )}
+          </motion.div>)}
       </AnimatePresence>
-
-      {/* Size Guide Modal */}
       <AnimatePresence>
         {showSizeGuide && (
           <motion.div
@@ -1240,15 +1190,13 @@ const ProductDetailPage = () => {
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
             exit={{ opacity: 0 }}
-            onClick={() => setShowSizeGuide(false)}
-          >
+            onClick={() => setShowSizeGuide(false)}>
             <motion.div
               className="relative bg-white rounded-xl w-full max-w-md max-h-[80vh] overflow-y-auto"
               initial={{ scale: 0.9, y: 20 }}
               animate={{ scale: 1, y: 0 }}
               exit={{ scale: 0.9, y: 20 }}
-              onClick={e => e.stopPropagation()}
-            >
+              onClick={e => e.stopPropagation()}>
               <div className="p-4">
                 <div className="flex items-center justify-between mb-3">
                   <h3 className="text-lg font-bold text-gray-900">Size Guide</h3>
@@ -1259,21 +1207,14 @@ const ProductDetailPage = () => {
                 <img src="/6.webp" alt="Size Guide" className="w-full h-auto rounded-lg" />
               </div>
             </motion.div>
-          </motion.div>
-        )}
+          </motion.div>)}
       </AnimatePresence>
-
-      {/* Fixed Mobile Action Bar */}
       <div className="lg:hidden fixed bottom-0 left-0 right-0 bg-white border-t border-gray-200 p-4 z-40 shadow-lg">
         <div className="flex gap-3">
-          <button
-            onClick={handleAddToCartClick}
+          <button onClick={handleAddToCartClick}
             disabled={isAddingToCart || (!isBulkProduct && selectedSize && getSelectedSizeStock() === 0) || (isBulkProduct && selectedColors.length < minColors)}
             className={`flex-1 flex items-center justify-center gap-2 px-4 py-3 rounded-xl font-semibold text-sm ${((!isBulkProduct && selectedSize && getSelectedSizeStock() === 0) || (isBulkProduct && selectedColors.length < minColors))
-                ? "bg-gray-100 text-gray-400"
-                : "bg-white border border-gray-300 text-gray-800"
-              }`}
-          >
+              ? "bg-gray-100 text-gray-400" : "bg-white border border-gray-300 text-gray-800"}`}>
             <ShoppingCart className="w-5 h-5" />
             ADD TO CART
           </button>
@@ -1281,17 +1222,12 @@ const ProductDetailPage = () => {
             onClick={handleBuyNowClick}
             disabled={isAddingToCart || (!isBulkProduct && selectedSize && getSelectedSizeStock() === 0) || (isBulkProduct && selectedColors.length < minColors)}
             className={`flex-1 flex items-center justify-center gap-2 px-4 py-3 rounded-xl font-semibold text-sm ${((!isBulkProduct && selectedSize && getSelectedSizeStock() === 0) || (isBulkProduct && selectedColors.length < minColors))
-                ? "bg-gray-400 text-gray-200"
-                : "bg-red-600 text-white"
-              }`}
-          >
+              ? "bg-gray-400 text-gray-200"
+              : "bg-red-600 text-white"}`}>
             <img src="/buynow1.svg" className="w-6 h-6" />
             BUY NOW
           </button>
         </div>
       </div>
-    </div>
-  )
-}
-
+    </div>)}
 export default ProductDetailPage

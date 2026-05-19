@@ -29,6 +29,7 @@ import {
 } from "../store/slices/bannerSlice";
 import { fetchPopupSetting } from "../store/slices/popupSlice";
 import ReferralProgram from "../components/Referral-program";
+import D2CHighlight from "../components/D2CHighlight";
 
 const HomePage = () => {
   const dispatch = useDispatch();
@@ -127,7 +128,7 @@ const HomePage = () => {
     <div className="flex flex-col">
       <PromoBanners />
             <HeroBanner />
-
+<D2CHighlight/>
       {/* <FlatDiscount /> */}
             <FeaturedCategories />
 <CategoryBanner/>
