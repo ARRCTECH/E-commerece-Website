@@ -499,25 +499,89 @@ export const loginWithEmail = createAsyncThunk(
 );
 
 // Phone Authentication Thunks
+// export const sendPhoneOTP = createAsyncThunk("auth/sendPhoneOTP", async (phoneNumber, { rejectWithValue }) => {
+//   try {
+//     // First, prepare the backend for OTP
+//     await axios.post(`${API_BASE_URL}/auth/phone/prepare-otp`, { phoneNumber });
+//     // Ensure reCAPTCHA is clean before initializing
+//     cleanupRecaptcha(); // Add this line
+//     // Initialize reCAPTCHA
+//     if (!window.recaptchaVerifier) {
+//       window.recaptchaVerifier = new RecaptchaVerifier(auth, "recaptcha-container", {
+//         size: "invisible",
+//         callback: (response) => {
+//         },
+//         "expired-callback": () => {
+//           cleanupRecaptcha(); // Add this line
+//         },
+//       });
+//     }
+//     // Send OTP using Firebase
+//     const confirmationResult = await signInWithPhoneNumber(auth, phoneNumber, window.recaptchaVerifier);
+//     return {
+//       phoneNumber,
+//       confirmationResult,
+//       message: "OTP sent successfully",
+//     };
+//   } catch (error) {
+//     console.error("Send phone OTP error:", error);
+//     // Clean up reCAPTCHA on error
+//     cleanupRecaptcha(); // Ensure this is called on error
+//     switch (error.code) {
+//       case "auth/invalid-phone-number":
+//         return rejectWithValue("Invalid phone number format");
+//       case "auth/too-many-requests":
+//         return rejectWithValue("Too many requests. Please try again later.");
+//       case "auth/captcha-check-failed":
+//         return rejectWithValue("reCAPTCHA verification failed. Please try again.");
+//       case "auth/network-request-failed":
+//         return rejectWithValue("Network error. Please check your connection.");
+//       case "auth/billing-not-enabled": // Add specific handling for billing error
+//         return rejectWithValue("Phone authentication requires billing to be enabled on your Firebase project.");
+//       default:
+//         return rejectWithValue("Failed to send OTP. Please try again.");
+//     }
+//   }
+// });
+// Phone Authentication Thunks
 export const sendPhoneOTP = createAsyncThunk("auth/sendPhoneOTP", async (phoneNumber, { rejectWithValue }) => {
   try {
     // First, prepare the backend for OTP
     await axios.post(`${API_BASE_URL}/auth/phone/prepare-otp`, { phoneNumber });
-    // Ensure reCAPTCHA is clean before initializing
-    cleanupRecaptcha(); // Add this line
-    // Initialize reCAPTCHA
-    if (!window.recaptchaVerifier) {
-      window.recaptchaVerifier = new RecaptchaVerifier(auth, "recaptcha-container", {
-        size: "invisible",
-        callback: (response) => {
-        },
-        "expired-callback": () => {
-          cleanupRecaptcha(); // Add this line
-        },
-      });
+    
+    // ✅ FIX: Better reCAPTCHA cleanup
+    const container = document.getElementById("recaptcha-container");
+    if (container) {
+      container.innerHTML = ""; // Clear container
     }
+    
+    if (window.recaptchaVerifier) {
+      try {
+        await window.recaptchaVerifier.clear();
+      } catch (e) {
+        console.log("Clear error:", e);
+      }
+      window.recaptchaVerifier = null;
+    }
+    
+    // ✅ FIX: Add a small delay to ensure container is ready
+    await new Promise(resolve => setTimeout(resolve, 100));
+    
+    // Initialize reCAPTCHA
+    window.recaptchaVerifier = new RecaptchaVerifier(auth, "recaptcha-container", {
+      size: "invisible",
+      "expired-callback": () => {
+        console.log("reCAPTCHA expired");
+        if (window.recaptchaVerifier) {
+          window.recaptchaVerifier.clear();
+          window.recaptchaVerifier = null;
+        }
+      },
+    });
+    
     // Send OTP using Firebase
     const confirmationResult = await signInWithPhoneNumber(auth, phoneNumber, window.recaptchaVerifier);
+    
     return {
       phoneNumber,
       confirmationResult,
@@ -525,25 +589,32 @@ export const sendPhoneOTP = createAsyncThunk("auth/sendPhoneOTP", async (phoneNu
     };
   } catch (error) {
     console.error("Send phone OTP error:", error);
+    
     // Clean up reCAPTCHA on error
-    cleanupRecaptcha(); // Ensure this is called on error
+    if (window.recaptchaVerifier) {
+      try {
+        await window.recaptchaVerifier.clear();
+      } catch (e) {}
+      window.recaptchaVerifier = null;
+    }
+    
+    // ✅ FIX: Better error messages
     switch (error.code) {
       case "auth/invalid-phone-number":
-        return rejectWithValue("Invalid phone number format");
+        return rejectWithValue("Invalid phone number format. Use +91XXXXXXXXXX");
       case "auth/too-many-requests":
         return rejectWithValue("Too many requests. Please try again later.");
       case "auth/captcha-check-failed":
-        return rejectWithValue("reCAPTCHA verification failed. Please try again.");
-      case "auth/network-request-failed":
-        return rejectWithValue("Network error. Please check your connection.");
-      case "auth/billing-not-enabled": // Add specific handling for billing error
-        return rejectWithValue("Phone authentication requires billing to be enabled on your Firebase project.");
+        return rejectWithValue("reCAPTCHA verification failed. Please refresh and try again.");
+      case "auth/operation-not-allowed":
+        return rejectWithValue("Phone authentication is not enabled. Please enable it in Firebase Console.");
+      case "auth/billing-not-enabled":
+        return rejectWithValue("Phone authentication requires billing to be enabled on your Firebase project. Please wait 1-3 days for payment confirmation.");
       default:
-        return rejectWithValue("Failed to send OTP. Please try again.");
+        return rejectWithValue(error.message || "Failed to send OTP. Please try again.");
     }
   }
 });
-
 export const verifyPhoneOTP = createAsyncThunk(
   "auth/verifyPhoneOTP",
   async ({ confirmationResult, otp, phoneNumber, name }, { rejectWithValue }) => {
@@ -551,22 +622,35 @@ export const verifyPhoneOTP = createAsyncThunk(
       // Verify OTP with Firebase
       const userCredential = await confirmationResult.confirm(otp);
       const firebaseUser = userCredential.user;
+      
       // Get ID token
       const idToken = await firebaseUser.getIdToken();
+      
       // Verify with backend and complete registration/login
       const response = await axios.post(`${API_BASE_URL}/auth/phone/verify-otp`, {
         phoneNumber,
         name,
         firebaseIdToken: idToken,
       });
+      
       // Store user data
       localStorage.setItem("user", JSON.stringify(response.data.user));
       localStorage.setItem("authToken", response.data.jwtToken);
-      // Clean up reCAPTCHA
+      
+      // ✅ FIX: Clean up reCAPTCHA properly
       if (window.recaptchaVerifier) {
-        window.recaptchaVerifier.clear();
+        try {
+          await window.recaptchaVerifier.clear();
+        } catch (e) {}
         window.recaptchaVerifier = null;
       }
+      
+      // Clear container
+      const container = document.getElementById("recaptcha-container");
+      if (container) {
+        container.innerHTML = "";
+      }
+      
       return {
         firebaseUser: {
           uid: firebaseUser.uid,
@@ -579,18 +663,19 @@ export const verifyPhoneOTP = createAsyncThunk(
       };
     } catch (error) {
       console.error("Verify phone OTP error:", error);
+      
       switch (error.code) {
         case "auth/invalid-verification-code":
-          return rejectWithValue("Invalid verification code");
+          return rejectWithValue("Invalid verification code. Please try again.");
         case "auth/code-expired":
-          return rejectWithValue("Verification code has expired");
+          return rejectWithValue("Verification code has expired. Please request a new one.");
         case "auth/too-many-requests":
           return rejectWithValue("Too many requests. Please try again later.");
         default:
           return rejectWithValue(error.response?.data?.message || "Failed to verify OTP. Please try again.");
       }
     }
-  },
+  }
 );
 
 // Legacy functions for backward compatibility

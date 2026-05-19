@@ -7,8 +7,7 @@ import { ArrowUpRight, Sparkles } from "lucide-react";
 import { fetchCategoryBanners } from "../store/slices/bannerSlice";
 
 /**
- * Premium CategoryBanner — dynamic Redux version.
- * Drop into your project; logic is identical to your original.
+ * Full Width CategoryBanner — Edge to Edge
  */
 const CategoryBanner = () => {
   const dispatch = useDispatch();
@@ -45,44 +44,39 @@ const CategoryBanner = () => {
 
   if (loadingCategory || error || !categoryBanners?.length) {
     return (
-      <section className="relative w-full bg-[#0a0a0a] px-3 py-6 sm:px-6 sm:py-10">
-        <div className="mx-auto max-w-screen-2xl">
-          <div className="aspect-[21/9] w-full animate-pulse rounded-[2px] bg-white/5 sm:aspect-[24/9] md:aspect-[28/9]" />
-        </div>
-      </section>
+      <div className="w-full bg-[#0a0a0a]">
+        <div className="aspect-[21/9] w-full animate-pulse bg-white/5 sm:aspect-[24/9] md:aspect-[28/9]" />
+      </div>
     );
   }
 
   const item = categoryBanners[current];
-  const imgSrc =
-    item?.image?.url ||
-    item?.image ||
-    item?.imageUrl ||
-    `/api/uploads/${item?.image}` ||
-    "/fallback-banner.png";
+  
+  const getImageUrl = (banner) => {
+    if (banner?.image?.url) return banner.image.url;
+    if (banner?.image) return banner.image;
+    if (banner?.imageUrl) return banner.imageUrl;
+    if (banner?.bannerImage) return banner.bannerImage;
+    return "/fallback-banner.png";
+  };
 
   return (
-    <section className="relative w-full bg-[#0a0a0a] px-3 py-6 sm:px-6 sm:py-10">
+    <div className="relative w-full bg-[#0a0a0a]">
+      {/* Background Glow Effect */}
       <div className="pointer-events-none absolute inset-0 overflow-hidden">
         <div className="absolute -top-24 left-1/3 h-[300px] w-[600px] rounded-full bg-amber-500/10 blur-[120px]" />
       </div>
 
-      <div className="relative mx-auto max-w-screen-2xl">
-        <div
-          onClick={handleClick}
-          className="group relative w-full cursor-pointer overflow-hidden rounded-[2px]"
-          style={{
-            boxShadow:
-              "0 30px 80px -20px rgba(0,0,0,0.7), 0 0 0 1px rgba(201,161,74,0.15)",
-          }}
-        >
+      {/* Full Width Banner */}
+      <div
+        onClick={handleClick}
+        className="group relative w-full cursor-pointer overflow-hidden"
+      >
+        <div className="relative w-full">
+          {/* Images - Full Width */}
           <div className="relative aspect-[21/9] w-full sm:aspect-[24/9] md:aspect-[28/9]">
             {categoryBanners.map((b, i) => {
-              const url =
-                b?.image?.url ||
-                b?.image ||
-                b?.imageUrl ||
-                "/fallback-banner.png";
+              const url = getImageUrl(b);
               return (
                 <img
                   key={b._id || i}
@@ -99,38 +93,46 @@ const CategoryBanner = () => {
               );
             })}
 
+            {/* Gradient Overlay - For text readability */}
             <div
               className="absolute inset-0"
               style={{
                 background:
-                  "linear-gradient(90deg, rgba(0,0,0,0.85) 0%, rgba(0,0,0,0.55) 40%, rgba(0,0,0,0.1) 75%, rgba(0,0,0,0) 100%)",
+                  "linear-gradient(90deg, rgba(0,0,0,0.85) 0%, rgba(0,0,0,0.55) 30%, rgba(0,0,0,0.1) 70%, rgba(0,0,0,0) 100%)",
               }}
             />
+            
+            {/* Secondary Gold Overlay */}
             <div
               className="absolute inset-0 hidden md:block"
               style={{
                 background:
-                  "radial-gradient(ellipse at 80% 50%, rgba(201,161,74,0.18), transparent 60%)",
+                  "radial-gradient(ellipse at 80% 50%, rgba(201,161,74,0.15), transparent 60%)",
               }}
             />
 
+            {/* Corner Decorations */}
             <span className="absolute left-4 top-4 h-6 w-6 border-l border-t border-amber-300/60 sm:left-6 sm:top-6 sm:h-8 sm:w-8" />
             <span className="absolute right-4 top-4 h-6 w-6 border-r border-t border-amber-300/60 sm:right-6 sm:top-6 sm:h-8 sm:w-8" />
             <span className="absolute bottom-4 left-4 h-6 w-6 border-b border-l border-amber-300/60 sm:bottom-6 sm:left-6 sm:h-8 sm:w-8" />
             <span className="absolute bottom-4 right-4 h-6 w-6 border-b border-r border-amber-300/60 sm:bottom-6 sm:right-6 sm:h-8 sm:w-8" />
 
+            {/* Content - Left Side Text */}
             <div className="absolute inset-0 flex items-center">
               <div
                 key={item?._id || current}
-                className="max-w-2xl px-6 sm:px-12 md:px-16"
+                className="max-w-2xl px-6 sm:px-12 md:px-16 lg:px-20"
                 style={{ animation: "cb-fade .9s cubic-bezier(.22,1,.36,1) both" }}
               >
+                {/* Tag Badge */}
                 <div className="mb-3 inline-flex items-center gap-2 border-b border-amber-300/40 pb-1.5 text-[10px] font-medium uppercase tracking-[0.3em] text-amber-200 sm:text-[11px]">
                   <Sparkles className="h-3 w-3" />
                   <span>{item?.tag || "Exclusive Collection"}</span>
                 </div>
+
+                {/* Title */}
                 <h2
-                  className="text-2xl font-light leading-[1.05] text-white sm:text-4xl md:text-5xl lg:text-6xl"
+                  className="text-xl font-light leading-[1.05] text-white sm:text-4xl md:text-5xl lg:text-6xl xl:text-7xl"
                   style={{ fontFamily: "'Cormorant Garamond', Georgia, serif" }}
                 >
                   <span
@@ -146,11 +148,15 @@ const CategoryBanner = () => {
                     {item?.title || "Curated For You"}
                   </span>
                 </h2>
+
+                {/* Subtitle */}
                 {item?.subtitle && (
                   <p className="mt-2 hidden max-w-md text-sm leading-relaxed text-white/70 sm:mt-4 sm:block md:text-base">
                     {item.subtitle}
                   </p>
                 )}
+
+                {/* CTA Button */}
                 <div className="mt-4 hidden items-center gap-3 sm:mt-6 sm:inline-flex">
                   <span className="text-[11px] font-medium uppercase tracking-[0.3em] text-white">
                     {item?.cta || "Explore Now"}
@@ -162,7 +168,8 @@ const CategoryBanner = () => {
               </div>
             </div>
 
-            <div className="absolute right-6 top-1/2 hidden -translate-y-1/2 flex-col items-end gap-1 text-[10px] uppercase tracking-[0.3em] text-white/60 md:flex">
+            {/* Slide Counter - Right Side Desktop */}
+            <div className="absolute right-6 top-1/2 hidden -translate-y-1/2 flex-col items-end gap-1 text-[10px] uppercase tracking-[0.3em] text-white/60 md:flex lg:right-12">
               <span className="text-amber-300">
                 {String(current + 1).padStart(2, "0")}
               </span>
@@ -170,6 +177,7 @@ const CategoryBanner = () => {
               <span>{String(categoryBanners.length).padStart(2, "0")}</span>
             </div>
 
+            {/* Dots Indicator - Bottom Center */}
             {categoryBanners.length > 1 && (
               <div className="absolute bottom-4 left-1/2 z-30 flex -translate-x-1/2 items-center gap-2 sm:bottom-6">
                 {categoryBanners.map((_, i) => (
@@ -199,7 +207,7 @@ const CategoryBanner = () => {
           to { opacity: 1; transform: translateY(0); }
         }
       `}</style>
-    </section>
+    </div>
   );
 };
 

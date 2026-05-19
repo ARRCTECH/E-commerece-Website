@@ -8,19 +8,27 @@ import PromoBanners from "../components/PromoBanners";
 import CategoryBanner from "../components/CategoryBanner";
 import InnovationList from "../components/admin/InnovationList";
 import ReferralProgram from "../components/Referral-program";
+import D2CHighlight from "../components/D2CHighlight";
+
 const HomePage = () => {
   return (
     <div className="flex flex-col">
       <PromoBanners />
-      <HeroBanner />
+            <HeroBanner />
+<D2CHighlight/>
+      {/* <FlatDiscount /> */}
       <FeaturedCategories />
-      <CategoryBanner />
+      <HeroBanner />
       <TrendingProducts />
-      <ReferralProgram />
+      {/* <KsauniTshirtStyle /> */}
+      {/* <PriceSelection /> */}
       <NewArrivals />
-      <InnovationList />
+      <CategoryBanner />
       <Oversized899 />
+      <ReferralProgram />
       <InnovationList />
+      {/* <TopPicksShowcase/> */}
+      {/* <FandomShop /> */}
     </div>
   );
 };

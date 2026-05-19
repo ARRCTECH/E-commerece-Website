@@ -183,40 +183,61 @@ const registerWithEmail = async (req, res) => {
             discountType: referralDetails.type,
             expiryDate: referralDetails.expiryDate,
           },
-        });
-      } catch (emailErr) {
-        console.error("Referrer email failed:", emailErr);
+        })
+      } catch (emailError) {
+        console.error("Failed to send welcome email:", emailError)
+        // Don't fail registration if email fails
       }
+
+      res.status(201).json({
+        success: true,
+        message: "User registered successfully! Please check your email for verification.",
+        user: {
+          _id: user._id,
+          firebaseUid: user.firebaseUid,
+          name: user.name,
+          email: user.email,
+          role: user.role,
+          authMethod: user.authMethod,
+          isVerified: user.isVerified,
+          createdAt: user.createdAt,
+          expireReferralDate: user.expireReferralDate,
+          referredBy: user.referredBy,
+          myrteferralCode: user.myreferralCode,
+        },
+        customToken,
+        jwtToken,
+      })
+    } catch (firebaseError) {
+      console.error("Firebase registration error:", firebaseError)
+
+      // Handle specific Firebase errors
+      if (firebaseError.code === "auth/email-already-exists") {
+        return res.status(400).json({
+          success: false,
+          message: "An account with this email already exists. Please try logging in instead.",
+        })
+      }
+
+      if (firebaseError.code === "auth/invalid-email") {
+        return res.status(400).json({
+          success: false,
+          message: "Invalid email address format.",
+        })
+      }
+
+      if (firebaseError.code === "auth/weak-password") {
+        return res.status(400).json({
+          success: false,
+          message: "Password is too weak. Please choose a stronger password.",
+        })
+      }
+
+      return res.status(500).json({
+        success: false,
+        message: "Registration failed. Please try again.",
+      })
     }
-    const customToken = await admin.auth().createCustomToken(firebaseUser.uid);
-    const jwtToken = jwt.sign(
-      { userId: user._id, firebaseUid: user.firebaseUid, email: user.email, role: user.role },
-      process.env.JWT_SECRET,
-      { expiresIn: "7d" }
-    );
-    try {
-      await sendEmail({ to: user.email, template: "welcome", data: { name: user.name, email: user.email } });
-    } catch (err) {
-      console.error("Welcome email failed:", err);
-    }
-    return res.status(201).json({
-      success: true,
-      message: "User registered successfully!",
-      user: {
-        _id: user._id,
-        firebaseUid: user.firebaseUid,
-        name: user.name,
-        email: user.email,
-        role: user.role,
-        authMethod: user.authMethod,
-        isVerified: user.isVerified,
-        createdAt: user.createdAt,
-        myreferralCode: user.myreferralCode,
-        referredBy: user.referredBy,
-      },
-      customToken,
-      jwtToken,
-    });
   } catch (error) {
     console.error("Email registration error:", error);
     if (error.message?.includes("Too many attempts"))
@@ -395,54 +416,86 @@ const verifyPhoneOTP = async (req, res) => {
       jwtToken,
     });
   } catch (error) {
-    console.error("Verify OTP error:", error);
-    if (error.message?.includes("Too many attempts"))
-      return res.status(429).json({ success: false, message: error.message });
-    if (error.code === "auth/id-token-expired")
-      return res.status(401).json({ success: false, message: "Verification expired" });
-    if (error.code === "auth/invalid-id-token")
-      return res.status(400).json({ success: false, message: "Invalid verification code" });
-    return res.status(500).json({ success: false, message: "Phone verification failed" });
+    console.error("Verify OTP error:", error)
+    if (error.message.includes("Too many attempts")) {
+      return res.status(429).json({
+        success: false,
+        message: error.message,
+      })
+    }
+    res.status(500).json({
+      success: false,
+      message: "OTP verification failed. Please try again.",
+    })
   }
-};
+}
+
+// Verify Firebase ID Token
 const verifyFirebaseToken = async (req, res) => {
   try {
-    const { idToken } = req.body;
-    if (!idToken) return res.status(400).json({ success: false, message: "ID token required" });
+    const { idToken } = req.body
 
-    const decodedToken = await admin.auth().verifyIdToken(idToken);
-    const firebaseUser = await admin.auth().getUser(decodedToken.uid);
+    if (!idToken) {
+      return res.status(400).json({
+        success: false,
+        message: "ID token is required",
+      })
+    }
 
-    let user = await User.findOne({ firebaseUid: decodedToken.uid });
+    // Verify Firebase ID token
+    const decodedToken = await admin.auth().verifyIdToken(idToken)
+    const firebaseUid = decodedToken.uid
+
+    // Get Firebase user details
+    const firebaseUser = await admin.auth().getUser(firebaseUid)
+
+    // Find or create user in database
+    let user = await User.findOne({ firebaseUid })
+
     if (!user) {
-      const authMethod = firebaseUser.phoneNumber ? "phone" : "email";
+      // Create new user for phone authentication
+      const authMethod = firebaseUser.phoneNumber ? "phone" : "email"
       const name =
-        firebaseUser.displayName || `User ${firebaseUser.phoneNumber?.slice(-4) || firebaseUser.email?.split("@")[0]}`;
+        firebaseUser.displayName || `User ${firebaseUser.phoneNumber?.slice(-4) || firebaseUser.email?.split("@")[0]}`
+
       user = new User({
         firebaseUid: firebaseUser.uid,
-        name,
+        name: name,
         email: firebaseUser.email || null,
         phoneNumber: firebaseUser.phoneNumber || null,
-        authMethod,
+        authMethod: authMethod,
         isVerified: firebaseUser.emailVerified || !!firebaseUser.phoneNumber,
         role: "user",
         createdAt: new Date(),
-        myreferralCode: randomReferralCode(),
-      });
-      await user.save();
+        expireReferralDate: user.expireReferralDate,
+        referredBy: user.referredBy,
+        myreferralCode: user.myreferralCode,
+      })
 
+      await user.save()
+
+      // Send welcome email for email users
       if (authMethod === "email" && firebaseUser.email) {
         try {
-          await sendEmail({ to: firebaseUser.email, template: "welcome", data: { name: user.name, email: firebaseUser.email } });
-        } catch (err) {
-          console.error("Welcome email error:", err);
+          await sendEmail({
+            to: firebaseUser.email,
+            template: "welcome",
+            data: {
+              name: user.name,
+              email: firebaseUser.email,
+            },
+          })
+        } catch (emailError) {
+          console.error("Failed to send welcome email:", emailError)
         }
       }
     }
 
-    user.lastLogin = new Date();
-    await user.save();
+    // Update last login
+    user.lastLogin = new Date()
+    await user.save()
 
+    // Generate JWT token
     const jwtToken = jwt.sign(
       { userId: user._id, firebaseUid: user.firebaseUid, email: user.email, phoneNumber: user.phoneNumber, role: user.role },
       process.env.JWT_SECRET,
@@ -470,9 +523,17 @@ const verifyFirebaseToken = async (req, res) => {
       jwtToken,
     });
   } catch (error) {
-    console.error("Token verification error:", error);
-    if (error.code === "auth/id-token-expired") return res.status(401).json({ success: false, message: "Token expired" });
-    return res.status(401).json({ success: false, message: "Invalid token" });
+    console.error("Token verification error:", error)
+    if (error.code === "auth/id-token-expired") {
+      return res.status(401).json({
+        success: false,
+        message: "Token has expired",
+      })
+    }
+    res.status(401).json({
+      success: false,
+      message: "Invalid token",
+    })
   }
 };
 
