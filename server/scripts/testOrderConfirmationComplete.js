@@ -13,6 +13,7 @@ async function testActualOrderConfirmation() {
     shippingCharge: 150,
     discount: 0,
     freediscount: 50,
+    referralDiscount: 100,
     status: 'confirmed',
     createdAt: new Date(),
     paymentInfo: {

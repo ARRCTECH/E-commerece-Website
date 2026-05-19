@@ -544,6 +544,12 @@ const OrdersManagement = () => {
                               <span>-{formatCurrency(selectedOrder.pricing.freediscount)}</span>
                             </div>
                           )}
+                          {selectedOrder.pricing?.referralDiscount > 0 && (
+                            <div className="flex justify-between">
+                              <span className="text-gray-500">Referral Discount:</span>
+                              <span className="text-green-600">-{formatCurrency(selectedOrder.pricing.referralDiscount)}</span>
+                            </div>
+                          )}
                           <div className="flex justify-between pt-2 text-base font-bold border-t">
                             <span>Total:</span>
                             <span>{formatCurrency(selectedOrder.pricing.total || 0)}</span>

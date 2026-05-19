@@ -18,7 +18,8 @@ import CancellationReasonsChart from "../../components/admin/CancellationReasons
 import PartialCodSetting from "../../components/admin/PartialCodSetting";
 import { clearError, clearSuccess } from "../../store/slices/adminSlice";
 import ToastProvider from "../../components/ToastProvider";
-import ReferralDiscountManager from "../../components/admin/ReferralManagement";
+import ReferralConfiguration from "../../components/admin/ReferralConfiguration";
+import ReferralManagement from "../../components/admin/ReferralManagement";
 
 const AdminDashboard = () => {
   const [sidebarOpen, setSidebarOpen] = useState(false);
@@ -128,7 +129,8 @@ const AdminDashboard = () => {
               <Route path="banners" element={<BannersManagement />} />
               <Route path="innovations" element={<InnovationManagement />} />
               <Route path="ksaunitshirtstyle" element={<KsauniTshirtManagement />} />
-              <Route path="referral" element={<ReferralDiscountManager />} />
+              <Route path="referral-configuration" element={<ReferralConfiguration />} />
+              <Route path="referral-management" element={<ReferralManagement />} />
               <Route path="partial-cod" element={<PartialCodSetting />} />
               {user.role === "admin" && (
                 <>

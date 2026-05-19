@@ -242,7 +242,7 @@ const ProductDetailPage = () => {
       setTimeout(() => { if (bag) bag.style.transform = "scale(1)" }, 200)
     }
   }
-  
+
   const handleBuyNowClick = () => {
     if (isBulkProduct) {
       if (selectedColors.length < minColors) {
@@ -434,15 +434,14 @@ const ProductDetailPage = () => {
             >
               <Heart id="wish" className={`w-5 h-5 ${isInWishlist ? "fill-current" : ""}`} />
             </button>
-
-            {/* REFERRAL SHARE BUTTON - MOBILE (right side, next to heart) */}
-            <button
-              onClick={handleReferralShare}
-              className="absolute top-3 right-12 z-10 p-2 rounded-full bg-white/80 backdrop-blur-sm shadow-md"
-            >
-              <Share2 className="w-5 h-5 text-gray-700" />
-            </button>
-
+            if(user){
+              <button
+                onClick={handleReferralShare}
+                className="absolute top-3 right-12 z-10 p-2 rounded-full bg-white/80 backdrop-blur-sm shadow-md"
+              >
+                <Share2 className="w-5 h-5 text-gray-700" />
+              </button>
+            }
             <Swiper spaceBetween={0} pagination={{ clickable: true, dynamicBullets: true }} modules={[Pagination]} className="rounded-xl">
               {mediaItems.map((item, idx) => (
                 <SwiperSlide key={idx}>
@@ -468,7 +467,6 @@ const ProductDetailPage = () => {
                 </SwiperSlide>
               ))}
             </Swiper>
-
             <div className="px-2">
               <p className="text-lg font-bold text-gray-900">{currentProduct.brand || "Factory Sale"}</p>
               <p className="text-sm text-gray-600 mt-1">{currentProduct.name}</p>
@@ -484,8 +482,6 @@ const ProductDetailPage = () => {
               </div>
             </div>
           </div>
-
-          {/* DESKTOP MEDIA - VERTICAL THUMBNAILS + MAIN VIEW */}
           <div className="hidden lg:block">
             <div className="flex gap-4">
               {/* Vertical Thumbnails */}
@@ -520,18 +516,14 @@ const ProductDetailPage = () => {
                   </button>
                 ))}
               </div>
-
-              {/* Main Media Display */}
               <div className="flex-1">
                 <div className="relative bg-gray-50 rounded-xl overflow-hidden group">
-                  {/* REFERRAL SHARE BUTTON - DESKTOP (top-right) */}
                   <button
                     onClick={handleReferralShare}
                     className="absolute top-4 right-4 z-10 p-2 rounded-full bg-white/80 backdrop-blur-sm shadow-md hover:bg-white transition"
                   >
                     <Share2 className="w-5 h-5 text-gray-700" />
                   </button>
-
                   {mediaItems[selectedMediaIndex]?.type === 'image' ? (
                     <motion.img
                       src={mediaItems[selectedMediaIndex]?.url}
@@ -561,10 +553,7 @@ const ProductDetailPage = () => {
               </div>
             </div>
           </div>
-
-          {/* RIGHT COLUMN - PRODUCT INFO */}
           <div className="lg:hidden space-y-4 px-2 mt-24">
-            {/* Description - Mobile */}
             <div>
               <div className={`text-gray-600 text-sm leading-relaxed ${showFullDescription ? "" : "line-clamp-3"}`}>
                 <pre className="font-sans whitespace-pre-wrap">{formatDescription(currentProduct?.description)}</pre>
@@ -576,8 +565,6 @@ const ProductDetailPage = () => {
                 {showFullDescription ? "Show Less" : "Read More"}
               </button>
             </div>
-
-            {/* Tags - Mobile */}
             <div className="flex flex-wrap gap-2 mt-12">
               <div className="grid grid-cols-3 gap-2">
                 <div className="w-full text-center text-[10px] sm:text-xs font-semibold uppercase tracking-wide px-2 py-2 rounded-xl bg-amber-50 text-gray-900 border border-amber-100">
@@ -591,8 +578,6 @@ const ProductDetailPage = () => {
                 </div>
               </div>
             </div>
-
-            {/* Colors - Mobile */}
             {!isBulkProduct ? (
               currentProduct.colors?.length > 0 && (
                 <div className="pt-2">
@@ -635,8 +620,6 @@ const ProductDetailPage = () => {
                 </div>
               )
             )}
-
-            {/* Sizes - Mobile */}
             {!isBulkProduct ? (
               currentProduct.sizes?.length > 0 && (
                 <div data-size-section>
@@ -688,8 +671,6 @@ const ProductDetailPage = () => {
                 </div>
               )
             )}
-
-            {/* Quantity - Mobile */}
             {!isBulkProduct ? (
               <div>
                 <h3 className="text-base font-semibold text-gray-800 mb-3">Quantity</h3>
@@ -969,8 +950,8 @@ const ProductDetailPage = () => {
                   onClick={handleAddToCartClick}
                   disabled={isAddingToCart || (!isBulkProduct && selectedSize && getSelectedSizeStock() === 0) || (isBulkProduct && selectedColors.length < minColors)}
                   className={`flex-1 flex items-center justify-center gap-2 px-4 py-1 border-2 font-semibold rounded-xl transition-colors disabled:cursor-not-allowed ${((!isBulkProduct && selectedSize && getSelectedSizeStock() === 0) || (isBulkProduct && selectedColors.length < minColors))
-                      ? "bg-gray-100 border-gray-300 text-gray-400"
-                      : "bg-white border-gray-300 text-gray-800 hover:border-gray-400 hover:bg-gray-50"
+                    ? "bg-gray-100 border-gray-300 text-gray-400"
+                    : "bg-white border-gray-300 text-gray-800 hover:border-gray-400 hover:bg-gray-50"
                     } ${isAddingToCart ? "opacity-50" : ""}`}
                 >
                   <ShoppingCart className="w-5 h-5" />
@@ -980,8 +961,8 @@ const ProductDetailPage = () => {
                   onClick={handleBuyNowClick}
                   disabled={isAddingToCart || (!isBulkProduct && selectedSize && getSelectedSizeStock() === 0) || (isBulkProduct && selectedColors.length < minColors)}
                   className={`flex-1 flex items-center justify-center gap-2 px-4 py-1 font-semibold rounded-xl transition-colors disabled:cursor-not-allowed ${((!isBulkProduct && selectedSize && getSelectedSizeStock() === 0) || (isBulkProduct && selectedColors.length < minColors))
-                      ? "bg-gray-400 text-gray-200"
-                      : "bg-red-600 text-white hover:bg-red-700"
+                    ? "bg-gray-400 text-gray-200"
+                    : "bg-red-600 text-white hover:bg-red-700"
                     } ${isAddingToCart ? "opacity-50" : ""}`}
                 >
                   <img src="/buynow1.svg" className="w-8 h-8" />
@@ -1301,8 +1282,8 @@ const ProductDetailPage = () => {
             onClick={handleAddToCartClick}
             disabled={isAddingToCart || (!isBulkProduct && selectedSize && getSelectedSizeStock() === 0) || (isBulkProduct && selectedColors.length < minColors)}
             className={`flex-1 flex items-center justify-center gap-2 px-4 py-3 rounded-xl font-semibold text-sm ${((!isBulkProduct && selectedSize && getSelectedSizeStock() === 0) || (isBulkProduct && selectedColors.length < minColors))
-                ? "bg-gray-100 text-gray-400"
-                : "bg-white border border-gray-300 text-gray-800"
+              ? "bg-gray-100 text-gray-400"
+              : "bg-white border border-gray-300 text-gray-800"
               }`}
           >
             <ShoppingCart className="w-5 h-5" />
@@ -1312,8 +1293,8 @@ const ProductDetailPage = () => {
             onClick={handleBuyNowClick}
             disabled={isAddingToCart || (!isBulkProduct && selectedSize && getSelectedSizeStock() === 0) || (isBulkProduct && selectedColors.length < minColors)}
             className={`flex-1 flex items-center justify-center gap-2 px-4 py-3 rounded-xl font-semibold text-sm ${((!isBulkProduct && selectedSize && getSelectedSizeStock() === 0) || (isBulkProduct && selectedColors.length < minColors))
-                ? "bg-gray-400 text-gray-200"
-                : "bg-red-600 text-white"
+              ? "bg-gray-400 text-gray-200"
+              : "bg-red-600 text-white"
               }`}
           >
             <img src="/buynow1.svg" className="w-6 h-6" />

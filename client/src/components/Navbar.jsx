@@ -1,17 +1,16 @@
 "use client";
-import { useState, useEffect, useRef } from "react";
+import { useState, useEffect, useRef, useCallback } from "react";
 import { useNavigate, useLocation } from "react-router-dom";
 import { useSelector, useDispatch } from "react-redux";
 import { motion, AnimatePresence } from "framer-motion";
 import {
   Menu, X, ChevronDown, Search, ShoppingBag, User, Heart, Mic,
-  Clock, Trash2, Shirt, Flame, LogOut, UserCircle, Tag, TrendingUp, Home,
-  Gift, Star, Shield, Settings, HelpCircle, Award
+  Clock, Trash2, Shirt, LogOut, UserCircle, Tag, TrendingUp, Home, Gift
 } from "lucide-react";
 import { useDebounce } from "use-debounce";
 import { logout } from "../store/slices/authSlice";
 import { fetchCategories } from "../store/slices/categorySlice";
-import { fetchCart, selectCartTotalQuantity } from "../store/slices/cartSlice";
+import { fetchCart, selectCartTotalQuantity, clearCart } from "../store/slices/cartSlice";
 import { fetchWishlist, selectWishlistCount } from "../store/slices/wishlistSlice";
 import {
   getSearchSuggestions,
@@ -19,10 +18,9 @@ import {
   removeRecentSearch,
   clearRecentSearches,
 } from "../store/slices/searchSlice";
-import { clearCart } from "../store/slices/cartSlice";
 import toast from "react-hot-toast";
-
 const Navbar = () => {
+
   const [isMenuOpen, setIsMenuOpen] = useState(false);
   const [searchQuery, setSearchQuery] = useState("");
   const [showUserMenu, setShowUserMenu] = useState(false);
@@ -31,16 +29,16 @@ const Navbar = () => {
   const [scrolled, setScrolled] = useState(false);
   const searchRef = useRef(null);
   const userMenuRef = useRef(null);
+  const abortControllerRef = useRef(null);
   const navigate = useNavigate();
   const dispatch = useDispatch();
   const location = useLocation();
   const { user, token } = useSelector((state) => state.auth || {});
-  const { categories } = useSelector((state) => state.categories || {});
-  const { suggestions, recentSearches, suggestionsLoading } = useSelector((state) => state.search || {});
+  const { categories = [] } = useSelector((state) => state.categories || {});
+  const { suggestions = [], recentSearches = [], suggestionsLoading = false } = useSelector((state) => state.search || {});
   const cartTotalQuantity = useSelector(selectCartTotalQuantity);
   const wishlistCount = useSelector(selectWishlistCount);
   const [debouncedSearchQuery] = useDebounce(searchQuery, 300);
-
   const placeholders = [
     "Search for Oversize T-shirt",
     "Search for Hoodie",
@@ -48,38 +46,49 @@ const Navbar = () => {
     "Search for Acid Wash",
     "Search for Regular",
   ];
-  const [index, setIndex] = useState(0);
+  const [placeholderIndex, setPlaceholderIndex] = useState(0);
 
   useEffect(() => {
     const handleScroll = () => setScrolled(window.scrollY > 20);
     window.addEventListener("scroll", handleScroll);
     return () => window.removeEventListener("scroll", handleScroll);
   }, []);
-
   useEffect(() => {
     const interval = setInterval(() => {
-      setIndex((prevIndex) => (prevIndex + 1) % placeholders.length);
+      setPlaceholderIndex((prev) => (prev + 1) % placeholders.length);
     }, 2000);
     return () => clearInterval(interval);
   }, []);
-
   useEffect(() => {
-    if (token && user != null) {
+    if (token && user) {
       dispatch(fetchCart());
       dispatch(fetchWishlist());
     }
-  }, [user, dispatch, token]);
-
+  }, [user, token, dispatch]);
   useEffect(() => {
     dispatch(fetchCategories({ showOnHomepage: false }));
   }, [dispatch]);
-
   useEffect(() => {
-    if (debouncedSearchQuery.trim() && searchFocused) {
-      dispatch(getSearchSuggestions(debouncedSearchQuery.trim()));
+    if (abortControllerRef.current) {
+      abortControllerRef.current.abort();
     }
+    if (debouncedSearchQuery.trim() && searchFocused) {
+      abortControllerRef.current = new AbortController();
+      dispatch(getSearchSuggestions({
+        query: debouncedSearchQuery.trim(),
+        signal: abortControllerRef.current.signal
+      })).catch((error) => {
+        if (error.name !== 'AbortError') {
+          console.error("Search suggestions error:", error);
+        }
+      });
+    }
+    return () => {
+      if (abortControllerRef.current) {
+        abortControllerRef.current.abort();
+      }
+    };
   }, [debouncedSearchQuery, searchFocused, dispatch]);
-
   useEffect(() => {
     const handleClickOutsideSearch = (event) => {
       if (searchRef.current && !searchRef.current.contains(event.target)) {
@@ -90,7 +99,6 @@ const Navbar = () => {
     document.addEventListener("mousedown", handleClickOutsideSearch);
     return () => document.removeEventListener("mousedown", handleClickOutsideSearch);
   }, []);
-
   useEffect(() => {
     const handleClickOutsideUserMenu = (event) => {
       if (userMenuRef.current && !userMenuRef.current.contains(event.target)) {
@@ -101,29 +109,11 @@ const Navbar = () => {
     return () => document.removeEventListener("mousedown", handleClickOutsideUserMenu);
   }, []);
 
-  const navigateToCategory = (categorySlug = "") => {
+  const navigateToCategory = useCallback((categorySlug = "") => {
     const base = "/products?";
     navigate(categorySlug ? `${base}category=${categorySlug}` : base);
-  };
-
-  const handleClearCart = async () => {
-    try {
-      await dispatch(clearCart()).unwrap();
-      toast.success("Cart cleared successfully");
-    } catch (error) {
-      toast.error(error?.message || "Failed to clear cart");
-    }
-  };
-
-  const handleLogout = () => {
-    dispatch(logout());
-    setTimeout(handleClearCart, 1000);
-    setShowUserMenu(false);
-    navigate("/");
-    toast.success("Logged out successfully");
-  };
-
-  const handleSearch = (e, query = searchQuery) => {
+  }, [navigate]);
+  const handleSearch = useCallback((e, query = searchQuery) => {
     e?.preventDefault();
     const searchTerm = query.trim();
     if (searchTerm) {
@@ -133,58 +123,65 @@ const Navbar = () => {
       setSearchQuery("");
       setSearchFocused(false);
     }
-  };
-
-  const handleSearchFocus = () => {
-    setSearchFocused(true);
-    setShowSearchDropdown(true);
-  };
-
-  const handleSuggestionClick = (suggestion) => {
+  }, [searchQuery, dispatch, navigate]);
+  const handleSuggestionClick = useCallback((suggestion) => {
     setSearchQuery(suggestion);
     handleSearch(null, suggestion);
-  };
+  }, [handleSearch]);
 
-  const handleRecentSearchClick = (recentSearch) => {
+  const handleRecentSearchClick = useCallback((recentSearch) => {
     setSearchQuery(recentSearch);
     handleSearch(null, recentSearch);
-  };
+  }, [handleSearch]);
 
-  // Mobile categories
+  const handleLogout = useCallback(() => {
+    // Clear local cart state immediately (synchronous)
+    dispatch(clearCart()); // assumes clearCart is a synchronous action
+    dispatch(logout());
+    setShowUserMenu(false);
+    navigate("/");
+    toast.success("Logged out successfully");
+  }, [dispatch, navigate]);
+
+  const handleClearCart = useCallback(async () => {
+    try {
+      await dispatch(clearCart()).unwrap();
+      toast.success("Cart cleared successfully");
+    } catch (error) {
+      toast.error(error?.message || "Failed to clear cart");
+    }
+  }, [dispatch]);
+
+  // Mobile categories logic (safe with fallback)
   const desiredMobileCategoryNames = ["Oversized", "New Arrival", "Minimalist", "Regular"];
   const categoriesForMobileScroll = [];
+  
   desiredMobileCategoryNames.forEach((name) => {
     const foundCat = categories.find((cat) => cat.name === name);
     if (foundCat && !["anime-t-shirt", "ksauni-tshirts-styles"].includes(foundCat.slug)) {
       categoriesForMobileScroll.push(foundCat);
     }
   });
-
+  
   if (categoriesForMobileScroll.length < 5 && categories.length > 0) {
     const existingNames = new Set(categoriesForMobileScroll.map((cat) => cat.name));
-    categories.forEach((cat) => {
+    for (const cat of categories) {
       if (!existingNames.has(cat.name) && categoriesForMobileScroll.length < 5) {
         if (!["anime-t-shirt", "ksauni-tshirts-styles"].includes(cat.slug)) {
           categoriesForMobileScroll.push(cat);
           existingNames.add(cat.name);
         }
       }
-    });
+    }
   }
 
   const isProductDetailPage = location.pathname.startsWith("/product/");
   const isCartPage = location.pathname === "/cart";
 
-  const handleActiveButton = () => {
-    localStorage.removeItem("activeButton");
-  };
-
   return (
     <>
-      {/* Main Navbar Wrapper */}
       <div className="fixed top-0 left-0 right-0 z-50">
-        
-        {/* ROW 1: White Navbar with Logo, Search, Icons */}
+        {/* Main Navbar */}
         <motion.div
           initial={{ y: -100, opacity: 0 }}
           animate={{ y: 0, opacity: 1 }}
@@ -196,50 +193,40 @@ const Navbar = () => {
           }`}
         >
           <div className="max-w-7xl mx-auto px-4 lg:px-6">
-            
-            {/* Main Row: Logo (Left) + Empty Space (Center) + Search + Icons (Right) */}
             <div className="flex items-center justify-between py-3 gap-4">
-              
-              {/* LEFT - Logo */}
+              {/* Logo + Mobile menu button */}
               <div className="flex items-center gap-2">
-                {/* Mobile Menu Button */}
                 <button
                   onClick={() => setIsMenuOpen(!isMenuOpen)}
                   className="p-2 -ml-2 rounded-full text-gray-600 hover:text-red-500 hover:bg-red-50 transition md:hidden"
+                  aria-label="Menu"
                 >
                   {isMenuOpen ? <X size={22} /> : <Menu size={22} />}
                 </button>
-
-                {/* Logo - PNG from public folder */}
-                <div 
-                  onClick={() => navigate("/")} 
-                  className="flex items-center cursor-pointer group"
-                >
-                  <img 
-                    src="/navbar logo.png" 
-                    alt="Factory Sale Logo" 
-                    className="h-10 w-auto object-contain"
-                  />
+                <div onClick={() => navigate("/")} className="flex items-center cursor-pointer group">
+                  <img src="/navbar logo.png" alt="Factory Sale Logo" className="h-10 w-auto object-contain" />
                 </div>
               </div>
 
-              {/* CENTER - Empty Space */}
               <div className="flex-1 hidden md:block"></div>
 
-              {/* RIGHT - Search + Wishlist + Cart + Profile */}
+              {/* Desktop Icons */}
               <div className="flex items-center gap-2 md:gap-4">
-                
-                {/* Search Bar Desktop */}
+                {/* Desktop Search */}
                 <div className="relative hidden md:block" ref={searchRef}>
                   <form onSubmit={handleSearch} className="relative">
                     <Search size={18} className={`absolute left-4 top-1/2 -translate-y-1/2 transition-colors ${searchFocused ? 'text-red-500' : 'text-gray-400'}`} />
                     <input
                       type="text"
-                      placeholder={placeholders[index]}
+                      placeholder={placeholders[placeholderIndex]}
                       value={searchQuery}
                       onChange={(e) => setSearchQuery(e.target.value)}
-                      onFocus={handleSearchFocus}
+                      onFocus={() => {
+                        setSearchFocused(true);
+                        setShowSearchDropdown(true);
+                      }}
                       className="w-72 lg:w-96 py-2 pl-11 pr-11 text-sm text-gray-700 placeholder-gray-600 bg-gray-50 border border-gray-700 rounded-full outline-none focus:border-red-400 focus:ring-2 focus:ring-red-500/20 transition-all"
+                      aria-label="Search"
                     />
                     <Mic size={18} className="absolute right-4 top-1/2 -translate-y-1/2 text-gray-400 cursor-pointer hover:text-red-500 transition" />
                   </form>
@@ -258,7 +245,9 @@ const Navbar = () => {
                               <span className="text-xs font-semibold text-gray-500 flex items-center gap-1.5">
                                 <Clock size={14} className="text-red-500" /> Recent Searches
                               </span>
-                              <button onClick={() => dispatch(clearRecentSearches())} className="text-xs text-gray-400 hover:text-red-500 transition">Clear All</button>
+                              <button onClick={() => dispatch(clearRecentSearches())} className="text-xs text-gray-400 hover:text-red-500 transition">
+                                Clear All
+                              </button>
                             </div>
                             {recentSearches.map((search, idx) => (
                               <div key={idx} onClick={() => handleRecentSearchClick(search)} className="flex items-center justify-between p-2 rounded-xl cursor-pointer hover:bg-gray-50 group">
@@ -274,7 +263,9 @@ const Navbar = () => {
                         {searchQuery && (
                           <div className="p-4">
                             {suggestionsLoading ? (
-                              <div className="flex justify-center py-6"><div className="w-5 h-5 border-2 border-gray-200 border-t-red-500 rounded-full animate-spin" /></div>
+                              <div className="flex justify-center py-6">
+                                <div className="w-5 h-5 border-2 border-gray-200 border-t-red-500 rounded-full animate-spin" />
+                              </div>
                             ) : suggestions.length > 0 ? (
                               <div>
                                 <span className="text-xs font-semibold text-gray-500 flex items-center gap-1.5 mb-3">
@@ -317,7 +308,7 @@ const Navbar = () => {
                   )}
                 </div>
 
-                {/* PREMIUM USER MENU */}
+                {/* User Menu */}
                 <div className="relative hidden md:block" ref={userMenuRef}>
                   <button
                     onClick={() => {
@@ -325,11 +316,12 @@ const Navbar = () => {
                       else setShowUserMenu(!showUserMenu);
                     }}
                     className="flex items-center gap-2 px-3 py-2 rounded-full text-gray-600 hover:text-red-500 hover:bg-red-50 transition group"
+                    aria-label="User menu"
                   >
                     <div className="relative">
                       <UserCircle size={22} />
                       {token && (
-                        <span className="absolute -bottom-1 -right-1 w-2.5 h-2.5 bg-green-500 rounded-full border-2 border-white"></span>
+                        <span className="absolute -bottom-1 -right-1 w-2.5 h-2.5 bg-green-500 rounded-full border-2 border-white" />
                       )}
                     </div>
                     <span className="text-sm font-medium hidden lg:inline">
@@ -347,24 +339,16 @@ const Navbar = () => {
                         transition={{ duration: 0.2, ease: "easeOut" }}
                         className="absolute right-0 z-50 w-80 mt-3 overflow-hidden"
                       >
-                        {/* Premium Card with Gradient Border */}
                         <div className="relative bg-white rounded-2xl shadow-2xl">
-                          {/* Animated Gradient Border */}
                           <div className="absolute inset-0 rounded-2xl bg-gradient-to-r from-red-500 via-orange-500 to-red-500 opacity-75 blur-sm"></div>
                           <div className="absolute inset-0 rounded-2xl bg-gradient-to-r from-red-500 via-orange-500 to-red-500 opacity-100"></div>
-                          
-                          {/* Inner Content */}
                           <div className="relative bg-white rounded-2xl m-[1px] overflow-hidden">
-                            
-                            {/* User Info */}
                             <div className="pt-3 px-4 pb-3 border-b border-gray-100">
                               <h3 className="text-base font-bold text-gray-800">{user?.name}</h3>
                               <p className="text-xs text-gray-500 mt-0.5">{user?.email}</p>
                             </div>
-                            
-                            {/* Menu Items */}
                             <div className="p-2">
-                              <button onClick={() => { navigate("/profile"); setShowUserMenu(false); handleActiveButton(); }} className="flex items-center gap-3 w-full px-3 py-2.5 text-sm text-gray-700 rounded-xl hover:bg-red-50 hover:text-red-600 transition group">
+                              <button onClick={() => { navigate("/profile"); setShowUserMenu(false); }} className="flex items-center gap-3 w-full px-3 py-2.5 text-sm text-gray-700 rounded-xl hover:bg-red-50 hover:text-red-600 transition group">
                                 <div className="w-8 h-8 rounded-lg bg-gray-100 group-hover:bg-red-100 flex items-center justify-center transition">
                                   <User size={16} className="text-gray-600 group-hover:text-red-500" />
                                 </div>
@@ -373,7 +357,6 @@ const Navbar = () => {
                                   <p className="text-[10px] text-gray-400">View and edit profile</p>
                                 </div>
                               </button>
-                              
                               <button onClick={() => { navigate("/orders"); setShowUserMenu(false); }} className="flex items-center gap-3 w-full px-3 py-2.5 text-sm text-gray-700 rounded-xl hover:bg-red-50 hover:text-red-600 transition group">
                                 <div className="w-8 h-8 rounded-lg bg-gray-100 group-hover:bg-red-100 flex items-center justify-center transition">
                                   <ShoppingBag size={16} className="text-gray-600 group-hover:text-red-500" />
@@ -383,9 +366,6 @@ const Navbar = () => {
                                   <p className="text-[10px] text-gray-400">Track your orders</p>
                                 </div>
                               </button>
-                              
-                              
-                              
                               {(user?.role === "admin" || user?.role === "digitalMarketer") && (
                                 <button onClick={() => { navigate(user?.role === "admin" ? "/admin" : "/digitalMarketer"); setShowUserMenu(false); }} className="flex items-center gap-3 w-full px-3 py-2.5 text-sm text-gray-700 rounded-xl hover:bg-red-50 hover:text-red-600 transition group">
                                   <div className="w-8 h-8 rounded-lg bg-gray-100 group-hover:bg-red-100 flex items-center justify-center transition">
@@ -397,8 +377,6 @@ const Navbar = () => {
                                   </div>
                                 </button>
                               )}
-                              
-                              
                               <button className="flex items-center gap-3 w-full px-3 py-2.5 text-sm text-gray-700 rounded-xl hover:bg-gray-50 transition group">
                                 <div className="w-8 h-8 rounded-lg bg-gray-100 flex items-center justify-center">
                                   <Gift size={16} className="text-gray-600" />
@@ -409,7 +387,6 @@ const Navbar = () => {
                                 </div>
                                 <span className="text-[9px] font-bold text-white bg-red-500 px-1.5 py-0.5 rounded-full">NEW</span>
                               </button>
-                              
                               <button onClick={handleLogout} className="flex items-center gap-3 w-full px-3 py-2.5 text-sm text-red-600 rounded-xl hover:bg-red-50 transition group">
                                 <div className="w-8 h-8 rounded-lg bg-red-50 group-hover:bg-red-100 flex items-center justify-center transition">
                                   <LogOut size={16} className="text-red-500" />
@@ -436,11 +413,15 @@ const Navbar = () => {
                   <Search size={18} className={`absolute left-4 top-1/2 -translate-y-1/2 transition-colors ${searchFocused ? 'text-red-500' : 'text-gray-400'}`} />
                   <input
                     type="text"
-                    placeholder={placeholders[index]}
+                    placeholder={placeholders[placeholderIndex]}
                     value={searchQuery}
                     onChange={(e) => setSearchQuery(e.target.value)}
-                    onFocus={handleSearchFocus}
+                    onFocus={() => {
+                      setSearchFocused(true);
+                      setShowSearchDropdown(true);
+                    }}
                     className="w-full py-3 pl-12 pr-12 text-sm text-gray-700 placeholder-gray-600 bg-gray-50 border border-gray-700 rounded-full outline-none focus:border-red-400 focus:ring-2 focus:ring-red-500/20 transition-all"
+                    aria-label="Search"
                   />
                   <Mic size={18} className="absolute right-4 top-1/2 -translate-y-1/2 text-gray-500" />
                 </form>
@@ -468,9 +449,17 @@ const Navbar = () => {
                       )}
                       {searchQuery && (
                         <div className="p-3">
-                          {suggestionsLoading ? <div className="py-4 text-center">...</div> : suggestions.map((s, i) => (
-                            <div key={i} onClick={() => handleSuggestionClick(s)} className="p-3 text-sm text-gray-700 border-b border-gray-50">{s}</div>
-                          ))}
+                          {suggestionsLoading ? (
+                            <div className="py-4 text-center">Loading...</div>
+                          ) : suggestions.length > 0 ? (
+                            suggestions.map((s, i) => (
+                              <div key={i} onClick={() => handleSuggestionClick(s)} className="p-3 text-sm text-gray-700 border-b border-gray-50 cursor-pointer hover:bg-gray-50">
+                                {s}
+                              </div>
+                            ))
+                          ) : (
+                            <div className="py-8 text-sm text-center text-gray-400">No suggestions found</div>
+                          )}
                         </div>
                       )}
                     </motion.div>
@@ -481,7 +470,7 @@ const Navbar = () => {
           </div>
         </motion.div>
 
-        {/* ROW 2: Categories Navigation Bar - Different Background */}
+        {/* Desktop Categories Bar */}
         {!isCartPage && (
           <div className="bg-gradient-to-r from-gray-900 via-gray-800 to-gray-900 border-b border-red-500/30 shadow-lg">
             <div className="max-w-7xl mx-auto px-4 lg:px-6">
@@ -503,9 +492,9 @@ const Navbar = () => {
           </div>
         )}
 
-        {/* Mobile Horizontal Categories - Different Background */}
+        {/* Mobile Horizontal Categories */}
         {!isProductDetailPage && !isCartPage && (
-          <div className="bg-white  md:hidden">
+          <div className="bg-white md:hidden">
             <div className="px-4">
               <div className="flex gap-5 py-3 overflow-x-auto scrollbar-hide">
                 {categoriesForMobileScroll.map((cat) => (
@@ -537,14 +526,13 @@ const Navbar = () => {
               className="md:hidden overflow-hidden bg-white border-t border-gray-100 shadow-xl"
             >
               <div className="max-h-[70vh] overflow-y-auto">
-                
                 <div onClick={() => { navigate("/wishlist"); setIsMenuOpen(false); }} className="flex items-center gap-3 py-3.5 px-5 text-gray-600 border-b border-gray-50 cursor-pointer hover:text-red-500 hover:bg-red-50 transition">
                   <Heart size={18} /> Wishlist
                 </div>
                 <div onClick={() => { navigate("/cart"); setIsMenuOpen(false); }} className="flex items-center gap-3 py-3.5 px-5 text-gray-600 border-b border-gray-50 cursor-pointer hover:text-red-500 hover:bg-red-50 transition">
                   <ShoppingBag size={18} /> Cart
                 </div>
-                <div onClick={() => { if (!token) navigate("/login"); else { setShowUserMenu(!showUserMenu); setIsMenuOpen(false); } }} className="flex items-center gap-3 py-3.5 px-5 text-gray-600 border-b border-gray-50 cursor-pointer hover:text-red-500 hover:bg-red-50 transition">
+                <div onClick={() => { if (!token) navigate("/login"); else { navigate("/profile"); setIsMenuOpen(false); } }} className="flex items-center gap-3 py-3.5 px-5 text-gray-600 border-b border-gray-50 cursor-pointer hover:text-red-500 hover:bg-red-50 transition">
                   <User size={18} /> {token ? user?.name || "Profile" : "Login"}
                 </div>
                 {token && (
