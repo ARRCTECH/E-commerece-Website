@@ -282,7 +282,11 @@ const InvoiceDownloadButton = ({ order, company = {} }) => {
       const shipping = order.pricing?.shipping ?? order.shippingCharge ?? order.shippingCost ?? 0;
       const freeDisc = order.pricing?.freediscount ?? order.freediscount ?? 0;
       const couponDisc = order.discount ?? 0;
-      const total = order.pricing?.total ?? order.totalAmount ?? order.total ?? subtotal + shipping - freeDisc - couponDisc;
+      // ✅ Referral discount management
+      const referralDisc = order.pricing?.referralDiscount ?? order.referralDiscount ?? 0;
+
+      // Total includes referral discount subtraction
+      const total = subtotal + shipping - freeDisc - couponDisc - referralDisc;
 
       // Page-break safety
       if (ty > pageH - 220) {
@@ -293,7 +297,8 @@ const InvoiceDownloadButton = ({ order, company = {} }) => {
       // ✅ FIX: Payment box aur total box ka height same rakhna
       const totalsX = pageW - M - 220;
       const totalsW = 220;
-      const rowsCount = 2 + (freeDisc > 0 ? 1 : 0) + (couponDisc > 0 ? 1 : 0);
+      const discountRowsCount = (freeDisc > 0 ? 1 : 0) + (couponDisc > 0 ? 1 : 0) + (referralDisc > 0 ? 1 : 0);
+      const rowsCount = 2 + discountRowsCount; // subtotal + shipping + discounts
       const boxH = Math.max(rowsCount * 18 + 45, 130); // Minimum height set kiya
       
       const payBoxW = pageW - M * 2 - totalsW - 12;
@@ -365,6 +370,10 @@ const InvoiceDownloadButton = ({ order, company = {} }) => {
           `- ${inr(couponDisc)}`,
           { color: [16, 145, 80] }
         );
+      // ✅ Display referral discount row if present
+      if (referralDisc > 0) {
+        row("Referral Discount", `- ${inr(referralDisc)}`, { color: [16, 145, 80] });
+      }
 
       doc.setDrawColor(180, 180, 180);
       doc.line(totalsX + 8, ry - 6, totalsX + totalsW - 8, ry - 6);

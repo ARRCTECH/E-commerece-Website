@@ -140,6 +140,7 @@ const tempOrderDataSchema = new mongoose.Schema({
   },
 });
 const referralDetailsSchema = new mongoose.Schema({
+  name: { type: String, default: null },
   expiryDate: { type: Date, default: null },
   amount: { type: Number, default: 0 },        
   type: { type: String, enum: ["percentage", "fixed"], default: "percentage" },

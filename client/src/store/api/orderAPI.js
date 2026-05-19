@@ -82,7 +82,8 @@ createPartialCodOrder: (orderData) =>
     onlineAmount: orderData.onlineAmount,
     codAmount: orderData.codAmount,
     percentage: orderData.partialPercentage,
-    freediscount: orderData.freediscount
+    freediscount: orderData.freediscount,
+    referralDiscount: orderData.referralDiscount,
   }),
   
   verifyPartialCodPayment: (paymentData) =>

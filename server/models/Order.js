@@ -200,6 +200,7 @@ const orderSchema = new mongoose.Schema(
     discount: { type: Number, required: true, min: 0, default: 0 },
     total: { type: Number, required: true, min: 0 },
     freediscount: { type: Number },
+    referralDiscount: { type: Number },
 
     pricing: {
       subtotal: Number,
@@ -208,6 +209,7 @@ const orderSchema = new mongoose.Schema(
       discount: Number,
       total: Number,
       freediscount: Number,
+      referralDiscount:Number,
       selectedShippingRate: Number,
     },
 
