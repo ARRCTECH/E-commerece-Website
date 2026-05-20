@@ -455,10 +455,9 @@ const Navbar = () => {
 
                       <input
                         type="text"
-                        placeholder={placeholders[index]}
+                        placeholder={placeholders[placeholderIndex]}
                         value={searchQuery}
                         onChange={(e) => setSearchQuery(e.target.value)}
-                        onFocus={handleSearchFocus}
                         className="w-full py-3 pl-12 pr-12 text-sm text-gray-700 placeholder-gray-600 bg-gray-50 border border-gray-700 rounded-full outline-none focus:border-red-400 focus:ring-2 focus:ring-red-500/20 transition-all"
                       />
 
