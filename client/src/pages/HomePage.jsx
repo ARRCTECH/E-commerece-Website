@@ -11,20 +11,17 @@ import ReferralProgram from "../components/Referral-program";
 import D2CHighlight from "../components/D2CHighlight";
 import WhatsAppScrollableComponent from "../components/WhatsAppScrollableComponent";
 const HomePage = () => {
-  return (
-    <div className="flex flex-col">
-      <PromoBanners />
-      <HeroBanner />
-      <FeaturedCategories />
-      <CategoryBanner />
-      <TrendingProducts />
-      <ReferralProgram />
-      <D2CHighlight/>
-      <NewArrivals />
-      <InnovationList />
-      <Oversized899 />
-      <WhatsAppScrollableComponent/>
-    </div>
-  );
+      return (
+            <div className="flex flex-col">
+                  <PromoBanners />
+                  <HeroBanner />
+                  <D2CHighlight />
+                  <FeaturedCategories />
+                  <HeroBanner />
+                  <TrendingProducts />
+                  <ReferralProgram />
+                  <D2CHighlight />
+            </div>
+      );
 };
 export default HomePage;

@@ -19,9 +19,14 @@ export default function D2CHighlight() {
     <section className="min-h-screen bg-black text-white p-6">
       {/* Header */}
       <div className="flex justify-between items-center mb-16">
-        
+        <div className="flex items-center gap-2">
+          <Sparkles className="h-5 w-5 text-purple-500" />
+          <span className="font-bold">Direct&Co.</span>
         </div>
-        
+        <div className="text-xs text-gray-400">
+          {time.toLocaleTimeString()}
+        </div>
+      </div>
 
       {/* Hero */}
       <div className="text-center mb-16">

@@ -427,7 +427,6 @@ const verifyPhoneOTP = async (req, res) => {
     if (decodedToken.phone_number !== phoneNumber) {
       return res.status(400).json({ success: false, message: "Phone number mismatch" });
     }
-
     const firebaseUser = await admin.auth().getUser(decodedToken.uid);
 
     // Check if user already exists in our DB
@@ -454,7 +453,6 @@ const verifyPhoneOTP = async (req, res) => {
       if (name && name.trim()) user.name = name.trim();
       await user.save();
     }
-
     const jwtToken = jwt.sign(
       { userId: user._id, firebaseUid: user.firebaseUid, phoneNumber: user.phoneNumber, role: user.role },
       process.env.JWT_SECRET,
@@ -499,9 +497,11 @@ const verifyFirebaseToken = async (req, res) => {
     if (!idToken) return res.status(400).json({ success: false, message: "ID token required" });
 
     const decodedToken = await admin.auth().verifyIdToken(idToken);
-    const firebaseUser = await admin.auth().getUser(decodedToken.uid);
+    const firebaseUid = decodedToken.uid;
+    const firebaseUser = await admin.auth().getUser(firebaseUid);
 
-    let user = await User.findOne({ firebaseUid: decodedToken.uid });
+    let user = await User.findOne({ firebaseUid });
+
     if (!user) {
       // Try to find by email or phone if they exist but different UID (account linking)
       let existingUser = null;
@@ -567,12 +567,19 @@ const verifyFirebaseToken = async (req, res) => {
     });
   } catch (error) {
     console.error("Token verification error:", error);
-    if (error.code === "auth/id-token-expired") return res.status(401).json({ success: false, message: "Token expired" });
-    return res.status(401).json({ success: false, message: "Invalid token" });
+    if (error.code === "auth/id-token-expired") {
+      return res.status(401).json({
+        success: false,
+        message: "Token has expired",
+      });
+    }
+    res.status(401).json({
+      success: false,
+      message: "Invalid token",
+    });
   }
 };
 
-// ==================== FORGOT PASSWORD ====================
 const forgotPassword = async (req, res) => {
   try {
     const { email } = req.body;
@@ -602,7 +609,6 @@ const forgotPassword = async (req, res) => {
   }
 };
 
-// ==================== PROFILE MANAGEMENT ====================
 const getProfile = async (req, res) => {
   try {
     const user = await User.findById(req.user.userId);
@@ -647,7 +653,6 @@ const updateProfile = async (req, res) => {
     if (addresses) user.addresses = addresses;
     await user.save();
 
-    // Sync with Firebase if name changed
     if (name && name !== user.name) {
       try {
         await admin.auth().updateUser(user.firebaseUid, { displayName: name.trim() });
@@ -690,7 +695,7 @@ const uploadAvatar = async (req, res) => {
     const user = await User.findById(req.user.userId);
     if (!user) return res.status(404).json({ success: false, message: "User not found" });
 
-    user.avatar = req.file.path; // assumes Cloudinary or similar provides URL
+    user.avatar = req.file.path;
     await user.save();
 
     try {
@@ -699,14 +704,17 @@ const uploadAvatar = async (req, res) => {
       console.error("Firebase photo update error:", err);
     }
 
-    return res.status(200).json({ success: true, message: "Avatar uploaded", user: { ...user.toObject(), avatar: user.avatar } });
+    return res.status(200).json({ 
+      success: true, 
+      message: "Avatar uploaded", 
+      user: { ...user.toObject(), avatar: user.avatar } 
+    });
   } catch (error) {
     console.error("Upload avatar error:", error);
     return res.status(500).json({ success: false, message: "Failed to upload avatar" });
   }
 };
 
-// ==================== LOGOUT & DELETE ACCOUNT ====================
 const logout = async (req, res) => {
   try {
     await admin.auth().revokeRefreshTokens(req.user.firebaseUid);
@@ -732,7 +740,6 @@ const deleteAccount = async (req, res) => {
   }
 };
 
-// ==================== EXPORTS ====================
 module.exports = {
   registerWithEmail,
   loginWithEmail,

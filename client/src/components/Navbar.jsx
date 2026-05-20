@@ -39,6 +39,8 @@ const Navbar = () => {
   const cartTotalQuantity = useSelector(selectCartTotalQuantity);
   const wishlistCount = useSelector(selectWishlistCount);
   const [debouncedSearchQuery] = useDebounce(searchQuery, 300);
+  const [showMobileSearch, setShowMobileSearch] = useState(true);
+
   const placeholders = [
     "Search for Oversize T-shirt",
     "Search for Hoodie",
@@ -49,7 +51,18 @@ const Navbar = () => {
   const [placeholderIndex, setPlaceholderIndex] = useState(0);
 
   useEffect(() => {
-    const handleScroll = () => setScrolled(window.scrollY > 20);
+    const handleScroll = () => {
+      const isScrolled = window.scrollY > 30;
+
+      setScrolled(isScrolled);
+
+      if (isScrolled) {
+        setShowMobileSearch(false);
+      } else {
+        setShowMobileSearch(true);
+      }
+    };
+
     window.addEventListener("scroll", handleScroll);
     return () => window.removeEventListener("scroll", handleScroll);
   }, []);
@@ -181,20 +194,23 @@ const Navbar = () => {
   return (
     <>
       <div className="fixed top-0 left-0 right-0 z-50">
-        {/* Main Navbar */}
+
+        {/* ROW 1: White Navbar with Logo, Search, Icons */}
         <motion.div
           initial={{ y: -100, opacity: 0 }}
           animate={{ y: 0, opacity: 1 }}
           transition={{ duration: 0.4 }}
-          className={`transition-all duration-300 ${
-            scrolled
-              ? "bg-white/95 backdrop-blur-xl border-b border-red-500/30 shadow-2xl shadow-red-500/10"
-              : "bg-white border-b border-gray-200"
-          }`}
+          className={`transition-all duration-300 ${scrolled
+            ? "bg-white/95 backdrop-blur-xl border-b border-red-500/30 shadow-2xl shadow-red-500/10"
+            : "bg-white border-b border-gray-200"
+            }`}
         >
           <div className="max-w-7xl mx-auto px-4 lg:px-6">
+
+            {/* Main Row: Logo (Left) + Empty Space (Center) + Search + Icons (Right) */}
             <div className="flex items-center justify-between py-3 gap-4">
-              {/* Logo + Mobile menu button */}
+
+              {/* LEFT - Logo */}
               <div className="flex items-center gap-2">
                 <button
                   onClick={() => setIsMenuOpen(!isMenuOpen)}
@@ -213,6 +229,8 @@ const Navbar = () => {
               {/* Desktop Icons */}
               <div className="flex items-center gap-2 md:gap-4">
                 {/* Desktop Search */}
+
+                {/* Search Bar Desktop */}
                 <div className="relative hidden md:block" ref={searchRef}>
                   <form onSubmit={handleSearch} className="relative">
                     <Search size={18} className={`absolute left-4 top-1/2 -translate-y-1/2 transition-colors ${searchFocused ? 'text-red-500' : 'text-gray-400'}`} />
@@ -230,7 +248,7 @@ const Navbar = () => {
                     />
                     <Mic size={18} className="absolute right-4 top-1/2 -translate-y-1/2 text-gray-400 cursor-pointer hover:text-red-500 transition" />
                   </form>
-                  
+
                   <AnimatePresence>
                     {showSearchDropdown && searchFocused && (
                       <motion.div
@@ -288,6 +306,16 @@ const Navbar = () => {
                   </AnimatePresence>
                 </div>
 
+                {/* Mobile Search Icon - visible only after scroll */}
+                {scrolled && !showMobileSearch && (
+                  <div
+                    onClick={() => setShowMobileSearch(true)}
+                    className="relative p-2 rounded-full text-gray-600 cursor-pointer hover:text-red-500 hover:bg-red-50 transition md:hidden"
+                  >
+                    <Search size={22} />
+                  </div>
+                )}
+
                 {/* Wishlist */}
                 <div onClick={() => navigate("/wishlist")} className="relative p-2 rounded-full text-gray-600 cursor-pointer hover:text-red-500 hover:bg-red-50 transition group">
                   <Heart size={22} />
@@ -329,7 +357,7 @@ const Navbar = () => {
                     </span>
                     <ChevronDown size={16} className={`transition-transform duration-200 ${showUserMenu ? 'rotate-180 text-red-500' : ''}`} />
                   </button>
-                  
+
                   <AnimatePresence>
                     {showUserMenu && token && (
                       <motion.div
@@ -343,10 +371,16 @@ const Navbar = () => {
                           <div className="absolute inset-0 rounded-2xl bg-gradient-to-r from-red-500 via-orange-500 to-red-500 opacity-75 blur-sm"></div>
                           <div className="absolute inset-0 rounded-2xl bg-gradient-to-r from-red-500 via-orange-500 to-red-500 opacity-100"></div>
                           <div className="relative bg-white rounded-2xl m-[1px] overflow-hidden">
+
+                    
+
+                            {/* User Info */}
                             <div className="pt-3 px-4 pb-3 border-b border-gray-100">
                               <h3 className="text-base font-bold text-gray-800">{user?.name}</h3>
                               <p className="text-xs text-gray-500 mt-0.5">{user?.email}</p>
                             </div>
+
+                            {/* Menu Items */}
                             <div className="p-2">
                               <button onClick={() => { navigate("/profile"); setShowUserMenu(false); }} className="flex items-center gap-3 w-full px-3 py-2.5 text-sm text-gray-700 rounded-xl hover:bg-red-50 hover:text-red-600 transition group">
                                 <div className="w-8 h-8 rounded-lg bg-gray-100 group-hover:bg-red-100 flex items-center justify-center transition">
@@ -357,6 +391,7 @@ const Navbar = () => {
                                   <p className="text-[10px] text-gray-400">View and edit profile</p>
                                 </div>
                               </button>
+
                               <button onClick={() => { navigate("/orders"); setShowUserMenu(false); }} className="flex items-center gap-3 w-full px-3 py-2.5 text-sm text-gray-700 rounded-xl hover:bg-red-50 hover:text-red-600 transition group">
                                 <div className="w-8 h-8 rounded-lg bg-gray-100 group-hover:bg-red-100 flex items-center justify-center transition">
                                   <ShoppingBag size={16} className="text-gray-600 group-hover:text-red-500" />
@@ -366,6 +401,9 @@ const Navbar = () => {
                                   <p className="text-[10px] text-gray-400">Track your orders</p>
                                 </div>
                               </button>
+
+
+
                               {(user?.role === "admin" || user?.role === "digitalMarketer") && (
                                 <button onClick={() => { navigate(user?.role === "admin" ? "/admin" : "/digitalMarketer"); setShowUserMenu(false); }} className="flex items-center gap-3 w-full px-3 py-2.5 text-sm text-gray-700 rounded-xl hover:bg-red-50 hover:text-red-600 transition group">
                                   <div className="w-8 h-8 rounded-lg bg-gray-100 group-hover:bg-red-100 flex items-center justify-center transition">
@@ -397,66 +435,103 @@ const Navbar = () => {
             </div>
 
             {/* Mobile Search Bar */}
-            <div className={`pb-3 md:hidden ${isProductDetailPage ? "hidden" : ""}`}>
-              <div ref={searchRef} className="relative">
-                <form onSubmit={handleSearch}>
-                  <Search size={18} className={`absolute left-4 top-1/2 -translate-y-1/2 transition-colors ${searchFocused ? 'text-red-500' : 'text-gray-400'}`} />
-                  <input
-                    type="text"
-                    placeholder={placeholders[placeholderIndex]}
-                    value={searchQuery}
-                    onChange={(e) => setSearchQuery(e.target.value)}
-                    onFocus={() => {
-                      setSearchFocused(true);
-                      setShowSearchDropdown(true);
-                    }}
-                    className="w-full py-3 pl-12 pr-12 text-sm text-gray-700 placeholder-gray-600 bg-gray-50 border border-gray-700 rounded-full outline-none focus:border-red-400 focus:ring-2 focus:ring-red-500/20 transition-all"
-                    aria-label="Search"
-                  />
-                  <Mic size={18} className="absolute right-4 top-1/2 -translate-y-1/2 text-gray-500" />
-                </form>
-                <AnimatePresence>
-                  {showSearchDropdown && searchFocused && (
-                    <motion.div
-                      initial={{ opacity: 0, y: -10 }}
-                      animate={{ opacity: 1, y: 0 }}
-                      exit={{ opacity: 0, y: -5 }}
-                      className="absolute left-0 right-0 z-50 mt-2 bg-white border border-gray-200 rounded-2xl shadow-xl max-h-80 overflow-y-auto"
-                    >
-                      {recentSearches.length > 0 && !searchQuery && (
-                        <div className="p-3">
-                          <div className="flex justify-between text-xs text-gray-400 mb-2 px-2">
-                            <span>Recent</span>
-                            <button onClick={() => dispatch(clearRecentSearches())} className="hover:text-red-500">Clear</button>
-                          </div>
-                          {recentSearches.map((s, idx) => (
-                            <div key={idx} onClick={() => handleRecentSearchClick(s)} className="flex justify-between items-center p-3 text-sm text-gray-700 border-b border-gray-50">
-                              <span>{s}</span>
-                              <Trash2 onClick={(e) => { e.stopPropagation(); dispatch(removeRecentSearch(s)); }} size={14} className="text-gray-400" />
-                            </div>
-                          ))}
-                        </div>
-                      )}
-                      {searchQuery && (
-                        <div className="p-3">
-                          {suggestionsLoading ? (
-                            <div className="py-4 text-center">Loading...</div>
-                          ) : suggestions.length > 0 ? (
-                            suggestions.map((s, i) => (
-                              <div key={i} onClick={() => handleSuggestionClick(s)} className="p-3 text-sm text-gray-700 border-b border-gray-50 cursor-pointer hover:bg-gray-50">
-                                {s}
+            {/* Mobile Search Bar */}
+            <AnimatePresence>
+              {showMobileSearch && !isProductDetailPage && (
+                <motion.div
+                  initial={{ opacity: 1, height: "auto" }}
+                  animate={{ opacity: 1, height: "auto" }}
+                  exit={{ opacity: 0, height: 0 }}
+                  transition={{ duration: 0.3 }}
+                  className="pb-3 md:hidden overflow-hidden"
+                >
+                  <div ref={searchRef} className="relative">
+                    <form onSubmit={handleSearch}>
+                      <Search
+                        size={18}
+                        className={`absolute left-4 top-1/2 -translate-y-1/2 transition-colors ${searchFocused ? "text-red-500" : "text-gray-400"
+                          }`}
+                      />
+
+                      <input
+                        type="text"
+                        placeholder={placeholders[index]}
+                        value={searchQuery}
+                        onChange={(e) => setSearchQuery(e.target.value)}
+                        onFocus={handleSearchFocus}
+                        className="w-full py-3 pl-12 pr-12 text-sm text-gray-700 placeholder-gray-600 bg-gray-50 border border-gray-700 rounded-full outline-none focus:border-red-400 focus:ring-2 focus:ring-red-500/20 transition-all"
+                      />
+
+                      <Mic
+                        size={18}
+                        className="absolute right-4 top-1/2 -translate-y-1/2 text-gray-500"
+                      />
+                    </form>
+
+                    <AnimatePresence>
+                      {showSearchDropdown && searchFocused && (
+                        <motion.div
+                          initial={{ opacity: 0, y: -10 }}
+                          animate={{ opacity: 1, y: 0 }}
+                          exit={{ opacity: 0, y: -5 }}
+                          className="absolute left-0 right-0 z-50 mt-2 bg-white border border-gray-200 rounded-2xl shadow-xl max-h-80 overflow-y-auto"
+                        >
+                          {recentSearches.length > 0 && !searchQuery && (
+                            <div className="p-3">
+                              <div className="flex justify-between text-xs text-gray-400 mb-2 px-2">
+                                <span>Recent</span>
+                                <button
+                                  onClick={() => dispatch(clearRecentSearches())}
+                                  className="hover:text-red-500"
+                                >
+                                  Clear
+                                </button>
                               </div>
-                            ))
-                          ) : (
-                            <div className="py-8 text-sm text-center text-gray-400">No suggestions found</div>
+
+                              {recentSearches.map((s, idx) => (
+                                <div
+                                  key={idx}
+                                  onClick={() => handleRecentSearchClick(s)}
+                                  className="flex justify-between items-center p-3 text-sm text-gray-700 border-b border-gray-50"
+                                >
+                                  <span>{s}</span>
+                                  <Trash2
+                                    onClick={(e) => {
+                                      e.stopPropagation();
+                                      dispatch(removeRecentSearch(s));
+                                    }}
+                                    size={14}
+                                    className="text-gray-400"
+                                  />
+                                </div>
+                              ))}
+                            </div>
                           )}
-                        </div>
+
+                          {searchQuery && (
+                            <div className="p-3">
+                              {suggestionsLoading ? (
+                                <div className="py-4 text-center">...</div>
+                              ) : (
+                                suggestions.map((s, i) => (
+                                  <div
+                                    key={i}
+                                    onClick={() => handleSuggestionClick(s)}
+                                    className="p-3 text-sm text-gray-700 border-b border-gray-50"
+                                  >
+                                    {s}
+                                  </div>
+                                ))
+                              )}
+                            </div>
+                          )}
+                        </motion.div>
                       )}
-                    </motion.div>
-                  )}
-                </AnimatePresence>
-              </div>
-            </div>
+                    </AnimatePresence>
+                  </div>
+                </motion.div>
+              )}
+            </AnimatePresence>
           </div>
         </motion.div>
 
@@ -482,29 +557,41 @@ const Navbar = () => {
           </div>
         )}
 
-        {/* Mobile Horizontal Categories */}
-        {!isProductDetailPage && !isCartPage && (
-          <div className="bg-white md:hidden">
-            <div className="px-4">
-              <div className="flex gap-5 py-3 overflow-x-auto scrollbar-hide">
-                {categoriesForMobileScroll.map((cat) => (
-                  <div
-                    key={cat._id}
-                    onClick={() => navigateToCategory(cat.slug)}
-                    className="flex flex-col items-center flex-shrink-0 cursor-pointer group"
-                  >
-                    <div className="w-14 h-14 rounded-full bg-gray-800 border-2 border-red-500/30 group-hover:border-red-500 overflow-hidden shadow-md transition-all">
-                      <img src={cat.image?.url || "/placeholder.svg"} alt={cat.name} className="w-full h-full object-cover" />
+        {/* Mobile Horizontal Categories - Hide on scroll */}
+        <AnimatePresence>
+          {!scrolled && !isProductDetailPage && !isCartPage && (
+            <motion.div
+              initial={{ opacity: 1, height: "auto" }}
+              animate={{ opacity: 1, height: "auto" }}
+              exit={{ opacity: 0, height: 0 }}
+              transition={{ duration: 0.3 }}
+              className="bg-white md:hidden overflow-hidden"
+            >
+              <div className="px-4">
+                <div className="flex gap-5 py-3 overflow-x-auto scrollbar-hide">
+                  {categoriesForMobileScroll.map((cat) => (
+                    <div
+                      key={cat._id}
+                      onClick={() => navigateToCategory(cat.slug)}
+                      className="flex flex-col items-center flex-shrink-0 cursor-pointer group"
+                    >
+                      <div className="w-14 h-14 rounded-full bg-gray-800 border-2 border-red-500/30 group-hover:border-red-500 overflow-hidden shadow-md transition-all">
+                        <img
+                          src={cat.image?.url || "/placeholder.svg"}
+                          alt={cat.name}
+                          className="w-full h-full object-cover"
+                        />
+                      </div>
+                      <span className="text-[10px] font-medium text-gray-700 mt-1.5 group-hover:text-red-400 transition whitespace-nowrap">
+                        {cat.name}
+                      </span>
                     </div>
-                    <span className="text-[10px] font-medium text-gray-700 mt-1.5 group-hover:text-red-400 transition whitespace-nowrap">
-                      {cat.name}
-                    </span>
-                  </div>
-                ))}
+                  ))}
+                </div>
               </div>
-            </div>
-          </div>
-        )}
+            </motion.div>
+          )}
+        </AnimatePresence>
 
         {/* Mobile Menu Drawer */}
         <AnimatePresence>
@@ -516,6 +603,7 @@ const Navbar = () => {
               className="md:hidden overflow-hidden bg-white border-t border-gray-100 shadow-xl"
             >
               <div className="max-h-[70vh] overflow-y-auto">
+
                 <div onClick={() => { navigate("/wishlist"); setIsMenuOpen(false); }} className="flex items-center gap-3 py-3.5 px-5 text-gray-600 border-b border-gray-50 cursor-pointer hover:text-red-500 hover:bg-red-50 transition">
                   <Heart size={18} /> Wishlist
                 </div>
