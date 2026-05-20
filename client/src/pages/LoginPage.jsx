@@ -7,44 +7,29 @@ import { motion, AnimatePresence } from "framer-motion"
 import axios from "axios"
 import {
   Mail, Lock, User, Eye, EyeOff, ArrowRight, AlertCircle, Loader2,
-  Sparkles, X, Phone, CheckCircle,
+  ShoppingBag, ShieldCheck, Truck, Sparkles, Star, X,
 } from "lucide-react"
 import {
   registerWithEmail,
   loginWithEmail,
-  sendPhoneOTP,
-  verifyPhoneOTP,
   forgotPassword,
   clearError,
   clearSuccess,
   clearPhoneAuthState,
 } from "../store/slices/authSlice"
 import GoogleSignInButton from "../components/GoogleSignInButton"
-import { cleanupRecaptcha } from "../config/firebase"
 
 const LoginPage = () => {
   const dispatch = useDispatch()
   const navigate = useNavigate()
   const location = useLocation()
-  const { 
-    isLoading, 
-    error, 
-    success, 
-    user, 
-    confirmationResult,
-  } = useSelector((s) => s.auth)
+  const { isLoading, error, success, user } = useSelector((s) => s.auth)
 
-  // Auth Mode State
   const [mode, setMode] = useState("login")
   const [showPassword, setShowPassword] = useState(false)
   const [showConfirmPassword, setShowConfirmPassword] = useState(false)
   const [showForgot, setShowForgot] = useState(false)
   const [forgotEmail, setForgotEmail] = useState("")
-  
-  // Tab State - Email or Phone
-  const [activeTab, setActiveTab] = useState("email")
-  
-  // Email Form State
   const [formData, setFormData] = useState({
     fullName: "",
     email: "",
@@ -52,27 +37,14 @@ const LoginPage = () => {
     confirmPassword: "",
     referralCode: "",
   })
-  
-  // Phone Form State
-  const [phoneForm, setPhoneForm] = useState({
-    phoneNumber: "",
-    otp: "",
-  })
-  
-  // OTP Timer
-  const [otpTimer, setOtpTimer] = useState(0)
   const [localError, setLocalError] = useState("")
-  const [lastAuthAttempt, setLastAuthAttempt] = useState({ method: null, mode: null })
-  const [invalidCredentials, setInvalidCredentials] = useState(false)
 
-  // Cleanup reCAPTCHA on unmount
   useEffect(() => {
-    return () => {
-      cleanupRecaptcha()
-    }
-  }, [])
+    dispatch(clearError())
+    dispatch(clearSuccess())
+    dispatch(clearPhoneAuthState())
+  }, [mode, dispatch])
 
-  // Redirect if authenticated
   useEffect(() => {
     if (user) {
       const redirect = location.state?.from?.pathname || "/"
@@ -80,52 +52,9 @@ const LoginPage = () => {
     }
   }, [user, navigate, location])
 
-  // Clear errors when switching mode/tab
-  useEffect(() => {
-    dispatch(clearError())
-    dispatch(clearSuccess())
-    dispatch(clearPhoneAuthState())
-  }, [mode, activeTab, dispatch])
-
-  // Handle auth errors
-  useEffect(() => {
-    if (error) {
-      const isInvalidCred = isInvalidCredentialsError(error)
-      if (isInvalidCred && lastAuthAttempt.method === "email" && lastAuthAttempt.mode === "login") {
-        setInvalidCredentials(true)
-        setLocalError("Invalid credentials. Please check your email and password.")
-      } else {
-        setLocalError(error)
-      }
-      dispatch(clearError())
-    }
-  }, [error, dispatch, lastAuthAttempt])
-
-  // OTP Timer Effect
-  useEffect(() => {
-    let interval = null
-    if (otpTimer > 0) {
-      interval = setInterval(() => setOtpTimer((timer) => timer - 1), 1000)
-    }
-    return () => clearInterval(interval)
-  }, [otpTimer])
-
-  // Helper: Detect invalid credentials error
-  const isInvalidCredentialsError = (err) => {
-    if (!err) return false
-    const e = String(err).toLowerCase()
-    const patterns = [
-      "auth/wrong-password", "wrong password", "auth/user-not-found", 
-      "user not found", "invalid credentials", "invalid email or password",
-    ]
-    return patterns.some((p) => e.includes(p))
-  }
-
-  // Handle Email Form Change
   const handleChange = (e) => {
     setFormData({ ...formData, [e.target.name]: e.target.value })
     setLocalError("")
-    if (invalidCredentials) setInvalidCredentials(false)
   }
 
   const handleSubmit = async (e) => {
@@ -189,29 +118,8 @@ const LoginPage = () => {
     }
   }, [])
 
-  // Resend OTP
-  const handleResendOTP = () => {
-    if (otpTimer > 0) return
-    dispatch(sendPhoneOTP(phoneForm.phoneNumber))
-    setOtpTimer(60)
-  }
-
-  // Reset phone auth state
-  const resetPhoneAuth = () => {
-    dispatch(clearPhoneAuthState())
-    setPhoneForm({ phoneNumber: "", otp: "" })
-    setOtpTimer(0)
-  }
-
-  // Switch tabs
-  const handleTabChange = (tab) => {
-    setActiveTab(tab)
-    resetPhoneAuth()
-    setLocalError("")
-    cleanupRecaptcha()
-  }
-
-  const inputBase = "w-full h-12 pl-11 pr-11 rounded-xl bg-white/10 backdrop-blur-sm border border-white/20 text-white placeholder:text-white/40 outline-none transition-all duration-200 focus:border-red-500 focus:ring-4 focus:ring-red-500/20"
+  const inputBase =
+    "w-full h-12 pl-11 pr-11 rounded-xl bg-white/10 backdrop-blur-sm border border-white/20 text-white placeholder:text-white/40 outline-none transition-all duration-200 focus:border-red-500 focus:ring-4 focus:ring-red-500/20"
 
   return (
     <div className="relative min-h-screen w-full overflow-hidden">
@@ -247,8 +155,8 @@ const LoginPage = () => {
             </div>
 
             <div className="p-7 sm:p-8 pt-2">
-              {/* Mode Toggle - Login / Register */}
-              <div className="relative grid grid-cols-2 p-1 rounded-xl bg-white/10 backdrop-blur-sm mb-4">
+              {/* ✅ Enhanced Mode Toggle - More Attractive */}
+              <div className="relative grid grid-cols-2 p-1 rounded-xl bg-white/10 backdrop-blur-sm mb-6">
                 <motion.div
                   layout
                   transition={{ type: "spring", stiffness: 500, damping: 30 }}
@@ -268,305 +176,176 @@ const LoginPage = () => {
                 ))}
               </div>
 
-              {/* Auth Method Tabs - Email / Phone */}
-              <div className="flex p-1 mb-5 rounded-xl bg-white/5 backdrop-blur-sm">
-                <button
-                  onClick={() => handleTabChange("email")}
-                  className={`flex-1 flex items-center justify-center py-2.5 rounded-lg text-sm font-medium transition-all duration-200 ${
-                    activeTab === "email" 
-                      ? "bg-gradient-to-r from-red-500 to-pink-500 text-white shadow-lg" 
-                      : "text-white/60 hover:text-white hover:bg-white/10"
-                  }`}
-                >
-                  <Mail className="w-4 h-4 mr-2" />
-                  Email
-                </button>
-                <button
-                  onClick={() => handleTabChange("phone")}
-                  className={`flex-1 flex items-center justify-center py-2.5 rounded-lg text-sm font-medium transition-all duration-200 ${
-                    activeTab === "phone" 
-                      ? "bg-gradient-to-r from-red-500 to-pink-500 text-white shadow-lg" 
-                      : "text-white/60 hover:text-white hover:bg-white/10"
-                  }`}
-                >
-                  <Phone className="w-4 h-4 mr-2" />
-                  Phone
-                </button>
-              </div>
-
-              {/* Error / Success Messages */}
               <AnimatePresence>
-                {(localError || success) && (
+                {(error || localError) && (
                   <motion.div
                     initial={{ opacity: 0, y: -8 }}
                     animate={{ opacity: 1, y: 0 }}
                     exit={{ opacity: 0, y: -8 }}
-                    className={`mb-4 flex items-start gap-2 rounded-xl backdrop-blur-sm border px-3 py-2.5 text-sm ${
-                      localError 
-                        ? "bg-red-500/20 border-red-500/30 text-red-200" 
-                        : "bg-green-500/20 border-green-500/30 text-green-200"
-                    }`}
+                    className="mb-4 flex items-start gap-2 rounded-xl bg-red-500/20 backdrop-blur-sm border border-red-500/30 px-3 py-2.5 text-sm text-red-200"
                   >
                     <AlertCircle className="h-4 w-4 mt-0.5 shrink-0" />
-                    <span>{localError || success}</span>
+                    <span>{localError || error}</span>
                   </motion.div>
                 )}
               </AnimatePresence>
 
-              {/* EMAIL TAB FORM */}
-              <AnimatePresence mode="wait">
-                {activeTab === "email" && (
+              <AnimatePresence>
+                {success && (
                   <motion.div
-                    key="email-form"
-                    initial={{ opacity: 0, x: -20 }}
-                    animate={{ opacity: 1, x: 0 }}
-                    exit={{ opacity: 0, x: 20 }}
-                    transition={{ duration: 0.2 }}
+                    initial={{ opacity: 0, y: -8 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    exit={{ opacity: 0, y: -8 }}
+                    className="mb-4 flex items-start gap-2 rounded-xl bg-green-500/20 backdrop-blur-sm border border-green-500/30 px-3 py-2.5 text-sm text-green-200"
                   >
-                    <form onSubmit={handleEmailSubmit} className="space-y-4">
-                      {mode === "register" && (
-                        <motion.div
-                          initial={{ opacity: 0, height: 0 }}
-                          animate={{ opacity: 1, height: "auto" }}
-                          exit={{ opacity: 0, height: 0 }}
-                          className="relative"
-                        >
-                          <User className="absolute left-3.5 top-1/2 -translate-y-1/2 h-4.5 w-4.5 text-white/50" />
-                          <input
-                            name="fullName"
-                            type="text"
-                            placeholder="Full name"
-                            value={formData.fullName}
-                            onChange={handleChange}
-                            className={inputBase}
-                          />
-                        </motion.div>
-                      )}
+                    <AlertCircle className="h-4 w-4 mt-0.5 shrink-0" />
+                    <span>{success}</span>
+                  </motion.div>
+                )}
+              </AnimatePresence>
 
-                      <div className="relative">
-                        <Mail className="absolute left-3.5 top-1/2 -translate-y-1/2 h-4.5 w-4.5 text-white/50" />
-                        <input
-                          name="email"
-                          type="email"
-                          required
-                          placeholder="Email address"
-                          value={formData.email}
-                          onChange={handleChange}
-                          className={inputBase}
-                        />
-                      </div>
+              <form onSubmit={handleSubmit} className="space-y-4">
+                <AnimatePresence>
+                  {mode === "register" && (
+                    <motion.div
+                      initial={{ opacity: 0, height: 0 }}
+                      animate={{ opacity: 1, height: "auto" }}
+                      exit={{ opacity: 0, height: 0 }}
+                      className="relative"
+                    >
+                      <User className="absolute left-3.5 top-1/2 -translate-y-1/2 h-4.5 w-4.5 text-white/50" />
+                      <input
+                        name="fullName"
+                        type="text"
+                        placeholder="Full name"
+                        value={formData.fullName}
+                        onChange={handleChange}
+                        className={inputBase}
+                      />
+                    </motion.div>
+                  )}
+                </AnimatePresence>
 
+                <div className="relative">
+                  <Mail className="absolute left-3.5 top-1/2 -translate-y-1/2 h-4.5 w-4.5 text-white/50" />
+                  <input
+                    name="email"
+                    type="email"
+                    required
+                    placeholder="Email address"
+                    value={formData.email}
+                    onChange={handleChange}
+                    className={inputBase}
+                  />
+                </div>
+
+                <div className="relative">
+                  <Lock className="absolute left-3.5 top-1/2 -translate-y-1/2 h-4.5 w-4.5 text-white/50" />
+                  <input
+                    name="password"
+                    type={showPassword ? "text" : "password"}
+                    required
+                    placeholder="Password"
+                    value={formData.password}
+                    onChange={handleChange}
+                    className={inputBase}
+                  />
+                  <button
+                    type="button"
+                    onClick={() => setShowPassword((s) => !s)}
+                    className="absolute right-3 top-1/2 -translate-y-1/2 p-1.5 text-white/50 hover:text-white transition-colors"
+                  >
+                    {showPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
+                  </button>
+                </div>
+
+                <AnimatePresence>
+                  {mode === "register" && (
+                    <motion.div
+                      initial={{ opacity: 0, height: 0 }}
+                      animate={{ opacity: 1, height: "auto" }}
+                      exit={{ opacity: 0, height: 0 }}
+                      className="space-y-4"
+                    >
                       <div className="relative">
                         <Lock className="absolute left-3.5 top-1/2 -translate-y-1/2 h-4.5 w-4.5 text-white/50" />
                         <input
-                          name="password"
-                          type={showPassword ? "text" : "password"}
-                          required
-                          placeholder="Password"
-                          value={formData.password}
+                          name="confirmPassword"
+                          type={showConfirmPassword ? "text" : "password"}
+                          placeholder="Confirm password"
+                          value={formData.confirmPassword}
                           onChange={handleChange}
                           className={inputBase}
                         />
                         <button
                           type="button"
-                          onClick={() => setShowPassword((s) => !s)}
+                          onClick={() => setShowConfirmPassword((s) => !s)}
                           className="absolute right-3 top-1/2 -translate-y-1/2 p-1.5 text-white/50 hover:text-white transition-colors"
                         >
-                          {showPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
+                          {showConfirmPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
                         </button>
                       </div>
+                      <div className="relative">
+                        <Sparkles className="absolute left-3.5 top-1/2 -translate-y-1/2 h-4.5 w-4.5 text-white/50" />
+                        <input
+                          name="referralCode"
+                          type="text"
+                          placeholder="Referral code (optional)"
+                          value={formData.referralCode}
+                          onChange={handleChange}
+                          className={inputBase}
+                        />
+                      </div>
+                    </motion.div>
+                  )}
+                </AnimatePresence>
 
-                      {mode === "register" && (
-                        <motion.div
-                          initial={{ opacity: 0, height: 0 }}
-                          animate={{ opacity: 1, height: "auto" }}
-                          exit={{ opacity: 0, height: 0 }}
-                          className="space-y-4"
-                        >
-                          <div className="relative">
-                            <Lock className="absolute left-3.5 top-1/2 -translate-y-1/2 h-4.5 w-4.5 text-white/50" />
-                            <input
-                              name="confirmPassword"
-                              type={showConfirmPassword ? "text" : "password"}
-                              placeholder="Confirm password"
-                              value={formData.confirmPassword}
-                              onChange={handleChange}
-                              className={inputBase}
-                            />
-                            <button
-                              type="button"
-                              onClick={() => setShowConfirmPassword((s) => !s)}
-                              className="absolute right-3 top-1/2 -translate-y-1/2 p-1.5 text-white/50 hover:text-white transition-colors"
-                            >
-                              {showConfirmPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
-                            </button>
-                          </div>
-                          <div className="relative">
-                            <Sparkles className="absolute left-3.5 top-1/2 -translate-y-1/2 h-4.5 w-4.5 text-white/50" />
-                            <input
-                              name="referralCode"
-                              type="text"
-                              placeholder="Referral code (optional)"
-                              value={formData.referralCode}
-                              onChange={handleChange}
-                              className={inputBase}
-                            />
-                          </div>
-                        </motion.div>
-                      )}
-
-                      {mode === "login" && (
-                        <div className="flex justify-end">
-                          <button
-                            type="button"
-                            onClick={() => setShowForgot(true)}
-                            className="text-xs font-medium text-white/60 hover:text-white transition-all duration-200 hover:underline"
-                          >
-                            Forgot password?
-                          </button>
-                        </div>
-                      )}
-
-                      <button
-                        type="submit"
-                        disabled={isLoading}
-                        className="group relative w-full h-12 rounded-xl bg-gradient-to-r from-red-600 to-red-500 text-white font-semibold shadow-lg shadow-red-500/30 hover:shadow-xl hover:shadow-red-500/40 hover:scale-[1.02] active:scale-[0.98] transition-all duration-200 disabled:opacity-60 disabled:cursor-not-allowed disabled:hover:scale-100 flex items-center justify-center gap-2 overflow-hidden"
-                      >
-                        <span className="absolute inset-0 w-full h-full bg-gradient-to-r from-red-500 to-red-600 opacity-0 group-hover:opacity-100 transition-opacity duration-300"></span>
-                        {isLoading ? (
-                          <Loader2 className="h-5 w-5 animate-spin relative z-10" />
-                        ) : (
-                          <>
-                            <span className="relative z-10">{mode === "login" ? "Sign In" : "Create Account"}</span>
-                            <ArrowRight className="h-4 w-4 transition-transform group-hover:translate-x-1 relative z-10" />
-                          </>
-                        )}
-                      </button>
-                    </form>
-                  </motion.div>
-                )}
-
-                {/* PHONE TAB FORM */}
-                {activeTab === "phone" && (
-                  <motion.div
-                    key="phone-form"
-                    initial={{ opacity: 0, x: 20 }}
-                    animate={{ opacity: 1, x: 0 }}
-                    exit={{ opacity: 0, x: -20 }}
-                    transition={{ duration: 0.2 }}
-                  >
-                    <form onSubmit={handlePhoneSubmit} className="space-y-4">
-                      {!confirmationResult ? (
-                        <>
-                          <div className="relative">
-                            <Phone className="absolute left-3.5 top-1/2 -translate-y-1/2 h-4.5 w-4.5 text-white/50" />
-                            <input
-                              name="phoneNumber"
-                              type="tel"
-                              value={phoneForm.phoneNumber}
-                              onChange={handlePhoneChange}
-                              className={inputBase}
-                              placeholder="+91 XXXXXXXXXX"
-                              required
-                            />
-                          </div>
-                          <p className="text-xs text-white/40 -mt-2 pl-3">
-                            Include country code (e.g., +91 for India)
-                          </p>
-                        </>
-                      ) : (
-                        <>
-                          <div className="text-center mb-2">
-                            <div className="flex items-center justify-center w-14 h-14 mx-auto mb-3 rounded-full bg-green-500/20 border border-green-500/30">
-                              <CheckCircle className="w-7 h-7 text-green-400" />
-                            </div>
-                            <h3 className="text-base font-semibold text-white">Verification Code Sent</h3>
-                            <p className="text-xs text-white/50 mt-1">
-                              Sent to <span className="text-white font-medium">{phoneForm.phoneNumber}</span>
-                            </p>
-                          </div>
-                          <div className="relative">
-                            <input
-                              name="otp"
-                              type="text"
-                              value={phoneForm.otp}
-                              onChange={(e) => {
-                                const value = e.target.value.replace(/\D/g, "").slice(0, 6)
-                                setPhoneForm({ ...phoneForm, otp: value })
-                              }}
-                              className="w-full h-12 text-center font-mono text-xl tracking-widest rounded-xl bg-white/10 backdrop-blur-sm border border-white/20 text-white outline-none focus:border-red-500 focus:ring-4 focus:ring-red-500/20"
-                              placeholder="000000"
-                              maxLength={6}
-                              required
-                            />
-                          </div>
-                          <div className="flex justify-center">
-                            <button
-                              type="button"
-                              onClick={handleResendOTP}
-                              disabled={otpTimer > 0 || isLoading}
-                              className="text-sm font-medium text-white/60 hover:text-white transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
-                            >
-                              {otpTimer > 0 ? `Resend code in ${otpTimer}s` : "Resend code"}
-                            </button>
-                          </div>
-                        </>
-                      )}
-
-                      <button
-                        type="submit"
-                        disabled={isLoading}
-                        className="group relative w-full h-12 rounded-xl bg-gradient-to-r from-red-600 to-red-500 text-white font-semibold shadow-lg shadow-red-500/30 hover:shadow-xl hover:shadow-red-500/40 hover:scale-[1.02] active:scale-[0.98] transition-all duration-200 disabled:opacity-60 disabled:cursor-not-allowed flex items-center justify-center gap-2 overflow-hidden"
-                      >
-                        <span className="absolute inset-0 w-full h-full bg-gradient-to-r from-red-500 to-red-600 opacity-0 group-hover:opacity-100 transition-opacity duration-300"></span>
-                        {isLoading ? (
-                          <Loader2 className="h-5 w-5 animate-spin relative z-10" />
-                        ) : (
-                          <>
-                            <span className="relative z-10">
-                              {!confirmationResult ? "Send Code" : "Verify & Continue"}
-                            </span>
-                            <ArrowRight className="h-4 w-4 transition-transform group-hover:translate-x-1 relative z-10" />
-                          </>
-                        )}
-                      </button>
-
-                      {confirmationResult && (
-                        <button
-                          type="button"
-                          onClick={resetPhoneAuth}
-                          className="w-full py-2 text-sm font-medium text-white/50 hover:text-white transition-colors"
-                        >
-                          Change Phone Number
-                        </button>
-                      )}
-                    </form>
-                  </motion.div>
-                )}
-              </AnimatePresence>
-
-              {/* ✅ Divider and Google Button - ONLY SHOW IN EMAIL TAB */}
-              {activeTab === "email" && (
-                <>
-                  <div className="relative my-6">
-                    <div className="absolute inset-0 flex items-center">
-                      <div className="w-full border-t border-white/10" />
-                    </div>
-                    <div className="relative flex justify-center">
-                      <span className="bg-transparent px-3 text-xs text-white/50 uppercase tracking-wider">
-                        or continue with
-                      </span>
-                    </div>
+                {mode === "login" && (
+                  <div className="flex justify-end">
+                    <button
+                      type="button"
+                      onClick={() => setShowForgot(true)}
+                      className="text-xs font-medium text-white/60 hover:text-white transition-all duration-200 hover:underline"
+                    >
+                      Forgot password?
+                    </button>
                   </div>
+                )}
 
-              {/* Google Sign In Button */}
+                {/* ✅ Enhanced Submit Button - More Attractive */}
+                <button
+                  type="submit"
+                  disabled={isLoading}
+                  className="group relative w-full h-12 rounded-xl bg-gradient-to-r from-red-600 to-red-500 text-white font-semibold shadow-lg shadow-red-500/30 hover:shadow-xl hover:shadow-red-500/40 hover:scale-[1.02] active:scale-[0.98] transition-all duration-200 disabled:opacity-60 disabled:cursor-not-allowed disabled:hover:scale-100 flex items-center justify-center gap-2 overflow-hidden"
+                >
+                  <span className="absolute inset-0 w-full h-full bg-gradient-to-r from-red-500 to-red-600 opacity-0 group-hover:opacity-100 transition-opacity duration-300"></span>
+                  {isLoading ? (
+                    <Loader2 className="h-5 w-5 animate-spin relative z-10" />
+                  ) : (
+                    <>
+                      <span className="relative z-10">{mode === "login" ? "Sign In" : "Create Account"}</span>
+                      <ArrowRight className="h-4 w-4 transition-transform group-hover:translate-x-1 relative z-10" />
+                    </>
+                  )}
+                </button>
+              </form>
+
+              <div className="relative my-6">
+                <div className="absolute inset-0 flex items-center">
+                  <div className="w-full border-t border-white/10" />
+                </div>
+                <div className="relative flex justify-center">
+                  <span className="bg-transparent px-3 text-xs text-white/50 uppercase tracking-wider">
+                    or continue with
+                  </span>
+                </div>
+              </div>
+
+              {/* ✅ Enhanced Google Button Style */}
               <div className="transform transition-all duration-200 hover:scale-[1.02] active:scale-[0.98]">
                 <GoogleSignInButton />
               </div>
-                </>
-              )}
 
-              {/* Footer */}
               <p className="mt-6 text-center text-sm text-white/60">
                 {mode === "login" ? "New to Factory Sale? " : "Already a member? "}
                 <button
@@ -588,7 +367,7 @@ const LoginPage = () => {
         </motion.div>
       </div>
 
-      {/* Forgot Password Modal */}
+      {/* Forgot Password Modal - Enhanced */}
       <AnimatePresence>
         {showForgot && (
           <motion.div
@@ -629,6 +408,11 @@ const LoginPage = () => {
                     className="w-full h-12 pl-11 pr-4 rounded-xl bg-white/10 backdrop-blur-sm border border-white/20 text-white placeholder:text-white/40 outline-none focus:border-red-500 focus:ring-2 focus:ring-red-500/20 transition-all"
                   />
                 </div>
+                {success && (
+                  <p className="text-sm text-green-400 bg-green-500/10 border border-green-500/20 rounded-lg px-3 py-2">
+                    {success}
+                  </p>
+                )}
                 <div className="flex gap-3">
                   <button
                     type="button"
@@ -650,9 +434,6 @@ const LoginPage = () => {
           </motion.div>
         )}
       </AnimatePresence>
-
-      {/* reCAPTCHA container for phone auth */}
-      <div id="recaptcha-container"></div>
     </div>
   )
 }
