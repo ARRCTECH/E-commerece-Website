@@ -549,7 +549,9 @@ export const sendPhoneOTP = createAsyncThunk("auth/sendPhoneOTP", async (phoneNu
     if (window.recaptchaVerifier) {
       try {
         await window.recaptchaVerifier.clear();
-      } catch (e) {}
+      } catch (e) {
+        console.error(e)
+      }
       window.recaptchaVerifier = null;
     }
     
@@ -596,7 +598,7 @@ export const verifyPhoneOTP = createAsyncThunk(
       if (window.recaptchaVerifier) {
         try {
           await window.recaptchaVerifier.clear();
-        } catch (e) {}
+        } catch (e) {console.error(e)}
         window.recaptchaVerifier = null;
       }
       

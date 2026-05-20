@@ -767,16 +767,20 @@ const addReview = async (req, res) => {
 // Search products
 // ===============================
 const getSearchedProducts = async (req, res) => {
-  // Existing code - works for both regular and bulk
   try {
     const { q } = req.query;
-    if (!q) return res.status(400).json({ success: false, message: "Query string is required" });
+    if (!q || q.trim() === "") {
+      return res.status(400).json({ success: false, message: "Query string is required" });
+    }
+
+    // Create a case‑insensitive regex from the search term
+    const searchRegex = new RegExp(q.trim(), "i");
 
     const products = await Product.find({
       isActive: true,
       $or: [
-        { name: { $regex: q, $options: "i" } },
-        { description: { $regex: q, $options: "i" } },
+        { name: searchRegex },
+        { description: searchRegex },
       ],
     }).populate("category", "name slug");
 

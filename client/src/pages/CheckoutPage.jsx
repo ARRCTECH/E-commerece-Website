@@ -239,7 +239,6 @@ const CheckoutPage = () => {
     const totalValue = Math.round(
       subtotal + shippingCharges - discount - freediscount - referralDiscount
     );
-
     return {
       subtotal,
       shippingCharges,
@@ -259,7 +258,6 @@ const CheckoutPage = () => {
     discountValue,
   ]);
 
-  // Free discount popup (from filterYCoupon)
   useEffect(() => {
     const code = filterYCoupon[0]?.code;
     if (code) {
