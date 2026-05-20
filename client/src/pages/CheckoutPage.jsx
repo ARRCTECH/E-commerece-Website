@@ -253,7 +253,6 @@ const CheckoutPage = () => {
     const totalValue = Math.round(
       subtotal + shippingCharges - totalDiscount - referralDiscount
     );
-
     return {
       subtotal,
       originalSubtotal: subtotal,  // ✅ Store original amount for partial COD
@@ -277,7 +276,6 @@ const CheckoutPage = () => {
     discountValue,
   ]);
 
-  // Free discount popup (from filterYCoupon)
   useEffect(() => {
     const code = filterYCoupon[0]?.code;
     if (code) {

@@ -134,8 +134,7 @@ const LoginPage = () => {
   }
 
   // Handle Email Submit (Login/Register)
-  // Handle Email Submit (Login/Register)
-  const handleEmailSubmit  = async (e) => {
+  const handleEmailSubmit = async (e) => {
     e.preventDefault();
     setLocalError("");
 
@@ -159,9 +158,9 @@ const LoginPage = () => {
             name: formData.fullName,
             email: formData.email,
             password: formData.password,
-            referredBy: formData.referralCode || undefined, // send undefined if empty
+            referredBy: formData.referralCode || undefined,
           })
-        ).unwrap(); // unwrap to get the actual response or throw on error
+        ).unwrap();
       } else {
         result = await dispatch(
           loginWithEmail({
@@ -171,7 +170,6 @@ const LoginPage = () => {
         ).unwrap();
       }
       // On success, Redux will have user, so useEffect will redirect
-      // Optionally clear form
       setFormData({
         fullName: "",
         email: "",
@@ -180,7 +178,6 @@ const LoginPage = () => {
         referralCode: "",
       });
     } catch (err) {
-      // This catches both validation errors and API 400 errors
       console.error("Auth error:", err);
       const errorMessage = err?.message || err?.response?.data?.message || "Authentication failed";
       setLocalError(errorMessage);
@@ -587,7 +584,7 @@ const LoginPage = () => {
                 )}
               </AnimatePresence>
 
-              {/* ✅ Divider and Google Button - ONLY SHOW IN EMAIL TAB */}
+              {/* Divider and Google Button - ONLY SHOW IN EMAIL TAB */}
               {activeTab === "email" && (
                 <>
                   <div className="relative my-6">
@@ -601,7 +598,6 @@ const LoginPage = () => {
                     </div>
                   </div>
 
-                  {/* Google Sign In Button */}
                   <div className="transform transition-all duration-200 hover:scale-[1.02] active:scale-[0.98]">
                     <GoogleSignInButton />
                   </div>

@@ -5,7 +5,7 @@ import { useSelector, useDispatch } from "react-redux";
 import { motion, AnimatePresence } from "framer-motion";
 import {
   Menu, X, ChevronDown, Search, ShoppingBag, User, Heart, Mic,
-  Clock, Trash2, Shirt, LogOut, UserCircle, Tag, TrendingUp, Home, Gift
+  Clock, Trash2, LogOut, UserCircle, TrendingUp, Home, Shirt
 } from "lucide-react";
 import { useDebounce } from "use-debounce";
 import { logout } from "../store/slices/authSlice";
@@ -19,8 +19,8 @@ import {
   clearRecentSearches,
 } from "../store/slices/searchSlice";
 import toast from "react-hot-toast";
-const Navbar = () => {
 
+const Navbar = () => {
   const [isMenuOpen, setIsMenuOpen] = useState(false);
   const [searchQuery, setSearchQuery] = useState("");
   const [showUserMenu, setShowUserMenu] = useState(false);
@@ -33,14 +33,17 @@ const Navbar = () => {
   const navigate = useNavigate();
   const dispatch = useDispatch();
   const location = useLocation();
+
   const { user, token } = useSelector((state) => state.auth || {});
   const { categories = [] } = useSelector((state) => state.categories || {});
   const { suggestions = [], recentSearches = [], suggestionsLoading = false } = useSelector((state) => state.search || {});
   const cartTotalQuantity = useSelector(selectCartTotalQuantity);
   const wishlistCount = useSelector(selectWishlistCount);
-  const [debouncedSearchQuery] = useDebounce(searchQuery, 300);
+  const [debouncedSearchQuery] = useDebounce(searchQuery, 300); // used for suggestions
+  const [debouncedNavigateQuery] = useDebounce(searchQuery, 500); // used for navigation
   const [showMobileSearch, setShowMobileSearch] = useState(true);
 
+  // Placeholder rotation
   const placeholders = [
     "Search for Oversize T-shirt",
     "Search for Hoodie",
@@ -50,37 +53,43 @@ const Navbar = () => {
   ];
   const [placeholderIndex, setPlaceholderIndex] = useState(0);
 
+  // Scroll effect: hide mobile search on scroll
   useEffect(() => {
     const handleScroll = () => {
       const isScrolled = window.scrollY > 30;
-
       setScrolled(isScrolled);
-
       if (isScrolled) {
         setShowMobileSearch(false);
       } else {
         setShowMobileSearch(true);
       }
     };
-
     window.addEventListener("scroll", handleScroll);
     return () => window.removeEventListener("scroll", handleScroll);
   }, []);
+
+  // Rotate placeholder text
   useEffect(() => {
     const interval = setInterval(() => {
       setPlaceholderIndex((prev) => (prev + 1) % placeholders.length);
     }, 2000);
     return () => clearInterval(interval);
   }, []);
+
+  // Fetch cart & wishlist when logged in
   useEffect(() => {
     if (token && user) {
       dispatch(fetchCart());
       dispatch(fetchWishlist());
     }
   }, [user, token, dispatch]);
+
+  // Fetch categories
   useEffect(() => {
     dispatch(fetchCategories({ showOnHomepage: false }));
   }, [dispatch]);
+
+  // Fetch search suggestions with debounce and abort controller
   useEffect(() => {
     if (abortControllerRef.current) {
       abortControllerRef.current.abort();
@@ -102,6 +111,20 @@ const Navbar = () => {
       }
     };
   }, [debouncedSearchQuery, searchFocused, dispatch]);
+
+  // LIVE SEARCH: Navigate on debounced query change
+  useEffect(() => {
+    const trimmed = debouncedNavigateQuery.trim();
+    if (trimmed) {
+      // Navigate to products page with search param
+      navigate(`/products?search=${encodeURIComponent(trimmed)}`);
+    } else if (debouncedNavigateQuery === "" && location.pathname === "/products") {
+      // If search is cleared and we are on products page, remove search param
+      navigate("/products");
+    }
+  }, [debouncedNavigateQuery, navigate, location.pathname]);
+
+  // Click outside for search dropdown
   useEffect(() => {
     const handleClickOutsideSearch = (event) => {
       if (searchRef.current && !searchRef.current.contains(event.target)) {
@@ -112,6 +135,8 @@ const Navbar = () => {
     document.addEventListener("mousedown", handleClickOutsideSearch);
     return () => document.removeEventListener("mousedown", handleClickOutsideSearch);
   }, []);
+
+  // Click outside for user menu
   useEffect(() => {
     const handleClickOutsideUserMenu = (event) => {
       if (userMenuRef.current && !userMenuRef.current.contains(event.target)) {
@@ -126,46 +151,34 @@ const Navbar = () => {
     const base = "/products?";
     navigate(categorySlug ? `${base}category=${categorySlug}` : base);
   }, [navigate]);
-  const handleSearch = useCallback((e, query = searchQuery) => {
-    e?.preventDefault();
-    const searchTerm = query.trim();
-    if (searchTerm) {
-      dispatch(addRecentSearch(searchTerm));
-      navigate(`/products?search=${encodeURIComponent(searchTerm)}`);
-      setShowSearchDropdown(false);
-      setSearchQuery("");
-      setSearchFocused(false);
-    }
-  }, [searchQuery, dispatch, navigate]);
+
+  // Handle suggestion click - saves search term and navigates immediately
   const handleSuggestionClick = useCallback((suggestion) => {
     setSearchQuery(suggestion);
-    handleSearch(null, suggestion);
-  }, [handleSearch]);
+    dispatch(addRecentSearch(suggestion));
+    navigate(`/products?search=${encodeURIComponent(suggestion)}`);
+    setShowSearchDropdown(false);
+    setSearchFocused(false);
+  }, [dispatch, navigate]);
 
+  // Handle recent search click
   const handleRecentSearchClick = useCallback((recentSearch) => {
     setSearchQuery(recentSearch);
-    handleSearch(null, recentSearch);
-  }, [handleSearch]);
+    dispatch(addRecentSearch(recentSearch));
+    navigate(`/products?search=${encodeURIComponent(recentSearch)}`);
+    setShowSearchDropdown(false);
+    setSearchFocused(false);
+  }, [dispatch, navigate]);
 
   const handleLogout = useCallback(() => {
-    // Clear local cart state immediately (synchronous)
-    dispatch(clearCart()); // assumes clearCart is a synchronous action
+    dispatch(clearCart());
     dispatch(logout());
     setShowUserMenu(false);
     navigate("/");
     toast.success("Logged out successfully");
   }, [dispatch, navigate]);
 
-  const handleClearCart = useCallback(async () => {
-    try {
-      await dispatch(clearCart()).unwrap();
-      toast.success("Cart cleared successfully");
-    } catch (error) {
-      toast.error(error?.message || "Failed to clear cart");
-    }
-  }, [dispatch]);
-
-  // Mobile categories logic (safe with fallback)
+  // Mobile categories logic
   const desiredMobileCategoryNames = ["Oversized", "New Arrival", "Minimalist", "Regular"];
   const categoriesForMobileScroll = [];
   
@@ -194,8 +207,7 @@ const Navbar = () => {
   return (
     <>
       <div className="fixed top-0 left-0 right-0 z-50">
-
-        {/* ROW 1: White Navbar with Logo, Search, Icons */}
+        {/* ROW 1: Navbar with Logo, Search, Icons */}
         <motion.div
           initial={{ y: -100, opacity: 0 }}
           animate={{ y: 0, opacity: 1 }}
@@ -203,14 +215,12 @@ const Navbar = () => {
           className={`transition-all duration-300 ${scrolled
             ? "bg-white/95 backdrop-blur-xl border-b border-red-500/30 shadow-2xl shadow-red-500/10"
             : "bg-white border-b border-gray-200"
-            }`}
+          }`}
         >
           <div className="max-w-7xl mx-auto px-4 lg:px-6">
-
-            {/* Main Row: Logo (Left) + Empty Space (Center) + Search + Icons (Right) */}
+            {/* Main Row: Logo + Search + Icons */}
             <div className="flex items-center justify-between py-3 gap-4">
-
-              {/* LEFT - Logo */}
+              {/* LEFT - Logo & Mobile Menu Button */}
               <div className="flex items-center gap-2">
                 <button
                   onClick={() => setIsMenuOpen(!isMenuOpen)}
@@ -224,98 +234,94 @@ const Navbar = () => {
                 </div>
               </div>
 
-              <div className="flex-1 hidden md:block"></div>
-
-              {/* Desktop Icons */}
-              <div className="flex items-center gap-2 md:gap-4">
-                {/* Desktop Search */}
-
-                {/* Search Bar Desktop */}
-                <div className="relative hidden md:block" ref={searchRef}>
-                  <form onSubmit={handleSearch} className="relative">
-                    <Search size={18} className={`absolute left-4 top-1/2 -translate-y-1/2 transition-colors ${searchFocused ? 'text-red-500' : 'text-gray-400'}`} />
-                    <input
-                      type="text"
-                      placeholder={placeholders[placeholderIndex]}
-                      value={searchQuery}
-                      onChange={(e) => setSearchQuery(e.target.value)}
-                      onFocus={() => {
-                        setSearchFocused(true);
-                        setShowSearchDropdown(true);
-                      }}
-                      className="w-72 lg:w-96 py-2 pl-11 pr-11 text-sm text-gray-700 placeholder-gray-600 bg-gray-50 border border-gray-700 rounded-full outline-none focus:border-red-400 focus:ring-2 focus:ring-red-500/20 transition-all"
-                      aria-label="Search"
-                    />
-                    <Mic size={18} className="absolute right-4 top-1/2 -translate-y-1/2 text-gray-400 cursor-pointer hover:text-red-500 transition" />
-                  </form>
-
-                  <AnimatePresence>
-                    {showSearchDropdown && searchFocused && (
-                      <motion.div
-                        initial={{ opacity: 0, y: -10, scale: 0.95 }}
-                        animate={{ opacity: 1, y: 0, scale: 1 }}
-                        exit={{ opacity: 0, y: -5, scale: 0.95 }}
-                        className="absolute right-0 z-50 mt-2 w-96 bg-white border border-gray-200 rounded-2xl shadow-2xl max-h-96 overflow-y-auto"
-                      >
-                        {recentSearches.length > 0 && !searchQuery && (
-                          <div className="p-4 border-b border-gray-100">
-                            <div className="flex items-center justify-between mb-3">
-                              <span className="text-xs font-semibold text-gray-500 flex items-center gap-1.5">
-                                <Clock size={14} className="text-red-500" /> Recent Searches
-                              </span>
-                              <button onClick={() => dispatch(clearRecentSearches())} className="text-xs text-gray-400 hover:text-red-500 transition">
-                                Clear All
-                              </button>
-                            </div>
-                            {recentSearches.map((search, idx) => (
-                              <div key={idx} onClick={() => handleRecentSearchClick(search)} className="flex items-center justify-between p-2 rounded-xl cursor-pointer hover:bg-gray-50 group">
-                                <div className="flex items-center gap-2">
-                                  <Clock size={14} className="text-gray-400" />
-                                  <span className="text-sm text-gray-700">{search}</span>
-                                </div>
-                                <Trash2 size={14} onClick={(e) => { e.stopPropagation(); dispatch(removeRecentSearch(search)); }} className="text-gray-400 opacity-0 group-hover:opacity-100 hover:text-red-500 transition" />
-                              </div>
-                            ))}
-                          </div>
-                        )}
-                        {searchQuery && (
-                          <div className="p-4">
-                            {suggestionsLoading ? (
-                              <div className="flex justify-center py-6">
-                                <div className="w-5 h-5 border-2 border-gray-200 border-t-red-500 rounded-full animate-spin" />
-                              </div>
-                            ) : suggestions.length > 0 ? (
-                              <div>
-                                <span className="text-xs font-semibold text-gray-500 flex items-center gap-1.5 mb-3">
-                                  <Tag size={14} className="text-red-500" /> Suggestions
-                                </span>
-                                {suggestions.map((s, i) => (
-                                  <div key={i} onClick={() => handleSuggestionClick(s)} className="flex items-center gap-2 p-2 rounded-xl cursor-pointer hover:bg-gray-50">
-                                    <Search size={14} className="text-gray-400" />
-                                    <span className="text-sm text-gray-700">{s}</span>
-                                  </div>
-                                ))}
-                              </div>
-                            ) : (
-                              <div className="py-8 text-sm text-center text-gray-400">No suggestions found</div>
-                            )}
-                          </div>
-                        )}
-                      </motion.div>
-                    )}
-                  </AnimatePresence>
+              {/* Desktop Search Bar */}
+              <div className="relative hidden md:block flex-1 max-w-xl" ref={searchRef}>
+                <div className="relative">
+                  <Search size={18} className={`absolute left-4 top-1/2 -translate-y-1/2 transition-colors ${searchFocused ? 'text-red-500' : 'text-gray-400'}`} />
+                  <input
+                    type="text"
+                    placeholder={placeholders[placeholderIndex]}
+                    value={searchQuery}
+                    onChange={(e) => setSearchQuery(e.target.value)}
+                    onFocus={() => {
+                      setSearchFocused(true);
+                      setShowSearchDropdown(true);
+                    }}
+                    className="w-full py-2 pl-11 pr-11 text-sm text-gray-700 placeholder-gray-600 bg-gray-50 border border-gray-700 rounded-full outline-none focus:border-red-400 focus:ring-2 focus:ring-red-500/20 transition-all"
+                    aria-label="Search"
+                  />
+                  <Mic size={18} className="absolute right-4 top-1/2 -translate-y-1/2 text-gray-400 cursor-pointer hover:text-red-500 transition" />
                 </div>
 
-                {/* Mobile Search Icon - visible only after scroll */}
-                {scrolled && !showMobileSearch && (
-                  <div
-                    onClick={() => setShowMobileSearch(true)}
-                    className="relative p-2 rounded-full text-gray-600 cursor-pointer hover:text-red-500 hover:bg-red-50 transition md:hidden"
-                  >
-                    <Search size={22} />
-                  </div>
-                )}
+                <AnimatePresence>
+                  {showSearchDropdown && searchFocused && (
+                    <motion.div
+                      initial={{ opacity: 0, y: -10, scale: 0.95 }}
+                      animate={{ opacity: 1, y: 0, scale: 1 }}
+                      exit={{ opacity: 0, y: -5, scale: 0.95 }}
+                      className="absolute right-0 z-50 mt-2 w-96 bg-white border border-gray-200 rounded-2xl shadow-2xl max-h-96 overflow-y-auto"
+                    >
+                      {recentSearches.length > 0 && !searchQuery && (
+                        <div className="p-4 border-b border-gray-100">
+                          <div className="flex items-center justify-between mb-3">
+                            <span className="text-xs font-semibold text-gray-500 flex items-center gap-1.5">
+                              <Clock size={14} className="text-red-500" /> Recent Searches
+                            </span>
+                            <button onClick={() => dispatch(clearRecentSearches())} className="text-xs text-gray-400 hover:text-red-500 transition">
+                              Clear All
+                            </button>
+                          </div>
+                          {recentSearches.map((search, idx) => (
+                            <div key={idx} onClick={() => handleRecentSearchClick(search)} className="flex items-center justify-between p-2 rounded-xl cursor-pointer hover:bg-gray-50 group">
+                              <div className="flex items-center gap-2">
+                                <Clock size={14} className="text-gray-400" />
+                                <span className="text-sm text-gray-700">{search}</span>
+                              </div>
+                              <Trash2 size={14} onClick={(e) => { e.stopPropagation(); dispatch(removeRecentSearch(search)); }} className="text-gray-400 opacity-0 group-hover:opacity-100 hover:text-red-500 transition" />
+                            </div>
+                          ))}
+                        </div>
+                      )}
+                      {searchQuery && (
+                        <div className="p-4">
+                          {suggestionsLoading ? (
+                            <div className="flex justify-center py-6">
+                              <div className="w-5 h-5 border-2 border-gray-200 border-t-red-500 rounded-full animate-spin" />
+                            </div>
+                          ) : suggestions.length > 0 ? (
+                            <div>
+                              <span className="text-xs font-semibold text-gray-500 flex items-center gap-1.5 mb-3">
+                                <Search size={14} className="text-red-500" /> Suggestions
+                              </span>
+                              {suggestions.map((s, i) => (
+                                <div key={i} onClick={() => handleSuggestionClick(s)} className="flex items-center gap-2 p-2 rounded-xl cursor-pointer hover:bg-gray-50">
+                                  <Search size={14} className="text-gray-400" />
+                                  <span className="text-sm text-gray-700">{s}</span>
+                                </div>
+                              ))}
+                            </div>
+                          ) : (
+                            <div className="py-8 text-sm text-center text-gray-400">No suggestions found</div>
+                          )}
+                        </div>
+                      )}
+                    </motion.div>
+                  )}
+                </AnimatePresence>
+              </div>
 
+              {/* Mobile Search Icon (appears when scrolled) */}
+              {scrolled && !showMobileSearch && (
+                <div
+                  onClick={() => setShowMobileSearch(true)}
+                  className="relative p-2 rounded-full text-gray-600 cursor-pointer hover:text-red-500 hover:bg-red-50 transition md:hidden"
+                >
+                  <Search size={22} />
+                </div>
+              )}
+
+              {/* Desktop Icons: Wishlist, Cart, User Menu */}
+              <div className="flex items-center gap-2 md:gap-4">
                 {/* Wishlist */}
                 <div onClick={() => navigate("/wishlist")} className="relative p-2 rounded-full text-gray-600 cursor-pointer hover:text-red-500 hover:bg-red-50 transition group">
                   <Heart size={22} />
@@ -371,9 +377,6 @@ const Navbar = () => {
                           <div className="absolute inset-0 rounded-2xl bg-gradient-to-r from-red-500 via-orange-500 to-red-500 opacity-75 blur-sm"></div>
                           <div className="absolute inset-0 rounded-2xl bg-gradient-to-r from-red-500 via-orange-500 to-red-500 opacity-100"></div>
                           <div className="relative bg-white rounded-2xl m-[1px] overflow-hidden">
-
-                    
-
                             {/* User Info */}
                             <div className="pt-3 px-4 pb-3 border-b border-gray-100">
                               <h3 className="text-base font-bold text-gray-800">{user?.name}</h3>
@@ -401,8 +404,6 @@ const Navbar = () => {
                                   <p className="text-[10px] text-gray-400">Track your orders</p>
                                 </div>
                               </button>
-
-
 
                               {(user?.role === "admin" || user?.role === "digitalMarketer") && (
                                 <button onClick={() => { navigate(user?.role === "admin" ? "/admin" : "/digitalMarketer"); setShowUserMenu(false); }} className="flex items-center gap-3 w-full px-3 py-2.5 text-sm text-gray-700 rounded-xl hover:bg-red-50 hover:text-red-600 transition group">
@@ -435,7 +436,6 @@ const Navbar = () => {
             </div>
 
             {/* Mobile Search Bar */}
-            {/* Mobile Search Bar */}
             <AnimatePresence>
               {showMobileSearch && !isProductDetailPage && (
                 <motion.div
@@ -446,26 +446,21 @@ const Navbar = () => {
                   className="pb-3 md:hidden overflow-hidden"
                 >
                   <div ref={searchRef} className="relative">
-                    <form onSubmit={handleSearch}>
-                      <Search
-                        size={18}
-                        className={`absolute left-4 top-1/2 -translate-y-1/2 transition-colors ${searchFocused ? "text-red-500" : "text-gray-400"
-                          }`}
-                      />
-
+                    <div className="relative">
+                      <Search size={18} className={`absolute left-4 top-1/2 -translate-y-1/2 transition-colors ${searchFocused ? "text-red-500" : "text-gray-400"}`} />
                       <input
                         type="text"
                         placeholder={placeholders[placeholderIndex]}
                         value={searchQuery}
                         onChange={(e) => setSearchQuery(e.target.value)}
+                        onFocus={() => {
+                          setSearchFocused(true);
+                          setShowSearchDropdown(true);
+                        }}
                         className="w-full py-3 pl-12 pr-12 text-sm text-gray-700 placeholder-gray-600 bg-gray-50 border border-gray-700 rounded-full outline-none focus:border-red-400 focus:ring-2 focus:ring-red-500/20 transition-all"
                       />
-
-                      <Mic
-                        size={18}
-                        className="absolute right-4 top-1/2 -translate-y-1/2 text-gray-500"
-                      />
-                    </form>
+                      <Mic size={18} className="absolute right-4 top-1/2 -translate-y-1/2 text-gray-500" />
+                    </div>
 
                     <AnimatePresence>
                       {showSearchDropdown && searchFocused && (
@@ -479,48 +474,28 @@ const Navbar = () => {
                             <div className="p-3">
                               <div className="flex justify-between text-xs text-gray-400 mb-2 px-2">
                                 <span>Recent</span>
-                                <button
-                                  onClick={() => dispatch(clearRecentSearches())}
-                                  className="hover:text-red-500"
-                                >
-                                  Clear
-                                </button>
+                                <button onClick={() => dispatch(clearRecentSearches())} className="hover:text-red-500">Clear</button>
                               </div>
-
                               {recentSearches.map((s, idx) => (
-                                <div
-                                  key={idx}
-                                  onClick={() => handleRecentSearchClick(s)}
-                                  className="flex justify-between items-center p-3 text-sm text-gray-700 border-b border-gray-50"
-                                >
+                                <div key={idx} onClick={() => handleRecentSearchClick(s)} className="flex justify-between items-center p-3 text-sm text-gray-700 border-b border-gray-50">
                                   <span>{s}</span>
-                                  <Trash2
-                                    onClick={(e) => {
-                                      e.stopPropagation();
-                                      dispatch(removeRecentSearch(s));
-                                    }}
-                                    size={14}
-                                    className="text-gray-400"
-                                  />
+                                  <Trash2 onClick={(e) => { e.stopPropagation(); dispatch(removeRecentSearch(s)); }} size={14} className="text-gray-400" />
                                 </div>
                               ))}
                             </div>
                           )}
-
                           {searchQuery && (
                             <div className="p-3">
                               {suggestionsLoading ? (
                                 <div className="py-4 text-center">...</div>
-                              ) : (
+                              ) : suggestions.length > 0 ? (
                                 suggestions.map((s, i) => (
-                                  <div
-                                    key={i}
-                                    onClick={() => handleSuggestionClick(s)}
-                                    className="p-3 text-sm text-gray-700 border-b border-gray-50"
-                                  >
+                                  <div key={i} onClick={() => handleSuggestionClick(s)} className="p-3 text-sm text-gray-700 border-b border-gray-50">
                                     {s}
                                   </div>
                                 ))
+                              ) : (
+                                <div className="py-4 text-center text-sm text-gray-400">No suggestions</div>
                               )}
                             </div>
                           )}
@@ -556,7 +531,7 @@ const Navbar = () => {
           </div>
         )}
 
-        {/* Mobile Horizontal Categories - Hide on scroll */}
+        {/* Mobile Horizontal Categories */}
         <AnimatePresence>
           {!scrolled && !isProductDetailPage && !isCartPage && (
             <motion.div
@@ -575,11 +550,7 @@ const Navbar = () => {
                       className="flex flex-col items-center flex-shrink-0 cursor-pointer group"
                     >
                       <div className="w-14 h-14 rounded-full bg-gray-800 border-2 border-red-500/30 group-hover:border-red-500 overflow-hidden shadow-md transition-all">
-                        <img
-                          src={cat.image?.url || "/placeholder.svg"}
-                          alt={cat.name}
-                          className="w-full h-full object-cover"
-                        />
+                        <img src={cat.image?.url || "/placeholder.svg"} alt={cat.name} className="w-full h-full object-cover" />
                       </div>
                       <span className="text-[10px] font-medium text-gray-700 mt-1.5 group-hover:text-red-400 transition whitespace-nowrap">
                         {cat.name}
@@ -602,7 +573,6 @@ const Navbar = () => {
               className="md:hidden overflow-hidden bg-white border-t border-gray-100 shadow-xl"
             >
               <div className="max-h-[70vh] overflow-y-auto">
-
                 <div onClick={() => { navigate("/wishlist"); setIsMenuOpen(false); }} className="flex items-center gap-3 py-3.5 px-5 text-gray-600 border-b border-gray-50 cursor-pointer hover:text-red-500 hover:bg-red-50 transition">
                   <Heart size={18} /> Wishlist
                 </div>
