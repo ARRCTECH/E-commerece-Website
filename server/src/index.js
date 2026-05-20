@@ -151,7 +151,6 @@ app.use("/api/innovations", require("../routes/innovation"))
 app.use("/api/admin", require("../routes/admin"))
 app.use("/api/digital-marketer", require("../routes/digitalMarketer"))
 app.use("/api/popup-setting", require("../routes/popupSetting"))
-app.use("/api/ksauni-tshirts",require("../routes/ksaunitshirtstyle"))
 app.use( "/api/reason" ,require("../routes/reasonRoutes"));
 app.use('/api/catalog', require("../routes/productCatalog"));
 app.use('/api/referralconfig', require("../routes/referralRoutes"));
