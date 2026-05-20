@@ -1,6 +1,23 @@
 const Innovation = require("../models/Innovation");
 const { uploadToCloudinary, deleteFromCloudinary } = require("../utils/cloudinary");
 
+const extractPublicIdFromUrl = (url) => {
+  if (!url || !url.includes("cloudinary.com")) return null;
+  
+  const parts = url.split('/');
+  const uploadIndex = parts.findIndex(part => part === 'upload');
+  if (uploadIndex === -1) return null;
+  
+  let publicId = parts.slice(uploadIndex + 2).join('/');
+  const dotIndex = publicId.lastIndexOf('.');
+  if (dotIndex !== -1) {
+    publicId = publicId.substring(0, dotIndex);
+  }
+  
+  return publicId;
+};
+
+
 exports.getAllInnovations = async (req, res) => {
   try {
     const innovations = await Innovation.find()
@@ -76,9 +93,13 @@ exports.updateInnovation = async (req, res) => {
 
     if (req.file) {
       if (innovation.image && innovation.image.url) {
-        const publicId = innovation.image.url.split('/').pop().split('.')[0];
-        await deleteFromCloudinary(publicId, "innovations");
+        const publicId = extractPublicIdFromUrl(innovation.image.url);
+        if (publicId) {
+          await deleteFromCloudinary(publicId);
+          console.log(`✅ Deleted old innovation image: ${publicId}`);
+        }
       }
+      
       const result = await uploadToCloudinary(req.file.buffer, "innovations");
       updateData.image = {
         url: result.secure_url,
@@ -103,26 +124,31 @@ exports.updateInnovation = async (req, res) => {
   }
 };
 
+
 exports.deleteInnovation = async (req, res) => {
   try {
     const { id } = req.params;
 
     const innovation = await Innovation.findById(id);
     if (!innovation) {
-      return res.status(404).json({ success: false, message: "Innovation not found" });
+      return res.status(404).json({ message: "Innovation not found" });
     }
 
-    if (innovation.image && innovation.image.url) {
-      const publicId = innovation.image.url.split('/').pop().split('.')[0];
-      await deleteFromCloudinary(publicId, "innovations");
+    // ✅ Cloudinary वरून इमेज डिलीट करा
+    if (innovation.image?.url) {
+      const publicId = extractPublicIdFromUrl(innovation.image.url);
+      if (publicId) {
+        await deleteFromCloudinary(publicId);
+        console.log(`✅ Deleted innovation image: ${publicId}`);
+      }
     }
 
     await Innovation.findByIdAndDelete(id);
 
-    res.status(200).json({ success: true, message: "Innovation deleted successfully" });
+    res.status(200).json({ message: "Innovation deleted successfully" });
   } catch (error) {
     console.error("Delete innovation error:", error);
-    res.status(500).json({ success: false, message: "Failed to delete innovation" });
+    res.status(500).json({ message: "Failed to delete innovation" });
   }
 };
 

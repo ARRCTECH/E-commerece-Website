@@ -1,8 +1,26 @@
 const Product = require("../models/Product");
 const Category = require("../models/Category");
 const Counter = require('../models/Counter');
-const { uploadToCloudinary, uploadToCloudinaryVideo } = require("../utils/cloudinary");
+const { uploadToCloudinary, uploadToCloudinaryVideo,deleteFromCloudinary} = require("../utils/cloudinary");
 const mongoose = require("mongoose");
+
+
+const extractPublicIdFromUrl = (url) => {
+  if (!url || !url.includes("cloudinary.com")) return null;
+  
+  const parts = url.split('/');
+  const uploadIndex = parts.findIndex(part => part === 'upload');
+  if (uploadIndex === -1) return null;
+  
+  let publicId = parts.slice(uploadIndex + 2).join('/');
+  const dotIndex = publicId.lastIndexOf('.');
+  if (dotIndex !== -1) {
+    publicId = publicId.substring(0, dotIndex);
+  }
+  
+  return publicId;
+};
+
 
 // Helper to parse JSON fields safely
 const parseJson = (data, fallback) => {
@@ -528,7 +546,6 @@ const updateProduct = async (req, res) => {
     console.log("Product ID:", id);
     console.log("Update data:", JSON.stringify(updateData, null, 2));
 
-    // ========== SAFE HANDLE - Convert array values to single value ==========
     if (Array.isArray(updateData.price)) {
       updateData.price = updateData.price[0];
       console.log("✅ Converted price from array to:", updateData.price);
@@ -538,7 +555,6 @@ const updateProduct = async (req, res) => {
       console.log("✅ Converted originalPrice from array to:", updateData.originalPrice);
     }
 
-    // Ensure numeric values
     if (updateData.price !== undefined && updateData.price !== null && updateData.price !== "") {
       updateData.price = Number(updateData.price);
     }
@@ -551,7 +567,6 @@ const updateProduct = async (req, res) => {
     if (updateData.weight !== undefined && updateData.weight !== null && updateData.weight !== "") {
       updateData.weight = Number(updateData.weight);
     }
-    // ========== END SAFE HANDLE ==========
 
     const existingProduct = await Product.findById(id);
     if (!existingProduct) {
@@ -563,37 +578,52 @@ const updateProduct = async (req, res) => {
 
     updateData = prepareUpdateData(updateData, existingProduct);
 
-    // ========== 🆕 FIX: Sync price for bulk products ==========
     if (existingProduct.isBulkProduct && updateData.bulkConfig?.pricePerSet) {
       updateData.price = updateData.bulkConfig.pricePerSet;
       console.log("✅ Synced price with bulkConfig.pricePerSet:", updateData.price);
     }
-    // ========== END FIX ==========
 
     const currentName = existingProduct.name ? existingProduct.name.trim() : "";
     const newName = updateData.name ? updateData.name.trim() : "";
     const isNameActuallyChanged = newName && currentName !== newName;
 
-    // Handle file uploads
-    if (req.files && req.files.length > 0) {
-      const newImages = [];
-      for (const file of req.files) {
-        try {
-          const result = await uploadToCloudinary(file.buffer, "products");
-          newImages.push({
-            url: result.secure_url,
-            alt: updateData.name || existingProduct.name
-          });
-        } catch (uploadError) {
-          console.error("❌ Image upload failed:", uploadError);
+    if (req.files) {
+      if (req.files['images'] && req.files['images'].length > 0) {
+        const newImages = [];
+        for (const file of req.files['images']) {
+          try {
+            const result = await uploadToCloudinary(file.buffer, "productsimage");
+            newImages.push({
+              url: result.secure_url,
+              alt: updateData.name || existingProduct.name
+            });
+          } catch (uploadError) {
+            console.error("❌ Image upload failed:", uploadError);
+          }
+        }
+        if (newImages.length > 0) {
+          updateData.images = [...existingProduct.images, ...newImages];
         }
       }
-      if (newImages.length > 0) {
-        updateData.images = [...existingProduct.images, ...newImages];
+      
+      if (req.files['videos'] && req.files['videos'].length > 0) {
+        const newVideos = [];
+        for (const file of req.files['videos']) {
+          try {
+            const result = await uploadToCloudinaryVideo(file.buffer, "productsvideo");
+            newVideos.push({
+              url: result.secure_url
+            });
+          } catch (uploadError) {
+            console.error("❌ Video upload failed:", uploadError);
+          }
+        }
+        if (newVideos.length > 0) {
+          updateData.videos = [...existingProduct.videos, ...newVideos];
+        }
       }
     }
 
-    // Handle existing images reordering
     if (updateData.imageOrder && updateData.imageOrder.length > 0) {
       const orderedImages = [];
       for (const item of updateData.imageOrder) {
@@ -693,14 +723,36 @@ const updateProduct = async (req, res) => {
     });
   }
 };
-// ===============================
-// Delete product (Admin only)
-// ===============================
+
 const deleteProduct = async (req, res) => {
   try {
     const product = await Product.findById(req.params.id);
     if (!product) {
       return res.status(404).json({ success: false, message: "Product not found" });
+    }
+
+    if (product.images && product.images.length > 0) {
+      for (const image of product.images) {
+        if (image.url) {
+          const publicId = extractPublicIdFromUrl(image.url);
+          if (publicId) {
+            await deleteFromCloudinary(publicId);
+            console.log(`✅ Deleted product image: ${publicId}`);
+          }
+        }
+      }
+    }
+
+    if (product.videos && product.videos.length > 0) {
+      for (const video of product.videos) {
+        if (video.url) {
+          const publicId = extractPublicIdFromUrl(video.url);
+          if (publicId) {
+            await deleteFromCloudinary(publicId);
+            console.log(`✅ Deleted product video: ${publicId}`);
+          }
+        }
+      }
     }
 
     await Product.findByIdAndDelete(req.params.id);
@@ -712,6 +764,7 @@ const deleteProduct = async (req, res) => {
     res.status(500).json({ success: false, message: "Failed to delete product" });
   }
 };
+
 
 // ===============================
 // Add product review
