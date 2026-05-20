@@ -1,12 +1,26 @@
 const Category = require("../models/Category");
 const Product = require("../models/Product");
 const Counter = require('../models/Counter');
-const { uploadToCloudinary } = require("../utils/cloudinary");
+const { uploadToCloudinary,deleteFromCloudinary} = require("../utils/cloudinary");
 const slugify = require("slugify");
 
-// ===============================
+const extractPublicIdFromUrl = (url) => {
+  if (!url || !url.includes("cloudinary.com")) return null;
+  
+  const parts = url.split('/');
+  const uploadIndex = parts.findIndex(part => part === 'upload');
+  if (uploadIndex === -1) return null;
+  
+  let publicId = parts.slice(uploadIndex + 2).join('/');
+  const dotIndex = publicId.lastIndexOf('.');
+  if (dotIndex !== -1) {
+    publicId = publicId.substring(0, dotIndex);
+  }
+  
+  return publicId;
+};
+
 // Get all categories
-// ===============================
 const getCategories = async (req, res) => {
   try {
     const { showOnHomepage } = req.query;
@@ -143,8 +157,18 @@ const updateCategory = async (req, res) => {
       return res.status(404).json({ message: "Category not found" });
     }
 
-    // Upload image if provided
+    // ✅ Upload new image if provided (with old image deletion)
     if (req.file) {
+      // Delete old image from Cloudinary if exists
+      if (category.image && category.image.url) {
+        const publicId = extractPublicIdFromUrl(category.image.url);
+        if (publicId) {
+          await deleteFromCloudinary(publicId);
+          console.log(`✅ Deleted old category image: ${publicId}`);
+        }
+      }
+      
+      // Upload new image
       const result = await uploadToCloudinary(req.file.buffer, "categories");
       category.image = {
         url: result.secure_url,
@@ -203,6 +227,15 @@ const deleteCategory = async (req, res) => {
       return res.status(400).json({
         message: "Cannot delete category with existing products",
       });
+    }
+
+    // ✅ Delete category image from Cloudinary if exists
+    if (category.image && category.image.url) {
+      const publicId = extractPublicIdFromUrl(category.image.url);
+      if (publicId) {
+        await deleteFromCloudinary(publicId);
+        console.log(`✅ Deleted category image: ${publicId}`);
+      }
     }
 
     await Category.findByIdAndDelete(id);

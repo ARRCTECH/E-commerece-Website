@@ -17,7 +17,6 @@ import digitalMarketerReducer from "./slices/digitalMarketerSlice";
 import searchSlice from "./slices/searchSlice";
 import popupReducer from "./slices/popupSlice";
 import innovationReducer from "./slices/innovationSlice";
-import ksauniTshirtReducer from "./slices/ksauniTshirtSlice";
 import partialCodReducer from "./slices/partialCodSlice";
 const innovationPersistConfig = {
   key: "innovations",
@@ -42,7 +41,6 @@ export const store = configureStore({
     search: searchSlice,
     popup: popupReducer,
     innovations: persistedInnovationReducer,
-    ksauniTshirt: ksauniTshirtReducer, 
     partialCod: partialCodReducer
   },
   middleware: (getDefaultMiddleware) =>

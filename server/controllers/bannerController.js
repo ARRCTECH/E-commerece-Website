@@ -1,5 +1,21 @@
 const Banner = require("../models/Banner")
-const { uploadToCloudinary } = require("../utils/cloudinary")
+const { uploadToCloudinary,deleteFromCloudinary } = require("../utils/cloudinary")
+
+const extractPublicIdFromUrl = (url) => {
+  if (!url || !url.includes("cloudinary.com")) return null;
+  
+  const parts = url.split('/');
+  const uploadIndex = parts.findIndex(part => part === 'upload');
+  if (uploadIndex === -1) return null;
+  
+  let publicId = parts.slice(uploadIndex + 2).join('/');
+  const dotIndex = publicId.lastIndexOf('.');
+  if (dotIndex !== -1) {
+    publicId = publicId.substring(0, dotIndex);
+  }
+  
+  return publicId;
+};
 
 // Get hero banners
 // Get hero banners
@@ -103,66 +119,79 @@ exports.createBanner = async (req, res) => {
   }
 }
 
-// Update banner (Admin/Digital Marketer)
 exports.updateBanner = async (req, res) => {
   try {
-    const { id } = req.params
-    const updateData = req.body
+    const { id } = req.params;
+    const updateData = req.body;
 
-    const banner = await Banner.findById(id)
+    const banner = await Banner.findById(id);
     if (!banner) {
-      return res.status(404).json({ message: "Banner not found" })
+      return res.status(404).json({ message: "Banner not found" });
     }
-    // Handle image upload
+
     if (req.file) {
-      const result = await uploadToCloudinary(req.file.buffer, "banners")
+      // Delete old image from Cloudinary if exists
+      if (banner.image && banner.image.url) {
+        const publicId = extractPublicIdFromUrl(banner.image.url);
+        if (publicId) {
+          await deleteFromCloudinary(publicId);
+          console.log(`✅ Deleted old banner image: ${publicId}`);
+        }
+      }
+      
+      // Upload new image
+      const result = await uploadToCloudinary(req.file.buffer, "banners");
       updateData.image = {
         url: result.secure_url,
         alt: updateData.title || banner.title,
-      }
+      };
     }
 
     // Parse dates
-    if (updateData.startDate) updateData.startDate = new Date(updateData.startDate)
-    if (updateData.endDate) updateData.endDate = new Date(updateData.endDate)
+    if (updateData.startDate) updateData.startDate = new Date(updateData.startDate);
+    if (updateData.endDate) updateData.endDate = new Date(updateData.endDate);
 
     const updatedBanner = await Banner.findByIdAndUpdate(id, updateData, { new: true, runValidators: true }).populate(
       "createdBy",
       "name",
-    )
+    );
 
     res.status(200).json({
       message: "Banner updated successfully",
       banner: updatedBanner,
-    })
+    });
   } catch (error) {
-    console.error("Update banner error:", error)
-    res.status(500).json({ message: "Failed to update banner" })
+    console.error("Update banner error:", error);
+    res.status(500).json({ message: "Failed to update banner" });
   }
-}
+};
 
-// Delete banner (Admin/Digital Marketer)
 exports.deleteBanner = async (req, res) => {
   try {
-    const { id } = req.params
+    const { id } = req.params;
 
-    const banner = await Banner.findById(id)
+    const banner = await Banner.findById(id);
     if (!banner) {
-      return res.status(404).json({ message: "Banner not found" })
+      return res.status(404).json({ message: "Banner not found" });
     }
 
-   
+    if (banner.image && banner.image.url) {
+      const publicId = extractPublicIdFromUrl(banner.image.url);
+      if (publicId) {
+        await deleteFromCloudinary(publicId);
+        console.log(`✅ Deleted banner image: ${publicId}`);
+      }
+    }
 
-    await Banner.findByIdAndDelete(id)
+    await Banner.findByIdAndDelete(id);
 
-    res.status(200).json({ message: "Banner deleted successfully" })
+    res.status(200).json({ message: "Banner deleted successfully" });
   } catch (error) {
-    console.error("Delete banner error:", error)
-    res.status(500).json({ message: "Failed to delete banner" })
+    console.error("Delete banner error:", error);
+    res.status(500).json({ message: "Failed to delete banner" });
   }
-}
+};
 
-// Get all banners (Admin/Digital Marketer)
 exports.getAllBanners = async (req, res) => {
   try {
     const { type, isActive } = req.query;
@@ -171,7 +200,6 @@ exports.getAllBanners = async (req, res) => {
     if (type) query.type = type;
     if (isActive !== undefined) query.isActive = isActive === "true";
 
-    // Digital marketers see only their banners
     if (req.user && req.user.role === "digitalMarketer") {
       query.createdBy = req.user.userId;
     }
