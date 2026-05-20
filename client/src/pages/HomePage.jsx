@@ -14,16 +14,16 @@ const HomePage = () => {
       return (
             <div className="flex flex-col">
                   <PromoBanners />
-                  <HeroBanner />
                   <FeaturedCategories />
-                  <CategoryBanner />
+                  <HeroBanner />
                   <TrendingProducts />
-                  <ReferralProgram />
-                  <D2CHighlight />
+                  <CategoryBanner />
                   <NewArrivals />
-                  <InnovationList />
+                  <ReferralProgram />
+             <WhatsAppScrollableComponent />
                   <Oversized899 />
-                  <WhatsAppScrollableComponent />
+                  <D2CHighlight />
+                  <InnovationList />
             </div>
       );
 };

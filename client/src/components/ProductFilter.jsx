@@ -16,10 +16,16 @@ const ProductFilters = memo(({ filters, categories, onFilterChange, onClearFilte
   const [selectedRatings, setSelectedRatings] = useState([]);
   const [priceRangeValue, setPriceRangeValue] = useState({ min: filters.minPrice || 0, max: filters.maxPrice || 10000 });
 
+  // ✅ Initialize selected ratings from filters
   useEffect(() => {
-    if (filters.minRating) {
+    if (filters.minRating && filters.minRating !== "") {
       const rating = Number.parseFloat(filters.minRating);
-      const ratingsToSelect = [4, 3, 2, 1].filter((r) => r >= rating);
+      // Select all ratings >= the min rating
+      const ratingsToSelect = [];
+      if (rating <= 4) ratingsToSelect.push(4);
+      if (rating <= 3) ratingsToSelect.push(3);
+      if (rating <= 2) ratingsToSelect.push(2);
+      if (rating <= 1) ratingsToSelect.push(1);
       setSelectedRatings(ratingsToSelect);
     } else {
       setSelectedRatings([]);
@@ -48,15 +54,34 @@ const ProductFilters = memo(({ filters, categories, onFilterChange, onClearFilte
     });
   };
 
+  // ✅ UNCOMMENTED AND FIXED: Rating change handler
   const handleRatingChange = (rating) => {
-    const newRatings = selectedRatings.includes(rating)
-      ? selectedRatings.filter((r) => r !== rating)
-      : [...selectedRatings, rating];
-    const minRating = newRatings.length > 0 ? Math.max(...newRatings) : null;
+    let newRatings;
+    const currentMinRating = filters.minRating ? parseFloat(filters.minRating) : null;
+    
+    // If the clicked rating is already the active one, clear it
+    if (currentMinRating === rating) {
+      newRatings = [];
+      setSelectedRatings(newRatings);
+      onFilterChange({
+        ...filters,
+        minRating: "",
+      });
+      return;
+    }
+    
+    // Otherwise, set the new rating
+    newRatings = [];
+    for (let i = rating; i <= 4; i++) {
+      newRatings.push(i);
+    }
+    
     setSelectedRatings(newRatings);
+    
+    // Send the minRating to parent
     onFilterChange({
       ...filters,
-      minRating: minRating ? minRating.toString() : "",
+      minRating: rating.toString(),
     });
   };
 
@@ -66,11 +91,46 @@ const ProductFilters = memo(({ filters, categories, onFilterChange, onClearFilte
     if (onClearFilters) onClearFilters();
   };
 
-  const activeFiltersCount = [
-    filters.category ? 1 : 0,
-    filters.minPrice || filters.maxPrice ? 1 : 0,
-    filters.minRating ? 1 : 0
-  ].reduce((a, b) => a + b, 0);
+  // ✅ Fixed active filters count
+  const activeFiltersCount = () => {
+    let count = 0;
+    
+    if (filters.category && filters.category !== "" && filters.category !== null && filters.category !== undefined) {
+      count++;
+    }
+    
+    if ((filters.minPrice && filters.minPrice !== "") || (filters.maxPrice && filters.maxPrice !== "")) {
+      count++;
+    }
+    
+    if (filters.minRating && filters.minRating !== "" && filters.minRating !== null && filters.minRating !== undefined) {
+      count++;
+    }
+    
+    if (filters.search && filters.search !== "") {
+      count++;
+    }
+    
+    if (filters.sizes && filters.sizes.length > 0) {
+      count++;
+    }
+    
+    if (filters.colors && filters.colors.length > 0) {
+      count++;
+    }
+    
+    if (filters.gender && filters.gender !== "") {
+      count++;
+    }
+    
+    if (filters.brands && filters.brands.length > 0) {
+      count++;
+    }
+    
+    return count;
+  };
+
+  const getActiveCount = activeFiltersCount();
 
   const getCategoryIcon = (categoryName) => {
     const name = categoryName.toLowerCase();
@@ -81,14 +141,21 @@ const ProductFilters = memo(({ filters, categories, onFilterChange, onClearFilte
     return <Tag className="w-3.5 h-3.5" />;
   };
 
+  // ✅ Helper to check if rating is selected
+  const isRatingSelected = (rating) => {
+    if (!filters.minRating || filters.minRating === "") return false;
+    const minRating = parseFloat(filters.minRating);
+    return rating === minRating;
+  };
+
   return (
     <motion.div
       initial={{ opacity: 0, x: -20 }}
       animate={{ opacity: 1, x: 0 }}
       className="relative bg-white rounded-2xl shadow-xl border border-gray-100 overflow-hidden"
     >
-      {/* Premium Header - Only design change */}
-      <div className="relative px-5 pt-5 pb-4 bg-gradient-to-r from-gray-900 to-gray-800">
+      {/* Premium Header */}
+      <div className="px-5 pt-2 pb-4 mb-10 bg-gradient-to-r from-gray-900 to-gray-800">
         <div className="absolute top-0 right-0 w-32 h-32 bg-white/5 rounded-full -mr-16 -mt-16 blur-2xl" />
         <div className="absolute bottom-0 left-0 w-24 h-24 bg-white/5 rounded-full -ml-12 -mb-12 blur-2xl" />
         
@@ -99,13 +166,13 @@ const ProductFilters = memo(({ filters, categories, onFilterChange, onClearFilte
             </div>
             <div>
               <h2 className="text-xl font-bold text-white tracking-tight">Filters</h2>
-              {activeFiltersCount > 0 && (
-                <p className="text-[11px] text-white/60 mt-0.5">{activeFiltersCount} active</p>
+              {getActiveCount > 0 && (
+                <p className="text-[11px] text-white/60 mt-0.5">{getActiveCount} active filter{getActiveCount > 1 ? 's' : ''}</p>
               )}
             </div>
           </div>
           <div className="flex items-center gap-2">
-            {activeFiltersCount > 0 && (
+            {getActiveCount > 0 && (
               <motion.button
                 whileHover={{ scale: 1.02 }}
                 whileTap={{ scale: 0.98 }}
@@ -129,7 +196,7 @@ const ProductFilters = memo(({ filters, categories, onFilterChange, onClearFilte
         </div>
       </div>
 
-      {/* Filter sections - Only design changes (colors, spacing, shadows) */}
+      {/* Filter sections */}
       <div className="p-4 space-y-4 max-h-[calc(100vh-200px)] overflow-y-auto custom-scrollbar">
         
         {/* Categories Section */}
@@ -169,7 +236,7 @@ const ProductFilters = memo(({ filters, categories, onFilterChange, onClearFilte
                       <input
                         type="radio"
                         name="category"
-                        checked={!filters.category}
+                        checked={!filters.category || filters.category === ""}
                         onChange={() => onFilterChange({ category: "" })}
                         className="w-4 h-4 text-red-600 border-gray-300 focus:ring-red-500"
                       />
@@ -308,97 +375,22 @@ const ProductFilters = memo(({ filters, categories, onFilterChange, onClearFilte
           </AnimatePresence>
         </div>
 
-        {/* Rating Section */}
-        <div className="bg-white rounded-xl border border-gray-100 shadow-sm overflow-hidden">
-          <motion.button
-            whileHover={{ backgroundColor: "#F9FAFB" }}
-            onClick={() => toggleSection("rating")}
-            className="flex items-center justify-between w-full px-4 py-3 text-left transition-colors"
-          >
-            <div className="flex items-center gap-2.5">
-              <div className="p-1.5 bg-yellow-50 rounded-lg">
-                <Star className="w-3.5 h-3.5 text-yellow-600" />
-              </div>
-              <h3 className="text-sm font-semibold text-gray-800">Customer Rating</h3>
-            </div>
-            <motion.div
-              animate={{ rotate: expandedSections.rating ? 180 : 0 }}
-              transition={{ duration: 0.3 }}
-              className="p-1 rounded-full bg-gray-100"
-            >
-              <ChevronDown className="w-3.5 h-3.5 text-gray-500" />
-            </motion.div>
-          </motion.button>
-          
-          <AnimatePresence>
-            {expandedSections.rating && (
-              <motion.div
-                initial={{ height: 0, opacity: 0 }}
-                animate={{ height: "auto", opacity: 1 }}
-                exit={{ height: 0, opacity: 0 }}
-                transition={{ duration: 0.2 }}
-                className="overflow-hidden"
-              >
-                <div className="px-4 pb-4 space-y-1.5">
-                  {[4, 3, 2, 1].map((rating) => {
-                    const isSelected = selectedRatings.includes(rating);
-                    return (
-                      <label
-                        key={rating}
-                        className={`flex items-center justify-between p-2 rounded-lg cursor-pointer transition ${
-                          isSelected ? "bg-yellow-50 border border-yellow-200" : "hover:bg-gray-50"
-                        }`}
-                      >
-                        <div className="flex items-center gap-3">
-                          <input
-                            type="checkbox"
-                            checked={isSelected}
-                            onChange={() => handleRatingChange(rating)}
-                            className="w-4 h-4 text-yellow-600 border-gray-300 rounded focus:ring-yellow-500"
-                          />
-                          <div className="flex items-center gap-0.5">
-                            {[...Array(5)].map((_, i) => (
-                              <Star
-                                key={i}
-                                className={`w-3 h-3 ${i < rating ? "text-yellow-400 fill-current" : "text-gray-300"}`}
-                              />
-                            ))}
-                            <span className="text-sm text-gray-700 ml-1">& Up</span>
-                          </div>
-                        </div>
-                        {isSelected && (
-                          <motion.div
-                            initial={{ scale: 0 }}
-                            animate={{ scale: 1 }}
-                            className="w-1.5 h-1.5 rounded-full bg-yellow-500"
-                          />
-                        )}
-                      </label>
-                    );
-                  })}
-                </div>
-              </motion.div>
-            )}
-          </AnimatePresence>
-        </div>
+        
 
         {/* Active filters summary */}
-        {activeFiltersCount > 0 && (
+        {getActiveCount > 0 && (
           <div className="pt-2">
             <div className="flex flex-wrap gap-2">
-              {filters.category && (
+              {filters.category && filters.category !== "" && (
                 <span className="inline-flex items-center gap-1.5 px-2.5 py-1 text-[11px] bg-red-50 text-red-700 rounded-full border border-red-200">
                   <Tag className="w-3 h-3" />
                   {categories.find(c => c.slug === filters.category)?.name || filters.category}
-                  <button
-                    onClick={() => onFilterChange({ category: "" })}
-                    className="ml-0.5 hover:text-red-900"
-                  >
+                  <button onClick={() => onFilterChange({ category: "" })} className="ml-0.5 hover:text-red-900">
                     <X className="w-2.5 h-2.5" />
                   </button>
                 </span>
               )}
-              {(filters.minPrice || filters.maxPrice) && (
+              {((filters.minPrice && filters.minPrice !== "") || (filters.maxPrice && filters.maxPrice !== "")) && (
                 <span className="inline-flex items-center gap-1.5 px-2.5 py-1 text-[11px] bg-green-50 text-green-700 rounded-full border border-green-200">
                   <DollarSign className="w-3 h-3" />
                   ₹{filters.minPrice || "0"} - ₹{filters.maxPrice || "∞"}
@@ -413,7 +405,7 @@ const ProductFilters = memo(({ filters, categories, onFilterChange, onClearFilte
                   </button>
                 </span>
               )}
-              {filters.minRating && (
+              {filters.minRating && filters.minRating !== "" && (
                 <span className="inline-flex items-center gap-1.5 px-2.5 py-1 text-[11px] bg-yellow-50 text-yellow-700 rounded-full border border-yellow-200">
                   <Star className="w-3 h-3 fill-current" />
                   {filters.minRating}+ Stars
@@ -433,7 +425,7 @@ const ProductFilters = memo(({ filters, categories, onFilterChange, onClearFilte
         )}
       </div>
 
-      {/* Apply button - Only design change */}
+      {/* Apply button */}
       <div className="sticky bottom-0 p-4 bg-white/95 backdrop-blur-sm border-t border-gray-100">
         <motion.button
           whileHover={{ scale: 1.02 }}

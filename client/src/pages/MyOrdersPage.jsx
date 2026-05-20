@@ -1,4 +1,4 @@
-// src/pages/MyOrdersPage.jsx - Premium Modern Design
+// src/pages/MyOrdersPage.jsx - Premium Modern Design with Download Invoice
 import { useEffect, useState } from "react";
 import { useSelector, useDispatch } from "react-redux";
 import { useNavigate } from "react-router-dom";
@@ -7,10 +7,12 @@ import {
   Package, Eye, X, Truck, CheckCircle, Clock, AlertCircle,
   Layers, Palette, CreditCard, Wallet, Banknote, AlertTriangle, 
   ShoppingBag, MapPin, Calendar, ChevronLeft, ChevronRight,
-  Sparkles, TrendingUp, Shield, Star, Gift, Award
+  Sparkles, TrendingUp, Shield, Star, Gift, Award, Download, FileText
 } from "lucide-react";
 import { fetchUserOrders, cancelOrder, clearError } from "../store/slices/orderSlice";
 import LoadingSpinner from "../components/LoadingSpinner";
+import InvoiceDownloadButton from "../pages/InvoiceDownloadButton"; // ✅ Import Invoice Button
+import toast from "react-hot-toast";
 
 // Premium Modal Component
 const Modal = ({ children, onClose }) => {
@@ -114,6 +116,11 @@ const MyOrdersPage = () => {
   const canCancelOrder = (order) => {
     const status = order?.status?.toLowerCase();
     return status === "confirmed" || status === "processing" || status === "placed";
+  };
+
+  const canDownloadInvoice = (order) => {
+    const status = order?.status?.toLowerCase();
+    return status === "delivered" || status === "shipped" || status === "confirmed";
   };
 
   const handleCancelOrder = () => {
@@ -408,7 +415,7 @@ const MyOrdersPage = () => {
                         </span>
                       </div>
 
-                      {/* Action Buttons - Premium Red Design */}
+                      {/* Action Buttons - Premium Red Design with Download Invoice */}
                       <div className="flex flex-wrap gap-2">
                         <button
                           onClick={() => navigate(`/order/${order._id}`)}
@@ -438,6 +445,14 @@ const MyOrdersPage = () => {
                             <X className="w-3.5 h-3.5" />
                             Cancel Order
                           </button>
+                        )}
+                        {/* ✅ Download Invoice Button - Using the same component as OrderDetailsPage */}
+                        {canDownloadInvoice(order) && (
+                          <InvoiceDownloadButton 
+                            order={order} 
+                            variant="button" 
+                            className=" items-center gap-1.5 px-4 py-2 rounded-xl border-2 border-emerald-200 bg-white text-emerald-600 font-semibold text-sm hover:bg-emerald-50 hover:border-emerald-300 transition-all duration-300"
+                          />
                         )}
                       </div>
                     </div>

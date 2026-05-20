@@ -4,7 +4,7 @@ import { Link } from "react-router-dom";
 import { useEffect, useState, useRef } from "react";
 import { useDispatch, useSelector } from "react-redux";
 import { ArrowUpRight, Sparkles, Eye, TrendingUp, Shield } from "lucide-react";
-import { fetchKsauniTshirts } from "../../store/slices/ksauniTshirtSlice";
+import { fetchKsauniTshirts } from "../store/slices/ksauniTshirtSlice";
 
 export default function KsauniTshirtStyle() {
   const dispatch = useDispatch();

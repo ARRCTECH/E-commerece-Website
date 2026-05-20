@@ -1,9 +1,10 @@
 "use client"
+
 import { useState, useEffect, useCallback, useMemo } from "react"
 import { useDispatch, useSelector } from "react-redux"
 import { useSearchParams, useNavigate, useParams } from "react-router-dom"
 import { motion, AnimatePresence } from "framer-motion"
-import { X } from "lucide-react"
+import { X, Filter, ChevronDown, SlidersHorizontal } from "lucide-react"
 import toast from "react-hot-toast"
 
 // Redux actions
@@ -21,7 +22,6 @@ import {
 import ProductFilters from "../components/ProductFilter"
 import CategoryBanner from "../components/CategoryBanner"
 import ProductCard from "../components/ProductCard"
-// import Preloader from "../components/Preloader"
 
 // Selectors
 const selectProducts = (state) => state.products
@@ -35,6 +35,9 @@ const ProductsPage = () => {
   const navigate = useNavigate()
   const [searchParams, setSearchParams] = useSearchParams()
   const [showFilters, setShowFilters] = useState(false)
+  const [isFilterInitialized, setIsFilterInitialized] = useState(false)
+  const [sortBy, setSortBy] = useState("newest")
+  const [showSortMenu, setShowSortMenu] = useState(false)
 
   // Selectors
   const { products, isLoading, error, filters } = useSelector(selectProducts)
@@ -42,67 +45,107 @@ const ProductsPage = () => {
   const { user } = useSelector(selectAuth)
   const { items: wishlistItems } = useSelector(selectWishlist)
 
-  // ✅ Count active filters
-  const activeFiltersCount = useMemo(
-    () =>
-      Object.entries(filters).reduce((count, [key, value]) => {
-        if (Array.isArray(value) ? value.length > 0 : Boolean(value)) {
-          return count + 1
-        }
-        return count
-      }, 0),
-    [filters],
-  )
+  // Sort options
+  const sortOptions = [
+    { value: "newest", label: "Newest First" },
+    { value: "price_low", label: "Price: Low to High" },
+    { value: "price_high", label: "Price: High to Low" },
+    { value: "popular", label: "Most Popular" },
+    { value: "rating", label: "Highest Rated" },
+  ]
 
-  // ✅ Extract filters from URL params
-  const getFiltersFromURL = useCallback(() => {
-    const urlFilters = {
-      category: searchParams.get("category") || "",
-      search: searchParams.get("search") || "",
-      minPrice: searchParams.get("minPrice") || "",
-      maxPrice: searchParams.get("maxPrice") || "",
-      minRating: searchParams.get("minRating") || "",
-    }
-    return urlFilters
-  }, [searchParams])
+  // ✅ Count active filters
+  const activeFiltersCount = useMemo(() => {
+    let count = 0
+    if (filters.category && filters.category !== "") count++
+    if (filters.search && filters.search !== "") count++
+    if (filters.minPrice && filters.minPrice !== "") count++
+    if (filters.maxPrice && filters.maxPrice !== "") count++
+    if (filters.minRating && filters.minRating !== "") count++
+    if (filters.sizes && filters.sizes.length > 0) count++
+    if (filters.colors && filters.colors.length > 0) count++
+    if (filters.gender && filters.gender !== "") count++
+    if (filters.brands && filters.brands.length > 0) count++
+    return count
+  }, [filters])
 
   // ✅ Fetch categories once
   useEffect(() => {
     dispatch(fetchCategories())
   }, [dispatch])
 
-  // ✅ Sync categorySlug → Redux filters
+  // ✅ Initialize filters from URL on mount
   useEffect(() => {
-    if (categorySlug) {
-      dispatch(setFilters((prev) => ({ ...prev, category: categorySlug })))
-      setSearchParams((prev) => {
-        const newParams = new URLSearchParams(prev)
-        newParams.set("category", categorySlug)
-        return newParams
-      })
-    } else {
-      dispatch(setFilters((prev) => ({ ...prev, category: "" })))
+    const urlFilters = {
+      category: searchParams.get("category") || categorySlug || "",
+      search: searchParams.get("search") || "",
+      minPrice: searchParams.get("minPrice") || "",
+      maxPrice: searchParams.get("maxPrice") || "",
+      minRating: searchParams.get("minRating") || "",
+      sizes: searchParams.getAll("size") || [],
+      colors: searchParams.getAll("color") || [],
+      gender: searchParams.get("gender") || "",
+      brands: searchParams.getAll("brand") || [],
     }
-  }, [categorySlug, dispatch, setSearchParams])
+    
+    let hasChanges = false
+    for (const key in urlFilters) {
+      const currentValue = filters[key]
+      const newValue = urlFilters[key]
+      
+      if (Array.isArray(currentValue) && Array.isArray(newValue)) {
+        if (JSON.stringify(currentValue) !== JSON.stringify(newValue)) {
+          hasChanges = true
+          break
+        }
+      } else if (currentValue !== newValue) {
+        hasChanges = true
+        break
+      }
+    }
+    
+    if (hasChanges) {
+      dispatch(setFilters(urlFilters))
+    }
+    setIsFilterInitialized(true)
+  }, [dispatch, categorySlug, searchParams])
 
-  // ✅ Sync URL → Redux filters
+  // ✅ Sync categorySlug → URL and Redux
   useEffect(() => {
-    const urlFilters = getFiltersFromURL()
-    dispatch(setFilters(urlFilters))
-  }, [searchParams, getFiltersFromURL, dispatch])
+    if (categorySlug && isFilterInitialized) {
+      const newParams = new URLSearchParams(searchParams)
+      if (categorySlug) {
+        newParams.set("category", categorySlug)
+      } else {
+        newParams.delete("category")
+      }
+      setSearchParams(newParams, { replace: true })
+      
+      if (filters.category !== categorySlug) {
+        dispatch(setFilters({ ...filters, category: categorySlug }))
+      }
+    }
+  }, [categorySlug, dispatch, filters, isFilterInitialized, searchParams, setSearchParams])
 
   // ✅ Fetch products when filters change
   useEffect(() => {
-    const cleanFilters = Object.entries(filters).reduce((acc, [key, value]) => {
-      if (Array.isArray(value)) {
-        if (value.length > 0) acc[key] = value
-      } else if (value !== "" && value !== null && value !== undefined) {
-        acc[key] = value
-      }
-      return acc
-    }, {})
-    dispatch(fetchProducts({ ...cleanFilters, limit: 100 }))
-  }, [dispatch, filters])
+    if (isFilterInitialized) {
+      const queryParams = {}
+      
+      if (filters.category && filters.category !== "") queryParams.category = filters.category
+      if (filters.search && filters.search !== "") queryParams.search = filters.search
+      if (filters.minPrice && filters.minPrice !== "") queryParams.minPrice = filters.minPrice
+      if (filters.maxPrice && filters.maxPrice !== "") queryParams.maxPrice = filters.maxPrice
+      if (filters.minRating && filters.minRating !== "") queryParams.minRating = filters.minRating
+      if (filters.sizes && filters.sizes.length > 0) queryParams.sizes = filters.sizes
+      if (filters.colors && filters.colors.length > 0) queryParams.colors = filters.colors
+      if (filters.gender && filters.gender !== "") queryParams.gender = filters.gender
+      if (filters.brands && filters.brands.length > 0) queryParams.brands = filters.brands
+      if (sortBy) queryParams.sort = sortBy
+      
+      dispatch(fetchProducts(queryParams))
+    }
+  }, [dispatch, filters, isFilterInitialized, sortBy])
 
   // ✅ Add to cart
   const handleAddToCart = useCallback(
@@ -141,12 +184,10 @@ const ProductsPage = () => {
       
       const isInWishlist = wishlistItems.some((item) => item._id === product._id)
       if (isInWishlist) {
-        // Optimistically remove from wishlist
         dispatch(optimisticRemoveFromWishlist(product._id))
         toast.success(`${product.name} removed from wishlist!`)
         await dispatch(removeFromWishlist(product._id)).unwrap()
       } else {
-        // Optimistically add to wishlist
         dispatch(optimisticAddToWishlist(product))
         toast.success(`${product.name} added to wishlist!`)
         await dispatch(addToWishlist(product)).unwrap()
@@ -155,20 +196,37 @@ const ProductsPage = () => {
     [dispatch, wishlistItems],
   )
 
-  // ✅ Handle filter change → Update Redux + URL
+  // ✅ Handle filter change
   const handleFilterChange = useCallback(
     (newFilters) => {
       const mergedFilters = { ...filters, ...newFilters }
       dispatch(setFilters(mergedFilters))
 
       const newParams = new URLSearchParams()
-      Object.entries(mergedFilters).forEach(([key, value]) => {
-        if (Array.isArray(value) && value.length > 0) {
-          value.forEach((v) => newParams.append(key, v))
-        } else if (value) {
-          newParams.set(key, value)
-        }
-      })
+      
+      if (mergedFilters.category && mergedFilters.category !== "") 
+        newParams.set("category", mergedFilters.category)
+      if (mergedFilters.search && mergedFilters.search !== "") 
+        newParams.set("search", mergedFilters.search)
+      if (mergedFilters.minPrice && mergedFilters.minPrice !== "") 
+        newParams.set("minPrice", mergedFilters.minPrice)
+      if (mergedFilters.maxPrice && mergedFilters.maxPrice !== "") 
+        newParams.set("maxPrice", mergedFilters.maxPrice)
+      if (mergedFilters.minRating && mergedFilters.minRating !== "") 
+        newParams.set("minRating", mergedFilters.minRating)
+      if (mergedFilters.gender && mergedFilters.gender !== "") 
+        newParams.set("gender", mergedFilters.gender)
+      
+      if (mergedFilters.sizes && mergedFilters.sizes.length > 0) {
+        mergedFilters.sizes.forEach(size => newParams.append("size", size))
+      }
+      if (mergedFilters.colors && mergedFilters.colors.length > 0) {
+        mergedFilters.colors.forEach(color => newParams.append("color", color))
+      }
+      if (mergedFilters.brands && mergedFilters.brands.length > 0) {
+        mergedFilters.brands.forEach(brand => newParams.append("brand", brand))
+      }
+      
       setSearchParams(newParams)
     },
     [dispatch, filters, setSearchParams],
@@ -176,114 +234,298 @@ const ProductsPage = () => {
 
   // ✅ Clear all filters
   const clearAllFilters = useCallback(() => {
-    dispatch(clearFilters())
+    const emptyFilters = {
+      category: "",
+      search: "",
+      minPrice: "",
+      maxPrice: "",
+      minRating: "",
+      sizes: [],
+      colors: [],
+      gender: "",
+      brands: [],
+    }
+    dispatch(setFilters(emptyFilters))
     setSearchParams({})
+    toast.success("All filters cleared")
   }, [dispatch, setSearchParams])
+
+  // Get current sort label
+  const currentSortLabel = sortOptions.find(opt => opt.value === sortBy)?.label || "Sort by"
 
   return (
     <div className="min-h-screen bg-gray-50">
-      <div className="px-4 py-2 pt-2 mx-auto md:pt-8">
-        <div className="flex flex-col gap-6 md:flex-row">
-          <aside className="hidden md:block md:w-64 lg:w- top-[100px] h-[calc(80vh-10px)] rounded-md">
-            <ProductFilters
-              key={categorySlug || "all"}
-              filters={filters}
-              categories={categories}
-              onFilterChange={handleFilterChange}
-              onClearFilters={clearAllFilters}
-            />
+      {/* Mobile Header - Filter and Sort Bar */}
+      <div className="sticky top-0 z-30 bg-white border-b border-gray-200 shadow-sm">
+        <div className="px-3 py-2 sm:px-4">
+          <div className="flex items-center justify-between gap-2">
+            {/* Filter Button */}
+            <button
+              onClick={() => setShowFilters(true)}
+              className="flex items-center justify-center gap-1.5 px-3 py-2 text-sm font-medium text-gray-700 bg-gray-100 rounded-lg active:bg-gray-200 transition-colors flex-1 sm:flex-none"
+            >
+              <SlidersHorizontal className="w-4 h-4" />
+              <span>Filters</span>
+              {activeFiltersCount > 0 && (
+                <span className="px-1.5 py-0.5 text-xs text-white bg-red-500 rounded-full">
+                  {activeFiltersCount}
+                </span>
+              )}
+            </button>
+            
+            {/* Sort Button */}
+            <div className="relative flex-1 sm:flex-none">
+              <button
+                onClick={() => setShowSortMenu(!showSortMenu)}
+                className="flex items-center justify-center gap-1.5 w-full px-3 py-2 text-sm font-medium text-gray-700 bg-gray-100 rounded-lg active:bg-gray-200 transition-colors"
+              >
+                <span>Sort: {currentSortLabel}</span>
+                <ChevronDown className={`w-4 h-4 transition-transform ${showSortMenu ? 'rotate-180' : ''}`} />
+              </button>
+              
+              {/* Sort Dropdown */}
+              <AnimatePresence>
+                {showSortMenu && (
+                  <motion.div
+                    initial={{ opacity: 0, y: -10 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    exit={{ opacity: 0, y: -10 }}
+                    className="absolute top-full right-0 mt-1 w-48 bg-white rounded-lg shadow-lg border border-gray-200 z-50"
+                  >
+                    {sortOptions.map((option) => (
+                      <button
+                        key={option.value}
+                        onClick={() => {
+                          setSortBy(option.value)
+                          setShowSortMenu(false)
+                        }}
+                        className={`block w-full text-left px-4 py-2 text-sm hover:bg-gray-50 transition-colors ${
+                          sortBy === option.value ? 'text-red-500 font-medium' : 'text-gray-700'
+                        }`}
+                      >
+                        {option.label}
+                      </button>
+                    ))}
+                  </motion.div>
+                )}
+              </AnimatePresence>
+            </div>
+            
+            {/* Clear Filters Button (only if filters active) */}
+            {activeFiltersCount > 0 && (
+              <button
+                onClick={clearAllFilters}
+                className="px-3 py-2 text-sm text-red-500 whitespace-nowrap active:text-red-600"
+              >
+                Clear All
+              </button>
+            )}
+          </div>
+          
+          {/* Active Filters Chips - Mobile */}
+          {activeFiltersCount > 0 && (
+            <div className="flex flex-wrap gap-1.5 mt-2 pb-1 overflow-x-auto">
+              {filters.category && filters.category !== "" && (
+                <span className="inline-flex items-center gap-1 px-2 py-1 text-xs bg-red-50 text-red-600 rounded-full whitespace-nowrap">
+                  {categories.find(c => c.slug === filters.category)?.name || filters.category}
+                  <button onClick={() => handleFilterChange({ category: "" })} className="hover:text-red-800">
+                    <X className="w-3 h-3" />
+                  </button>
+                </span>
+              )}
+              {(filters.minPrice || filters.maxPrice) && (
+                <span className="inline-flex items-center gap-1 px-2 py-1 text-xs bg-green-50 text-green-600 rounded-full whitespace-nowrap">
+                  ₹{filters.minPrice || "0"} - ₹{filters.maxPrice || "∞"}
+                  <button onClick={() => handleFilterChange({ minPrice: "", maxPrice: "" })}>
+                    <X className="w-3 h-3" />
+                  </button>
+                </span>
+              )}
+              {filters.minRating && (
+                <span className="inline-flex items-center gap-1 px-2 py-1 text-xs bg-yellow-50 text-yellow-600 rounded-full whitespace-nowrap">
+                  {filters.minRating}+ Stars
+                  <button onClick={() => handleFilterChange({ minRating: "" })}>
+                    <X className="w-3 h-3" />
+                  </button>
+                </span>
+              )}
+            </div>
+          )}
+        </div>
+      </div>
+
+      <div className="px-3 py-3 mx-auto max-w-7xl sm:px-4 sm:py-4 md:py-6">
+        <div className="flex flex-col gap-4 md:flex-row md:gap-6">
+          
+          {/* Desktop Sidebar - Hidden on mobile */}
+          <aside className="hidden md:block md:w-64 lg:w-72 flex-shrink-0">
+            <div className="sticky top-24">
+              <ProductFilters
+                filters={filters}
+                categories={categories}
+                onFilterChange={handleFilterChange}
+                onClearFilters={clearAllFilters}
+                onClose={() => {}}
+              />
+            </div>
           </aside>
-          <main className="flex-1 rounded-xl">
+
+          {/* Main Content */}
+          <main className="flex-1">
+            {/* Results Count - Desktop */}
+            <div className="hidden md:flex mb-4 items-center justify-between">
+              <p className="text-sm text-gray-500">
+                Showing <span className="font-semibold text-gray-700">{products.length}</span> products
+                {activeFiltersCount > 0 && (
+                  <span className="ml-2 text-xs text-gray-400">
+                    ({activeFiltersCount} filters applied)
+                  </span>
+                )}
+              </p>
+              
+              {/* Desktop Sort Dropdown */}
+              <div className="relative">
+                <button
+                  onClick={() => setShowSortMenu(!showSortMenu)}
+                  className="flex items-center gap-2 px-4 py-2 text-sm font-medium text-gray-700 bg-white border border-gray-200 rounded-lg hover:bg-gray-50"
+                >
+                  <span>Sort by: {currentSortLabel}</span>
+                  <ChevronDown className={`w-4 h-4 transition-transform ${showSortMenu ? 'rotate-180' : ''}`} />
+                </button>
+                
+                <AnimatePresence>
+                  {showSortMenu && (
+                    <motion.div
+                      initial={{ opacity: 0, y: -10 }}
+                      animate={{ opacity: 1, y: 0 }}
+                      exit={{ opacity: 0, y: -10 }}
+                      className="absolute top-full right-0 mt-1 w-48 bg-white rounded-lg shadow-lg border border-gray-200 z-50"
+                    >
+                      {sortOptions.map((option) => (
+                        <button
+                          key={option.value}
+                          onClick={() => {
+                            setSortBy(option.value)
+                            setShowSortMenu(false)
+                          }}
+                          className={`block w-full text-left px-4 py-2 text-sm hover:bg-gray-50 transition-colors ${
+                            sortBy === option.value ? 'text-red-500 font-medium' : 'text-gray-700'
+                          }`}
+                        >
+                          {option.label}
+                        </button>
+                      ))}
+                    </motion.div>
+                  )}
+                </AnimatePresence>
+              </div>
+            </div>
+
+            {/* Loading State */}
             {isLoading ? (
-              <div className="flex items-center justify-center py-20">
+              <div className="flex items-center justify-center py-12 sm:py-20">
+                <div className="w-10 h-10 sm:w-12 sm:h-12 border-4 border-gray-200 border-t-red-500 rounded-full animate-spin" />
               </div>
             ) : error ? (
-              <div className="flex flex-col items-center justify-center py-20 text-center">
-                <div className="p-6 rounded-lg bg-red-50">
-                  <h3 className="mb-2 text-lg font-semibold text-red-800">Error Loading Products</h3>
-                  <p className="text-sm text-red-600">{error}</p>
+              <div className="flex flex-col items-center justify-center py-12 sm:py-20 text-center">
+                <div className="p-4 sm:p-6 rounded-lg bg-red-50">
+                  <h3 className="mb-2 text-base sm:text-lg font-semibold text-red-800">Error Loading Products</h3>
+                  <p className="text-xs sm:text-sm text-red-600">{error}</p>
                   <button
                     onClick={() => window.location.reload()}
-                    className="px-3 py-1.5 mt-3 text-sm text-white bg-red-600 rounded-lg hover:bg-red-700"
+                    className="px-3 py-1.5 mt-3 text-xs sm:text-sm text-white bg-red-600 rounded-lg hover:bg-red-700"
                   >
                     Retry
                   </button>
                 </div>
               </div>
             ) : products.length === 0 ? (
-              <div className="flex flex-col items-center justify-center py-20 text-center">
-                <div className="p-6 bg-gray-100 rounded-lg">
-                  <h3 className="mb-2 text-lg font-semibold text-gray-800">No Products Found</h3>
-                  <p className="text-sm text-gray-600">Try adjusting your filters or search criteria.</p>
+              <div className="flex flex-col items-center justify-center py-12 sm:py-20 text-center">
+                <div className="p-4 sm:p-6 bg-gray-100 rounded-lg">
+                  <h3 className="mb-2 text-base sm:text-lg font-semibold text-gray-800">No Products Found</h3>
+                  <p className="text-xs sm:text-sm text-gray-600">Try adjusting your filters or search criteria.</p>
                   <button
                     onClick={clearAllFilters}
-                    className="px-3 py-1.5 mt-3 text-sm text-white bg-ksauni-red rounded-lg hover:bg-ksauni-dark-red"
+                    className="px-3 py-1.5 mt-3 text-xs sm:text-sm text-white bg-red-500 rounded-lg hover:bg-red-600"
                   >
                     Clear All Filters
                   </button>
                 </div>
               </div>
             ) : (
-              <div className="grid grid-cols-2 gap-4 md:grid-cols-3 lg:grid-cols-4 rounded-xl">
-                <AnimatePresence>
-                  {products.map((product) => (
-                    <ProductCard
-                      key={product._id}
-                      product={product}
-                      wishlistItems={wishlistItems}
-                      user={user}
-                      onAddToCart={handleAddToCart}
-                      onWishlist={handleWishlist}
-                      className="rounded-xl"
-                    />
-                  ))}
-                </AnimatePresence>
-              </div>
+              <>
+                {/* Results Count - Mobile */}
+                <div className="md:hidden mb-3">
+                  <p className="text-xs text-gray-500">
+                    Found <span className="font-semibold text-gray-700">{products.length}</span> products
+                  </p>
+                </div>
+                
+                {/* Product Grid - Responsive */}
+                <div className="grid grid-cols-2 gap-2 sm:gap-3 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-3">
+                  <AnimatePresence>
+                    {products.map((product) => (
+                      <ProductCard
+                        key={product._id}
+                        product={product}
+                        wishlistItems={wishlistItems}
+                        user={user}
+                        onAddToCart={handleAddToCart}
+                        onWishlist={handleWishlist}
+                        className="rounded-lg sm:rounded-xl"
+                      />
+                    ))}
+                  </AnimatePresence>
+                </div>
+              </>
             )}
           </main>
         </div>
       </div>
+
+      {/* Mobile Filter Modal */}
       <AnimatePresence>
         {showFilters && (
           <motion.div
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
             exit={{ opacity: 0 }}
-            className="fixed inset-0 z-50 flex items-center justify-center bg-black bg-opacity-50 md:hidden"
+            className="fixed inset-0 z-50 bg-black bg-opacity-50 md:hidden"
             onClick={() => setShowFilters(false)}
           >
             <motion.div
-              initial={{ scale: 0.9, opacity: 0 }}
-              animate={{ scale: 1, opacity: 1 }}
-              exit={{ scale: 0.9, opacity: 0 }}
-              className="relative w-full max-w-md max-h-[90vh] mx-4 bg-white rounded-xl shadow-2xl overflow-hidden"
+              initial={{ x: '-100%' }}
+              animate={{ x: 0 }}
+              exit={{ x: '-100%' }}
+              transition={{ type: 'tween', duration: 0.3 }}
+              className="absolute top-0 left-0 w-[85%] max-w-sm h-full bg-white shadow-2xl overflow-hidden"
               onClick={(e) => e.stopPropagation()}
             >
               <div className="sticky top-0 z-10 flex items-center justify-between p-4 bg-white border-b border-gray-200">
-                <h3 className="text-xl font-bold text-gray-800">Filters</h3>
-                <button onClick={() => setShowFilters(false)} className="p-1 rounded-full hover:bg-gray-100">
-                  <X className="w-6 h-6" />
+                <h3 className="text-lg font-bold text-gray-800">Filters</h3>
+                <button onClick={() => setShowFilters(false)} className="p-2 rounded-full hover:bg-gray-100">
+                  <X className="w-5 h-5" />
                 </button>
               </div>
-              <div className="p-4 overflow-y-auto max-h-[calc(90vh-60px)]">
+              <div className="p-4 overflow-y-auto" style={{ height: 'calc(100% - 120px)' }}>
                 <ProductFilters
-                  key={categorySlug || "all"}
                   filters={filters}
                   categories={categories}
                   onFilterChange={handleFilterChange}
                   onClearFilters={clearAllFilters}
+                  onClose={() => setShowFilters(false)}
                 />
               </div>
-              <div className="sticky bottom-0 z-10 flex justify-between p-4 bg-white border-t border-gray-200">
+              <div className="sticky bottom-0 z-10 flex justify-between gap-3 p-4 bg-white border-t border-gray-200">
                 <button
                   onClick={clearAllFilters}
-                  className="px-4 py-2 text-sm font-medium text-ksauni-red hover:text-ksauni-dark-red"
+                  className="flex-1 px-4 py-2.5 text-sm font-medium text-red-500 border border-red-500 rounded-lg hover:bg-red-50"
                 >
                   Clear All
                 </button>
                 <button
                   onClick={() => setShowFilters(false)}
-                  className="px-4 py-2 text-sm font-medium text-white rounded-lg bg-ksauni-red hover:bg-ksauni-dark-red"
+                  className="flex-1 px-4 py-2.5 text-sm font-medium text-white rounded-lg bg-red-500 hover:bg-red-600"
                 >
                   Apply Filters
                 </button>
@@ -295,4 +537,5 @@ const ProductsPage = () => {
     </div>
   )
 }
+
 export default ProductsPage
