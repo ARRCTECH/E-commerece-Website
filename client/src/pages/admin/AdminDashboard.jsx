@@ -13,7 +13,6 @@ import BannersManagement from "../../components/admin/BannersManagement";
 import UsersManagement from "../../components/admin/UserMangement";
 import InnovationManagement from "../../components/admin/InnovationManagement";
 import CouponsManagement from "../../components/admin/CouponsManagement";
-import KsauniTshirtManagement from "../../components/admin/KsauniTshirtMangement";
 import CancellationReasonsChart from "../../components/admin/CancellationReasons";
 import PartialCodSetting from "../../components/admin/PartialCodSetting";
 import { clearError, clearSuccess } from "../../store/slices/adminSlice";
@@ -64,8 +63,6 @@ const AdminDashboard = () => {
         return "Users Management";
       case "innovations":
         return "Innovation Management";
-      case "ksaunitshirtstyle":
-        return "Kasuni T-Shirt Style Management";
       case "coupons":
         return "Coupons Management";
       case "referral":
@@ -128,7 +125,6 @@ const AdminDashboard = () => {
               <Route path="orders" element={<OrdersManagement />} />
               <Route path="banners" element={<BannersManagement />} />
               <Route path="innovations" element={<InnovationManagement />} />
-              <Route path="ksaunitshirtstyle" element={<KsauniTshirtManagement />} />
               <Route path="referral-configuration" element={<ReferralConfiguration />} />
               <Route path="referral-management" element={<ReferralManagement />} />
               <Route path="partial-cod" element={<PartialCodSetting />} />
