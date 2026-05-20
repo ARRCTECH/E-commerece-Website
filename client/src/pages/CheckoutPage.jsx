@@ -243,7 +243,7 @@ const CheckoutPage = () => {
       referralDiscount += Math.round(discountValue);
     }
 
-    const shippingCharges = subtotal >= 399 ? 0 : 99;
+    const shippingCharges = 0;
     const couponDiscount = appliedCoupon?.discountAmount || 0;
     const freediscount = filterYCoupon[0]?.discountType === "flat"
       ? filterYCoupon[0]?.discountValue

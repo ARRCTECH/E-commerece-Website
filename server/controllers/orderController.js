@@ -826,7 +826,7 @@ const placeCodOrder = async (req, res) => {
     }
 
     let subtotal = 0;
-    const validatedItems = [];
+    let validatedItems = [];
 
     for (const it of items) {
       const product = await Product.findById(it.productId);
@@ -855,6 +855,7 @@ const placeCodOrder = async (req, res) => {
       });
     }
 
+    // ✅ COD साठी फक्त coupon discount (ONLINE DISCOUNT नाही)
     let discount = 0;
     let couponDetails = null;
     if (couponCode) {
@@ -867,10 +868,12 @@ const placeCodOrder = async (req, res) => {
       }
     }
 
-    // const shippingCharges = subtotal >= 399 ? 0 : 99;
     const shippingCharges = 0;
-    const total = Math.round(amount);
+    // ✅ COD साठी TOTAL = subtotal - coupon discount (कोणताही online discount नाही)
+    const total = Math.round(subtotal + shippingCharges - discount);
     const orderNumber = `FH-${Date.now()}`;
+
+    console.log("💰 COD Order Summary:", { subtotal, shippingCharges, discount, total });
 
     const order = new Order({
       user: userId,
@@ -880,10 +883,19 @@ const placeCodOrder = async (req, res) => {
       subtotal,
       shippingCharge: shippingCharges,
       freediscount: freediscount || 0,
-      referralDiscount:referralDiscount || 0,
-      discount,
+      referralDiscount: referralDiscount || 0,
+      discount,  // ✅ फक्त coupon discount
       total,
-      pricing: { subtotal, shippingCharges, tax: 0, discount, total, freediscount, referralDiscount, selectedShippingRate },
+      pricing: { 
+        subtotal, 
+        shippingCharges, 
+        tax: 0, 
+        discount, 
+        total, 
+        freediscount, 
+        referralDiscount, 
+        selectedShippingRate 
+      },
       coupon: couponDetails,
       paymentInfo: { method: "COD", status: "PENDING", razorpayOrderId: orderNumber },
       status: "CONFIRMED",
@@ -893,6 +905,7 @@ const placeCodOrder = async (req, res) => {
     });
 
     await order.save();
+    console.log("✅ COD Order saved:", order._id);
 
     await Promise.all(validatedItems.map(it =>
       Product.findByIdAndUpdate(it.product, { $inc: { stock: -it.quantity } })
@@ -930,7 +943,7 @@ const placeCodOrder = async (req, res) => {
       },
     });
 
-    // ✅ BACKGROUND: Push order to Shipmozo (DRAFT mode - NO auto-assign)
+    // ✅ BACKGROUND: Push order to Shipmozo (DRAFT mode)
     setImmediate(async () => {
       try {
         console.log(`🟢 Background: Pushing COD order to Shipmozo (DRAFT) for ${order.orderNumber}`);
@@ -956,32 +969,24 @@ const placeCodOrder = async (req, res) => {
             quantity: item.quantity,
             price: item.price
           })),
-          totalAmount: freshOrder.total,
+          totalAmount: freshOrder.total,  // ₹100 (original - coupon)
           paymentType: "COD",
-          weight: 200  // grams (dummy)
+          weight: 200
         };
         
-        // ✅ ONLY push order - NO auto-assign
         const pushResult = await shipmozoService.pushOrder(shipmozoData);
         
         if (pushResult.success) {
           freshOrder.shipmozoDetails = {
             orderId: pushResult.orderId,
             referenceId: pushResult.referenceId,
-            status: "ORDER_PUSHED",  // ✅ DRAFT mode - AWB not generated
+            status: "ORDER_PUSHED",
             lastSyncAt: new Date()
           };
           await freshOrder.save();
           console.log(`✅ COD order pushed to Shipmozo (DRAFT). Order ID: ${pushResult.orderId}`);
-          console.log(`📋 Client must login to Shipmozo dashboard to generate AWB`);
         } else {
           console.error(`❌ Shipmozo push failed for COD:`, pushResult.error);
-          freshOrder.shipmozoDetails = {
-            status: "FAILED",
-            errorMessage: pushResult.error,
-            lastSyncAt: new Date()
-          };
-          await freshOrder.save();
         }
       } catch (bgError) {
         console.error("❌ Background Shipmozo error for COD:", bgError);
@@ -993,6 +998,7 @@ const placeCodOrder = async (req, res) => {
     res.status(500).json({ success: false, message: "Failed to create COD order" });
   }
 };
+
 
 // ===============================
 // Get User Orders

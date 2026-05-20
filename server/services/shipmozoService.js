@@ -31,32 +31,60 @@ class ShipmozoService {
     return cleaned.padStart(10, '9');
   }
 
-  // ========== 1. Push Order API ==========
+  // ========== 1. Push Order API (FIXED - Exact Invoice) ==========
   async pushOrder(orderData) {
     try {
-      console.log('🟢 Pushing order to Shipmozo:', orderData.orderNumber);
+      console.log('='.repeat(60));
+      console.log('🟢 PUSH ORDER TO SHIPMOZO STARTED');
+      console.log('='.repeat(60));
+      console.log('📦 Order Number:', orderData.orderNumber);
+      console.log('💰 Payment Type:', orderData.paymentType);
+      console.log('💰 Total Amount:', orderData.totalAmount);
       
-      // ✅ Prepare product details as per documentation
+      // ✅ Calculate total quantity
+      const totalQuantity = orderData.items.reduce((sum, item) => sum + item.quantity, 0);
+      
+      // ✅ Desired invoice amount (COD आणि PREPAID दोन्ही साठी)
+      const desiredInvoiceAmount = orderData.totalAmount;
+      
+      // ✅ FIXED: Exact distribution without rounding error
+      const baseUnitPrice = Math.floor(desiredInvoiceAmount / totalQuantity);
+      let remainder = desiredInvoiceAmount - (baseUnitPrice * totalQuantity);
+      
+      console.log(`📊 Total Quantity: ${totalQuantity}`);
+      console.log(`📊 Desired Invoice: ${desiredInvoiceAmount}`);
+      console.log(`📊 Base Price: ${baseUnitPrice}, Remainder: ${remainder}`);
+      
+      // ✅ Prepare product details with exact amount matching
       const productDetails = [];
       for (const item of orderData.items) {
         for (let i = 0; i < item.quantity; i++) {
+          let unitPrice = baseUnitPrice;
+          if (remainder > 0) {
+            unitPrice += 1;
+            remainder--;
+          }
+          
           productDetails.push({
             name: item.name.substring(0, 100),
             sku_number: item.sku || "",
             quantity: 1,
             discount: "",
             hsn: "",
-            unit_price: item.price,
+            unit_price: unitPrice,
             product_category: "FashionClothing"
           });
         }
       }
       
+      console.log('📋 Unit Prices:', productDetails.map(p => p.unit_price));
+      console.log('📋 Total Invoice:', productDetails.reduce((sum, p) => sum + p.unit_price, 0));
+      
       const totalItems = productDetails.length;
       const totalWeight = (orderData.weight || this.defaultWeight) * totalItems;
       const collectableAmount = orderData.paymentType === "COD" ? orderData.totalAmount : 0;
       
-      // ✅ Payload as per documentation example
+      // ✅ Payload as per documentation
       const payload = {
         order_id: orderData.orderNumber,
         order_date: new Date().toISOString().split('T')[0],
@@ -79,12 +107,16 @@ class ShipmozoService {
         height: orderData.height || this.defaultHeight,
         warehouse_id: this.warehouseId,
         gst_ewaybill_number: "",
-        gstin_number: ""
+        gstin_number: "",
+        shipment_invoice_amount: orderData.totalAmount
       };
 
       console.log('📋 Request URL:', `${this.baseURL}/push-order`);
-      console.log('📋 Headers public_key exists:', !!this.publicKey);
-      console.log('📋 Headers private_key exists:', !!this.privateKey);
+      console.log('📋 Headers public-key exists:', !!this.publicKey);
+      console.log('📋 Headers private-key exists:', !!this.privateKey);
+      console.log('📋 Payload Order ID:', payload.order_id);
+      console.log('📋 Payload Payment Type:', payload.payment_type);
+      console.log('📋 Payload COD Amount:', payload.cod_amount);
       
       const response = await axios.post(`${this.baseURL}/push-order`, payload, {
         headers: this.getHeaders()
@@ -94,10 +126,11 @@ class ShipmozoService {
 
       if (response.data.result === "1") {
         console.log(`✅ Order pushed: ${response.data.data.order_id}`);
+        console.log(`✅ Reference ID: ${response.data.data.refrence_id}`);
         return { 
           success: true, 
           orderId: response.data.data.order_id,
-          referenceId: response.data.data.reference_id
+          referenceId: response.data.data.refrence_id
         };
       } else {
         throw new Error(response.data.message);
