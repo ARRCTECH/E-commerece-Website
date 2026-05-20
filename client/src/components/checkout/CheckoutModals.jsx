@@ -1,27 +1,34 @@
 import { motion } from "framer-motion";
 import { X, CreditCard } from "lucide-react";
 import { useState } from "react";
+
 export const PaymentModal = ({ 
   isOpen, 
   onClose, 
   onOnline, 
   onCOD, 
   onPartialCod, 
-  amount, 
+  amount,           // discounted amount (Pay Online साठी)
+  originalAmount,   // original amount (COD आणि Partial COD साठी)
   showPartialCod, 
   partialPercentage, 
   isBulkProduct 
 }) => {
   const [tab, setTab] = useState("online");
   if (!isOpen) return null;
-  const onlineAmount = Math.round(amount * (partialPercentage / 100));
-  const codAmount = amount - onlineAmount;
+  
+  // Partial COD साठी original amount वरून calculate करा
+  const baseAmountForPartial = originalAmount || amount;
+  const onlineAmount = Math.round(baseAmountForPartial * (partialPercentage / 100));
+  const codAmount = baseAmountForPartial - onlineAmount;
   const showCodTab = !showPartialCod;
   const showPartialCodTab = showPartialCod;
+  
   const handleTabChange = (newTab) => {
     console.log("🔵 PaymentModal - tab changed to:", newTab);
     setTab(newTab);
   };
+  
   return (
     <div className="fixed inset-0 bg-black/40 flex items-center justify-center z-50">
       <div className="bg-white rounded-xl shadow-2xl p-6 max-w-md w-full mx-4">
@@ -74,9 +81,10 @@ export const PaymentModal = ({
           
           {tab === "cod" && (
             <>
-              <p className="mb-4 text-center text-gray-600">Amount: ₹{amount} (Pay on delivery)</p>
+              <p className="mb-2 text-center text-gray-600">Amount: ₹{originalAmount || amount} (Pay on delivery)</p>
+              <p className="text-xs text-center text-red-500 mb-3">*No online discount applicable on COD</p>
               <button 
-                onClick={() => { console.log("🔵 PaymentModal - COD clicked, amount:", amount); onCOD(); }} 
+                onClick={() => { console.log("🔵 PaymentModal - COD clicked, amount:", originalAmount || amount); onCOD(); }} 
                 className="w-full py-2 text-white bg-red-600 rounded-lg hover:bg-red-700 transition-colors"
               >
                 Confirm COD
@@ -87,10 +95,16 @@ export const PaymentModal = ({
           {tab === "partial" && partialPercentage && (
             <>
               <p className="text-center text-gray-700 mb-2">
-                Pay <span className="font-bold">{partialPercentage}%</span> online: <span className="font-bold text-red-600">₹{onlineAmount}</span>
+                Pay <span className="font-bold">{partialPercentage}%</span> online
+              </p>
+              <p className="text-center text-lg font-semibold text-red-600 mb-1">
+                ₹{onlineAmount}
               </p>
               <p className="text-center text-sm text-gray-500 mb-4">
                 Remaining <span className="font-bold">{100 - partialPercentage}%</span> (₹{codAmount}) on delivery
+              </p>
+              <p className="text-xs text-center text-gray-400 mb-3">
+                *Calculated on original amount ₹{baseAmountForPartial}
               </p>
               <button 
                 onClick={() => { 
@@ -111,6 +125,7 @@ export const PaymentModal = ({
     </div>
   );
 };
+
 export const CongratulationsModal = ({ isOpen, onClose, couponCode, savingsAmount }) => {
   if (!isOpen) return null;
   return (
@@ -176,6 +191,7 @@ export const ExitWarningModal = ({ isOpen, onContinue, onExit, message, type = "
       if (reason === "Others") setIsOthersSelected(false);
     }
   };
+  
   if (type === "survey") {
     return (
       <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm">
@@ -242,6 +258,7 @@ export const ExitWarningModal = ({ isOpen, onContinue, onExit, message, type = "
       </div>
     );
   }
+  
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm">
       <motion.div 

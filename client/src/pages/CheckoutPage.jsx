@@ -214,12 +214,26 @@ const CheckoutPage = () => {
     }
   }, [appliedCoupon, setCongratulationsData, setShowCongratulationsPopup]);
 
-
-  // Calculate final pricing – all logic inside useMemo, no external mutations
+  // ✅ UPDATED: Calculate final pricing with online discount (₹30 per quantity)
   const calculateFinalPricing = useMemo(() => {
     const subtotal = isBuyNow && buyNowProduct
       ? buyNowProduct.product.price * buyNowProduct.quantity
       : cartSummary.subtotal || 0;
+
+    // ✅ Calculate total quantity for online discount
+    let totalQuantity = 0;
+    const items = isBuyNow && buyNowProduct ? [buyNowProduct] : cartItems;
+    items.forEach(item => {
+      if (item.isBulkProduct) {
+        totalQuantity += item.totalSets || item.quantity || 1;
+      } else {
+        totalQuantity += item.quantity || 1;
+      }
+    });
+
+    // ✅ Online discount: ₹30 per quantity (फक्त Pay Online साठी)
+    const ONLINE_DISCOUNT_PER_QUANTITY = 30;
+    const onlineDiscountAmount = totalQuantity * ONLINE_DISCOUNT_PER_QUANTITY;
 
     let referralDiscount = 0;
     if (percentage) {
@@ -229,31 +243,35 @@ const CheckoutPage = () => {
       referralDiscount += Math.round(discountValue);
     }
 
-    const shippingCharges = subtotal >= 399 ? 0 : 99;
-    const discount = appliedCoupon?.discountAmount || 0;
+    const shippingCharges = 0;
+    const couponDiscount = appliedCoupon?.discountAmount || 0;
     const freediscount = filterYCoupon[0]?.discountType === "flat"
       ? filterYCoupon[0]?.discountValue
       : Math.round(subtotal * (filterYCoupon[0]?.discountValue || 0) / 100);
 
-    const totalSaving = discount + freediscount;
+    const totalDiscount = couponDiscount + freediscount + onlineDiscountAmount;
     const totalValue = Math.round(
-      subtotal + shippingCharges - discount - freediscount - referralDiscount
+      subtotal + shippingCharges - totalDiscount - referralDiscount
     );
 
     return {
       subtotal,
+      originalSubtotal: subtotal,  // ✅ Store original amount for partial COD
       shippingCharges,
-      discount,
-      totalSaving,
-      total: totalValue > 0 ? totalValue : 0,
+      couponDiscount,
       freediscount,
+      onlineDiscount: onlineDiscountAmount,
+      totalDiscount,
       referralDiscount,
+      total: totalValue > 0 ? totalValue : 0,
+      totalQuantity,
     };
   }, [
     cartSummary.subtotal,
     appliedCoupon,
     isBuyNow,
     buyNowProduct,
+    cartItems,
     filterYCoupon,
     percentage,
     discountValue,
@@ -456,6 +474,7 @@ const CheckoutPage = () => {
     }
   };
 
+  // ✅ FIXED: Partial COD - original amount वरून percentage calculate
   const handlePartialCodOrder = async () => {
     if (!validateOrder()) return;
     if (!razorpayLoaded) {
@@ -466,8 +485,11 @@ const CheckoutPage = () => {
     dispatch(clearError());
     setShowPaymentModal(false);
 
-    const onlineAmount = Math.round(calculateFinalPricing.total * partialPercentage / 100);
-    const codAmount = calculateFinalPricing.total - onlineAmount;
+    // ✅ Partial COD साठी original amount वरून percentage calculate करा
+    const originalAmount = calculateFinalPricing.originalSubtotal || calculateFinalPricing.subtotal;
+    const onlineAmount = Math.round(originalAmount * partialPercentage / 100);
+    const codAmount = originalAmount - onlineAmount;
+    
     const orderPayload = {
       items: getDisplayItems().map((item) => ({
         productId: item.product?._id,
@@ -486,7 +508,7 @@ const CheckoutPage = () => {
         phoneNumber: `+91${selectedAddress?.phoneNumber?.replace(/^\+91/, "")}`,
       },
       couponCode: appliedCoupon?.code || "",
-      totalAmount: calculateFinalPricing.total,
+      totalAmount: originalAmount,  // ✅ Original amount (without online discount)
       onlineAmount: onlineAmount,
       codAmount: codAmount,
       partialPercentage: partialPercentage,
@@ -767,16 +789,23 @@ const CheckoutPage = () => {
                   <span>Subtotal</span>
                   <span>₹{calculateFinalPricing.subtotal}</span>
                 </div>
-                {calculateFinalPricing.discount > 0 && (
+                {calculateFinalPricing.couponDiscount > 0 && (
                   <div className="flex justify-between text-green-600">
                     <span>Coupon Discount</span>
-                    <span>-₹{calculateFinalPricing.discount}</span>
+                    <span>-₹{calculateFinalPricing.couponDiscount}</span>
                   </div>
                 )}
                 {calculateFinalPricing.freediscount > 0 && (
                   <div className="flex justify-between text-blue-600">
                     <span>Free Discount</span>
                     <span>-₹{calculateFinalPricing.freediscount}</span>
+                  </div>
+                )}
+                {/* ✅ NEW: Online Discount Display */}
+                {calculateFinalPricing.onlineDiscount > 0 && (
+                  <div className="flex justify-between text-purple-600">
+                    <span>Online Discount (₹30/quantity)</span>
+                    <span>-₹{calculateFinalPricing.onlineDiscount}</span>
                   </div>
                 )}
                 {calculateFinalPricing.referralDiscount > 0 && (
@@ -845,6 +874,7 @@ const CheckoutPage = () => {
         onCOD={handlePlaceCodOrder}
         onPartialCod={handlePartialCodOrder}
         amount={calculateFinalPricing.total}
+        originalAmount={calculateFinalPricing.originalSubtotal || calculateFinalPricing.subtotal}
         showPartialCod={showPartialCodOption}
         partialPercentage={partialPercentage}
         isBulkProduct={isBulkBuyNow || displayItems.some((item) => item.isBulkProduct)}
