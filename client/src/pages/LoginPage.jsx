@@ -4,6 +4,7 @@ import { useState, useEffect } from "react"
 import { useDispatch, useSelector } from "react-redux"
 import { useNavigate, useLocation, Link } from "react-router-dom"
 import { motion, AnimatePresence } from "framer-motion"
+import axios from "axios"
 import {
   Mail, Lock, User, Eye, EyeOff, ArrowRight, AlertCircle, Loader2,
   ShoppingBag, ShieldCheck, Truck, Sparkles, Star, X,
@@ -56,33 +57,66 @@ const LoginPage = () => {
     setLocalError("")
   }
 
-  const handleSubmit = (e) => {
-    e.preventDefault()
-    setLocalError("")
-    if (mode === "register") {
-      if (!formData.fullName.trim()) return setLocalError("Please enter your full name")
-      if (formData.password !== formData.confirmPassword)
-        return setLocalError("Passwords do not match")
-      if (formData.password.length < 6)
-        return setLocalError("Password must be at least 6 characters")
-      dispatch(
-        registerWithEmail({
-          fullName: formData.fullName,
-          email: formData.email,
-          password: formData.password,
-          referralCode: formData.referralCode,
-        })
-      )
-    } else {
-      dispatch(loginWithEmail({ email: formData.email, password: formData.password }))
-    }
-  }
+  const handleSubmit = async (e) => {
+    e.preventDefault();
+    setLocalError("");
 
-  const handleForgot = (e) => {
-    e.preventDefault()
-    if (!forgotEmail) return
-    dispatch(forgotPassword(forgotEmail))
-  }
+    // Frontend validations
+    if (mode === "register") {
+      if (!formData.fullName.trim()) return setLocalError("Please enter your full name");
+      if (formData.password !== formData.confirmPassword)
+        return setLocalError("Passwords do not match");
+      if (formData.password.length < 6)
+        return setLocalError("Password must be at least 6 characters");
+    } else {
+      if (!formData.email.trim()) return setLocalError("Email is required");
+      if (!formData.password) return setLocalError("Password is required");
+    }
+
+    try {
+      let result;
+      if (mode === "register") {
+        result = await dispatch(
+          registerWithEmail({
+            name: formData.fullName,
+            email: formData.email,
+            password: formData.password,
+            referredBy: formData.referralCode || undefined, // send undefined if empty
+          })
+        ).unwrap(); // unwrap to get the actual response or throw on error
+      } else {
+        result = await dispatch(
+          loginWithEmail({
+            email: formData.email,
+            password: formData.password,
+          })
+        ).unwrap();
+      }
+      // On success, Redux will have user, so useEffect will redirect
+      // Optionally clear form
+      setFormData({
+        fullName: "",
+        email: "",
+        password: "",
+        confirmPassword: "",
+        referralCode: "",
+      });
+    } catch (err) {
+      // This catches both validation errors and API 400 errors
+      console.error("Auth error:", err);
+      const errorMessage = err?.message || err?.response?.data?.message || "Authentication failed";
+      setLocalError(errorMessage);
+    }
+  };
+
+  const currentPath = window.location.pathname;
+  const endsWithRegister = currentPath.endsWith('/register') || currentPath.endsWith('register');
+
+  useEffect(() => {
+    if (endsWithRegister && mode !== 'register') {
+      setMode('register');
+    }
+  }, [])
 
   const inputBase =
     "w-full h-12 pl-11 pr-11 rounded-xl bg-white/10 backdrop-blur-sm border border-white/20 text-white placeholder:text-white/40 outline-none transition-all duration-200 focus:border-red-500 focus:ring-4 focus:ring-red-500/20"
@@ -134,9 +168,8 @@ const LoginPage = () => {
                     key={m}
                     type="button"
                     onClick={() => setMode(m)}
-                    className={`relative z-10 py-2.5 text-sm font-semibold capitalize transition-all duration-200 rounded-lg ${
-                      mode === m ? "text-white" : "text-white/60 hover:text-white"
-                    }`}
+                    className={`relative z-10 py-2.5 text-sm font-semibold capitalize transition-all duration-200 rounded-lg ${mode === m ? "text-white" : "text-white/60 hover:text-white"
+                      }`}
                   >
                     {m === "login" ? "Sign In" : "Sign Up"}
                   </button>

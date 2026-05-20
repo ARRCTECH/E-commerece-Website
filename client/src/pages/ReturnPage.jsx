@@ -14,8 +14,8 @@ const ReturnPage = () => {
           </nav>
           <h1 className="text-3xl font-bold text-gray-900 mb-4">Return & Refund Policy</h1>
           <p className="text-lg text-gray-600">
-            We want you to be happy with your purchase! If for any reason you are not satisfied, please read our return
-            and refund policy below to understand the process.
+           We want you to be happy with your purchase! If for any reason you are not satisfied, please read our return and refund policy below to understand the process.
+
           </p>
         </div>
         {/* Policy Content */}
@@ -29,7 +29,7 @@ const ReturnPage = () => {
               Return Eligibility
             </h2>
             <p className="text-gray-700 mb-4">
-              To be eligible for a return, your item must meet the following conditions:
+To be eligible for a return, your item must meet the following conditions:
             </p>
             <div className="space-y-3">
               <div className="flex items-start">
@@ -37,8 +37,7 @@ const ReturnPage = () => {
                 <div>
                   <strong className="text-gray-900">Unworn and Unwashed:</strong>
                   <span className="text-gray-700 ml-1">
-                    The item must be in its original condition, unworn, unwashed, and free from any stains or damage.
-                  </span>
+The item must be in its original condition, unworn, unwashed, and free from any stains or damage.                  </span>
                 </div>
               </div>
               <div className="flex items-start">
@@ -46,8 +45,7 @@ const ReturnPage = () => {
                 <div>
                   <strong className="text-gray-900">Original Packaging:</strong>
                   <span className="text-gray-700 ml-1">
-                    The item must be returned in its original packaging with all tags attached.
-                  </span>
+The item must be returned in its original packaging with all tags attached.                  </span>
                 </div>
               </div>
               <div className="flex items-start">
@@ -55,14 +53,15 @@ const ReturnPage = () => {
                 <div>
                   <strong className="text-gray-900">Return Window:</strong>
                   <span className="text-gray-700 ml-1">
-                    You must initiate the return within <strong>03 days</strong> of receiving your order.
+                    You must initiate the return within 03 days of receiving your order.
+                    If the article is defected or wrong design delivered
                   </span>
+                  <span>Note: Custom or personalized items are non-returnable unless they are defective or damaged.</span>
                 </div>
               </div>
               <div className="flex items-start">
                 <div className="w-2 h-2 bg-green-500 rounded-full mt-2 mr-3 flex-shrink-0"></div>
                 <div>
-                  <span className="text-gray-700">If the article is defected or wrong design delivered</span>
                 </div>
               </div>
               <div className="flex items-start">
@@ -72,12 +71,7 @@ const ReturnPage = () => {
                 </div>
               </div>
             </div>
-            <div className="bg-yellow-50 border-l-4 border-yellow-400 p-4 mt-4">
-              <p className="text-yellow-800">
-                <strong>Note:</strong> Custom or personalized items are non-returnable unless they are defective or
-                damaged.
-              </p>
-            </div>
+            
           </section>
           {/* Refund Process */}
           <section>
