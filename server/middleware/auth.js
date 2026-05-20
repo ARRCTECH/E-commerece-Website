@@ -47,8 +47,10 @@ const protect = async (req, res, next) => {
       });
     }
 
-    // Verify JWT token
-    const decoded = jwt.verify(token, process.env.JWT_SECRET);
+    // 🔥 FIX: Explicitly require HS256 algorithm to match signing
+    const decoded = jwt.verify(token, process.env.JWT_SECRET, {
+      algorithms: ['HS256']
+    });
 
     // Optional: Check token expiry manually if needed (jwt.verify already handles expiry)
     if (decoded.exp && decoded.exp < Math.floor(Date.now() / 1000)) {
@@ -84,6 +86,7 @@ const protect = async (req, res, next) => {
       email: user.email,
       firebaseUid: user.firebaseUid,
       authMethod: user.authMethod,
+      referredBy:user.referredBy
     };
 
     next();
@@ -162,8 +165,10 @@ const optionalProtect = async (req, res, next) => {
     }
 
     try {
-      // Verify JWT token
-      const decoded = jwt.verify(token, process.env.JWT_SECRET);
+      // 🔥 FIX: Explicitly require HS256 algorithm
+      const decoded = jwt.verify(token, process.env.JWT_SECRET, {
+        algorithms: ['HS256']
+      });
 
       // Find user by decoded userId
       const user = await User.findById(decoded.userId).select("-otp -otpExpiry");

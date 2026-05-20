@@ -8,6 +8,6 @@
  
  router.post('/fetchReferral', getReferralDetails);
  router.put('/updatefetchReferral', updateReferralDetails);
-  router.post('/updatefetchReferralwithoutSaving', updateReferralDetailswithoutSaving);
+ router.post('/updatefetchReferralwithoutSaving', updateReferralDetailswithoutSaving);
  
  module.exports = router;
