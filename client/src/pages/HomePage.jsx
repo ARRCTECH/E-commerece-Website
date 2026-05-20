@@ -15,12 +15,15 @@ const HomePage = () => {
             <div className="flex flex-col">
                   <PromoBanners />
                   <HeroBanner />
-                  <D2CHighlight />
                   <FeaturedCategories />
-                  <HeroBanner />
+                  <CategoryBanner />
                   <TrendingProducts />
                   <ReferralProgram />
                   <D2CHighlight />
+                  <NewArrivals />
+                  <InnovationList />
+                  <Oversized899 />
+                  <WhatsAppScrollableComponent />
             </div>
       );
 };
