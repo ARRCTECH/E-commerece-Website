@@ -16,7 +16,7 @@ const uploadToCloudinary = (buffer, folder, transformations = {}) => {
     const stream = cloudinary.uploader.upload_stream(
       {
         resource_type: "auto",
-        folder: `Factory Sale/${folder}`,
+        folder: `FactorySale/${folder}`,
         quality: "auto",
         fetch_format: "auto",
         ...transformations, // allows dynamic resizing, cropping etc.
@@ -39,7 +39,7 @@ const uploadToCloudinaryVideo = (buffer, folder, extraOptions = {}) => {
     const stream = cloudinary.uploader.upload_stream(
       {
         resource_type: "video",
-        folder: `Factory Sale/${folder}`,
+        folder: `FactorySale/${folder}`,
         quality: "auto",
         start_offset: 0,
         duration: 30,
@@ -65,9 +65,11 @@ const deleteFromCloudinary = (publicId) => {
     cloudinary.uploader.destroy(publicId, (error, result) => {
       if (error) {
         console.error("Cloudinary delete error:", error);
+        console,log(`Failed to delete ${publicId} from Cloudinary:`, error);  
         reject(error);
       } else {
         resolve(result);
+        console.log(`Cloudinary delete result for ${publicId}:`, result);
       }
     });
   });
