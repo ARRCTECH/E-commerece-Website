@@ -4,6 +4,7 @@ import { useState, useEffect } from "react"
 import { useDispatch, useSelector } from "react-redux"
 import { useNavigate, useLocation, Link } from "react-router-dom"
 import { motion, AnimatePresence } from "framer-motion"
+import axios from "axios"
 import {
   Mail, Lock, User, Eye, EyeOff, ArrowRight, AlertCircle, Loader2,
   Sparkles, X, Phone, CheckCircle,
@@ -127,86 +128,66 @@ const LoginPage = () => {
     if (invalidCredentials) setInvalidCredentials(false)
   }
 
-  // Handle Phone Form Change
-  const handlePhoneChange = (e) => {
-    setPhoneForm({ ...phoneForm, [e.target.name]: e.target.value })
-    setLocalError("")
-  }
+  const handleSubmit = async (e) => {
+    e.preventDefault();
+    setLocalError("");
 
-  // Handle Email Submit (Login/Register)
-// Handle Email Submit (Login/Register)
-const handleEmailSubmit = (e) => {
-  e.preventDefault()
-  setLocalError("")
-  setLastAuthAttempt({ method: "email", mode })
-  setInvalidCredentials(false)
-
-  if (mode === "register") {
-    if (!formData.fullName.trim()) return setLocalError("Please enter your full name")
-    if (formData.password !== formData.confirmPassword) return setLocalError("Passwords do not match")
-    if (formData.password.length < 6) return setLocalError("Password must be at least 6 characters")
-    
-    // ✅ FIXED: Correct field mapping
-    dispatch(registerWithEmail({
-      email: formData.email,
-      password: formData.password,
-      name: formData.fullName,           // Map fullName → name
-      referredBy: formData.referralCode  // Map referralCode → referredBy
-    }))
-  } else {
-    dispatch(loginWithEmail({ 
-      email: formData.email, 
-      password: formData.password 
-    }))
-  }
-}
-
-  // Handle Phone Submit (Send OTP / Verify OTP)
-  const handlePhoneSubmit = async (e) => {
-    e.preventDefault()
-    setLastAuthAttempt({ method: "phone", mode })
-    setLocalError("")
-
-    if (!confirmationResult) {
-      // Send OTP
-      if (!phoneForm.phoneNumber.trim()) {
-        setLocalError("Phone number is required")
-        return
-      }
-      const phoneRegex = /^\+[1-9]\d{1,14}$/
-      if (!phoneRegex.test(phoneForm.phoneNumber)) {
-        setLocalError("Please enter valid phone number with country code (e.g., +91XXXXXXXXXX)")
-        return
-      }
-      dispatch(sendPhoneOTP(phoneForm.phoneNumber))
-      setOtpTimer(60)
+    // Frontend validations
+    if (mode === "register") {
+      if (!formData.fullName.trim()) return setLocalError("Please enter your full name");
+      if (formData.password !== formData.confirmPassword)
+        return setLocalError("Passwords do not match");
+      if (formData.password.length < 6)
+        return setLocalError("Password must be at least 6 characters");
     } else {
-      // Verify OTP
-      if (!phoneForm.otp.trim()) {
-        setLocalError("OTP is required")
-        return
-      }
-      if (phoneForm.otp.length !== 6) {
-        setLocalError("Please enter a valid 6-digit OTP")
-        return
-      }
-      dispatch(verifyPhoneOTP({
-        confirmationResult,
-        otp: phoneForm.otp,
-        phoneNumber: phoneForm.phoneNumber,
-        name: mode === "register" ? formData.fullName : undefined,
-      }))
+      if (!formData.email.trim()) return setLocalError("Email is required");
+      if (!formData.password) return setLocalError("Password is required");
     }
-  }
 
-  // Handle Forgot Password
-  const handleForgot = (e) => {
-    e.preventDefault()
-    if (!forgotEmail) return
-    dispatch(forgotPassword(forgotEmail))
-    setShowForgot(false)
-    setForgotEmail("")
-  }
+    try {
+      let result;
+      if (mode === "register") {
+        result = await dispatch(
+          registerWithEmail({
+            name: formData.fullName,
+            email: formData.email,
+            password: formData.password,
+            referredBy: formData.referralCode || undefined, // send undefined if empty
+          })
+        ).unwrap(); // unwrap to get the actual response or throw on error
+      } else {
+        result = await dispatch(
+          loginWithEmail({
+            email: formData.email,
+            password: formData.password,
+          })
+        ).unwrap();
+      }
+      // On success, Redux will have user, so useEffect will redirect
+      // Optionally clear form
+      setFormData({
+        fullName: "",
+        email: "",
+        password: "",
+        confirmPassword: "",
+        referralCode: "",
+      });
+    } catch (err) {
+      // This catches both validation errors and API 400 errors
+      console.error("Auth error:", err);
+      const errorMessage = err?.message || err?.response?.data?.message || "Authentication failed";
+      setLocalError(errorMessage);
+    }
+  };
+
+  const currentPath = window.location.pathname;
+  const endsWithRegister = currentPath.endsWith('/register') || currentPath.endsWith('register');
+
+  useEffect(() => {
+    if (endsWithRegister && mode !== 'register') {
+      setMode('register');
+    }
+  }, [])
 
   // Resend OTP
   const handleResendOTP = () => {
@@ -279,9 +260,8 @@ const handleEmailSubmit = (e) => {
                     key={m}
                     type="button"
                     onClick={() => setMode(m)}
-                    className={`relative z-10 py-2.5 text-sm font-semibold capitalize transition-all duration-200 rounded-lg ${
-                      mode === m ? "text-white" : "text-white/60 hover:text-white"
-                    }`}
+                    className={`relative z-10 py-2.5 text-sm font-semibold capitalize transition-all duration-200 rounded-lg ${mode === m ? "text-white" : "text-white/60 hover:text-white"
+                      }`}
                   >
                     {m === "login" ? "Sign In" : "Sign Up"}
                   </button>

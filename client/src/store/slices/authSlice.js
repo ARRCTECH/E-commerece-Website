@@ -21,7 +21,6 @@ import { auth, cleanupRecaptcha } from "../../config/firebase.js";
 import axios from "axios";
 
 const API_BASE_URL = import.meta.env.VITE_API_URL || "http://localhost:5000/api";
-
 // Create axios instance
 const api = axios.create({
   baseURL: API_BASE_URL,
@@ -30,7 +29,6 @@ const api = axios.create({
     "Content-Type": "application/json",
   },
 });
-
 // Request interceptor to add Firebase ID token
 api.interceptors.request.use(
   async (config) => {
@@ -93,6 +91,10 @@ googleProvider.setCustomParameters({
   prompt: 'select_account'
 });
 
+const referralParams = window.location.search;
+const params = new URLSearchParams(referralParams);
+const ref = params.get("ref");
+
 // Google Sign-In with Popup
 export const signInWithGoogle = createAsyncThunk(
   "auth/signInWithGoogle",
@@ -111,6 +113,7 @@ export const signInWithGoogle = createAsyncThunk(
         email: firebaseUser.email,
         name: firebaseUser.displayName,
         photoURL: firebaseUser.photoURL,
+        referredBy: ref, // Pass referral code if exists
       });
       
       // Set token expiry (2 months from now)
@@ -133,6 +136,7 @@ export const signInWithGoogle = createAsyncThunk(
           displayName: firebaseUser.displayName,
           emailVerified: firebaseUser.emailVerified,
           photoURL: firebaseUser.photoURL,
+          referredBy: ref,
         },
         user: response.data.user,
         jwtToken: response.data.jwtToken,
@@ -374,65 +378,16 @@ export const uploadAvatar = createAsyncThunk("auth/uploadAvatar", async (formDat
 // Email Authentication Thunks
 export const registerWithEmail = createAsyncThunk(
   "auth/registerWithEmail",
-  async ({ email, password, name, referredBy }, { rejectWithValue }) => {
+  async (userData, { rejectWithValue }) => {
     try {
-      // Create user with Firebase
-      const userCredential = await createUserWithEmailAndPassword(auth, email, password);
-      const firebaseUser = userCredential.user;
-      // Update Firebase profile
-      await updateFirebaseProfile(firebaseUser, {
-        displayName: name,
-      });
-      // Send email verification
-      await sendEmailVerification(firebaseUser);
-      // Register user in backend 
-      const response = await axios.post(`${API_BASE_URL}/auth/register/email`, {
-        email,
-        password,
-        name,
-        referredBy,
-      });
-      // Store user data
-      localStorage.setItem("user", JSON.stringify(response.data.user));
-      localStorage.setItem("authToken", response.data.jwtToken);
-      
-      // Clear any guest orders to prevent them from showing on new account
-      localStorage.removeItem("guestOrders");
-      
-      return {
-        firebaseUser: {
-          uid: firebaseUser.uid,
-          email: firebaseUser.email,
-          displayName: firebaseUser.displayName,
-          emailVerified: firebaseUser.emailVerified,
-          photoURL: firebaseUser.photoURL,
-        },
-        user: response.data.user,
-        customToken: response.data.customToken,
-        jwtToken: response.data.jwtToken,
-      };
+      const response = await axios.post(`${API_BASE_URL}/auth/register/email`, userData);
+      // Assuming response contains { token, user }
+      localStorage.setItem("authToken", response.data.token);
+      return response.data;
     } catch (error) {
-      console.error("Email registration error:", error);
-      if (error.code) {
-        // Firebase error
-        switch (error.code) {
-          case "auth/email-already-in-use":
-            return rejectWithValue("An account with this email already exists");
-          case "auth/weak-password":
-            return rejectWithValue("Password is too weak. Please choose a stronger password.");
-          case "auth/invalid-email":
-            return rejectWithValue("Invalid email address");
-          case "auth/operation-not-allowed":
-            return rejectWithValue("Email/password accounts are not enabled");
-          case "auth/network-request-failed":
-            return rejectWithValue("Network error. Please check your connection.");
-          default:
-            return rejectWithValue("Registration failed. Please try again.");
-        }
-      }
-      return rejectWithValue(error.response?.data?.message || "Registration failed");
+      return rejectWithValue(error.response?.data || { message: error.message });
     }
-  },
+  }
 );
 
 export const loginWithEmail = createAsyncThunk(
@@ -690,8 +645,8 @@ export const loginUser = createAsyncThunk("auth/loginUser", async ({ email, pass
 // Legacy register function for backward compatibility
 export const registerUser = createAsyncThunk(
   "auth/registerUser",
-  async ({ email, password, name }, { rejectWithValue }) => {
-    return registerWithEmail({ email, password, name }, { rejectWithValue });
+  async ({ email, password, name,referredBy }, { rejectWithValue }) => {
+    return registerWithEmail({ name,email, password, referredBy }, { rejectWithValue });
   },
 );
 

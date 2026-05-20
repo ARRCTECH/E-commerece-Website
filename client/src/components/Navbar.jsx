@@ -219,17 +219,8 @@ const Navbar = () => {
                 >
                   {isMenuOpen ? <X size={22} /> : <Menu size={22} />}
                 </button>
-
-                {/* Logo - PNG from public folder */}
-                <div
-                  onClick={() => navigate("/")}
-                  className="flex items-center cursor-pointer group"
-                >
-                  <img
-                    src="/navbar logo.png"
-                    alt="Factory Sale Logo"
-                    className="h-10 w-auto object-contain"
-                  />
+                <div onClick={() => navigate("/")} className="flex items-center cursor-pointer group">
+                  <img src="/navbar_logo.png" alt="Factory Sale Logo" className="h-10 w-auto object-contain" />
                 </div>
               </div>
 
@@ -424,19 +415,6 @@ const Navbar = () => {
                                   </div>
                                 </button>
                               )}
-
-
-                              <button className="flex items-center gap-3 w-full px-3 py-2.5 text-sm text-gray-700 rounded-xl hover:bg-gray-50 transition group">
-                                <div className="w-8 h-8 rounded-lg bg-gray-100 flex items-center justify-center">
-                                  <Gift size={16} className="text-gray-600" />
-                                </div>
-                                <div className="flex-1 text-left">
-                                  <p className="font-medium">Refer & Earn</p>
-                                  <p className="text-[10px] text-gray-400">Get ₹200 on referral</p>
-                                </div>
-                                <span className="text-[9px] font-bold text-white bg-red-500 px-1.5 py-0.5 rounded-full">NEW</span>
-                              </button>
-
                               <button onClick={handleLogout} className="flex items-center gap-3 w-full px-3 py-2.5 text-sm text-red-600 rounded-xl hover:bg-red-50 transition group">
                                 <div className="w-8 h-8 rounded-lg bg-red-50 group-hover:bg-red-100 flex items-center justify-center transition">
                                   <LogOut size={16} className="text-red-500" />

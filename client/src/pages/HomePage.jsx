@@ -10,28 +10,18 @@ import InnovationList from "../components/admin/InnovationList";
 import ReferralProgram from "../components/Referral-program";
 import D2CHighlight from "../components/D2CHighlight";
 import WhatsAppScrollableComponent from "../components/WhatsAppScrollableComponent";
-
 const HomePage = () => {
-  return (
-    <div className="flex flex-col">
-      <PromoBanners />
-            <HeroBanner />
-<D2CHighlight/>
-      {/* <FlatDiscount /> */}
-      <FeaturedCategories />
-      <HeroBanner />
-      <TrendingProducts />
-      <WhatsAppScrollableComponent/>
-      {/* <KsauniTshirtStyle /> */}
-      {/* <PriceSelection /> */}
-      <NewArrivals />
-      <CategoryBanner />
-      <Oversized899 />
-      <ReferralProgram />
-      <InnovationList />
-      {/* <TopPicksShowcase/> */}
-      {/* <FandomShop /> */}
-    </div>
-  );
+      return (
+            <div className="flex flex-col">
+                  <PromoBanners />
+                  <HeroBanner />
+                  <D2CHighlight />
+                  <FeaturedCategories />
+                  <HeroBanner />
+                  <TrendingProducts />
+                  <ReferralProgram />
+                  <D2CHighlight />
+            </div>
+      );
 };
 export default HomePage;

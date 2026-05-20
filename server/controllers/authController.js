@@ -1,84 +1,362 @@
 const admin = require("firebase-admin");
 const jwt = require("jsonwebtoken");
 const User = require("../models/User");
-const Order = require("../models/Order"); // kept for potential future use
 const ReferralConfig = require("../models/ReferralConfig");
 const { sendEmail } = require("../utils/emailService");
 
-const rateLimitStore = new Map();
+// ==================== RATE LIMITING ====================
+// Use Redis in production for shared rate limiting across multiple servers
+let redisClient = null;
+try {
+  // Optional: if you have redis installed and configured
+  // redisClient = require("redis").createClient(process.env.REDIS_URL);
+  // await redisClient.connect();
+} catch (err) {
+  console.warn("Redis not available, falling back to in-memory rate limiting (not for production clusters)");
+}
 
-const randomReferralCode = () => {
-  return Math.random().toString(36).substring(2, 8).toUpperCase();
-};
+const rateLimitStore = new Map(); // fallback
 
-const checkRateLimit = (identifier, maxAttempts = 5, windowMs = 15 * 60 * 1000) => {
+const checkRateLimit = async (identifier, maxAttempts = 5, windowMs = 15 * 60 * 1000) => {
   const now = Date.now();
   const windowKey = Math.floor(now / windowMs);
   const key = `${identifier}_${windowKey}`;
-  const attempts = rateLimitStore.get(key) || 0;
-  if (attempts >= maxAttempts) {
-    throw new Error(`Too many attempts. Please try again later.`);
-  }
-  rateLimitStore.set(key, attempts + 1);
-  for (const [k, v] of rateLimitStore.entries()) {
-    const [, keyWindow] = k.split("_");
-    if (parseInt(keyWindow) < windowKey - 1) {
-      rateLimitStore.delete(k);
+
+  if (redisClient) {
+    const attempts = await redisClient.incr(key);
+    if (attempts === 1) await redisClient.expire(key, windowMs / 1000);
+    if (attempts > maxAttempts) {
+      throw new Error(`Too many attempts. Please try again later.`);
+    }
+  } else {
+    // In-memory fallback (single instance only)
+    const attempts = (rateLimitStore.get(key) || 0) + 1;
+    if (attempts > maxAttempts) {
+      throw new Error(`Too many attempts. Please try again later.`);
+    }
+    rateLimitStore.set(key, attempts);
+    // Clean up old windows
+    for (const [k, v] of rateLimitStore.entries()) {
+      const [, keyWindow] = k.split("_");
+      if (parseInt(keyWindow) < windowKey - 1) {
+        rateLimitStore.delete(k);
+      }
     }
   }
 };
 
-const googleSignIn = async (req, res) => {
-  try {
-    const { idToken, email, name, photoURL } = req.body;
-    if (!idToken) {
-      return res.status(400).json({ success: false, message: "ID token is required" });
+// ==================== UNIQUE REFERRAL CODE GENERATOR ====================
+const generateUniqueReferralCode = async (retries = 5) => {
+  const chars = "ABCDEFGHJKLMNPQRSTUVWXYZ0123456789"; // removed I, O, 0, 1 to avoid confusion
+  let code;
+  for (let i = 0; i < retries; i++) {
+    code = "";
+    for (let j = 0; j < 6; j++) {
+      code += chars.charAt(Math.floor(Math.random() * chars.length));
     }
-    const decodedToken = await admin.auth().verifyIdToken(idToken);
-    const firebaseUser = await admin.auth().getUser(decodedToken.uid);
-    let user = await User.findOne({
-      $or: [{ firebaseUid: decodedToken.uid }, { email: firebaseUser.email?.toLowerCase() || email?.toLowerCase() }],
-    });
+    const existing = await User.findOne({ myreferralCode: code });
+    if (!existing) return code;
+  }
+  throw new Error("Unable to generate unique referral code");
+};
 
-    if (!user) {
-      user = new User({
-        firebaseUid: decodedToken.uid,
-        name: firebaseUser.displayName || name || firebaseUser.email?.split("@")[0] || "User",
-        email: firebaseUser.email?.toLowerCase() || email?.toLowerCase(),
-        authMethod: "google",
-        isVerified: firebaseUser.emailVerified || true,
-        role: "user",
-        avatar: firebaseUser.photoURL || photoURL,
-        createdAt: new Date(),
-        myreferralCode: randomReferralCode(),
-      });
-      await user.save();
-      if (user.email) {
-        try {
-          await sendEmail({ to: user.email, template: "welcome", data: { name: user.name, email: user.email } });
-        } catch (err) {
-          console.error("Welcome email error:", err);
+// ==================== HELPER: CREATE USER WITH REFERRAL (TRANSACTION) ====================
+const createUserWithReferral = async (userData, referredByCode = null) => {
+  const session = await User.startSession();
+  session.startTransaction();
+
+  try {
+    // 1. Generate unique referral code for new user
+    const myreferralCode = await generateUniqueReferralCode();
+
+    let referrerDoc = null;
+    let referralDetails = null;
+
+    // 2. If referredBy code provided, fetch referrer and prepare referral details
+    if (referredByCode) {
+      const referralConfig = await ReferralConfig.findOne();
+      if (referralConfig && referralConfig.daysUntilExpiry && referralConfig.value) {
+        const now = new Date();
+        referralDetails = {
+          name: userData.name,
+          expiryDate: new Date(now.getTime() + referralConfig.daysUntilExpiry * 24 * 60 * 60 * 1000),
+          amount: referralConfig.value,
+          type: referralConfig.type || "percentage",
+          firstOrderStatus: false,
+          creditStatus: false,
+          referredAt: now,
+        };
+        referrerDoc = await User.findOne({ myreferralCode: referredByCode }).session(session);
+        // Prevent self-referral
+        if (referrerDoc && referrerDoc.email === userData.email) {
+          referrerDoc = null;
+          referralDetails = null;
         }
       }
-    } else {
-      user.firebaseUid = decodedToken.uid;
-      user.name = firebaseUser.displayName || name || user.name;
-      user.avatar = firebaseUser.photoURL || photoURL || user.avatar;
-      user.isVerified = firebaseUser.emailVerified || true;
-      if (user.authMethod === "email") user.authMethod = "google";
-      user.lastLogin = new Date();
-      await user.save();
+    }
+
+    // 3. Create new user
+    const newUser = new User({
+      ...userData,
+      myreferralCode,
+      referredBy: referrerDoc ? referredByCode : null,
+    });
+    await newUser.save({ session });
+
+    // 4. Update referrer's referredTo map if applicable
+    if (referrerDoc && referralDetails) {
+      if (!referrerDoc.referredTo) referrerDoc.referredTo = new Map();
+      referrerDoc.referredTo.set(newUser._id.toString(), referralDetails);
+      await referrerDoc.save({ session });
+    }
+
+    await session.commitTransaction();
+    session.endSession();
+
+    // Send welcome email (non-blocking, don't rollback transaction if fails)
+    if (newUser.email) {
+      sendEmail({
+        to: newUser.email,
+        template: "welcome",
+        data: { name: newUser.name, email: newUser.email },
+      }).catch(err => console.error("Welcome email failed:", err));
+    }
+
+    // Send referrer congratulation email (non-blocking)
+    if (referrerDoc && referralDetails && referrerDoc.email) {
+      sendEmail({
+        to: referrerDoc.email,
+        template: "getReferrerCongratulationEmail",
+        data: {
+          referredUserName: newUser.name,
+          discountValue: referralDetails.amount,
+          discountType: referralDetails.type,
+          expiryDate: referralDetails.expiryDate,
+        },
+      }).catch(err => console.error("Referrer email failed:", err));
+    }
+
+    return newUser;
+  } catch (error) {
+    await session.abortTransaction();
+    session.endSession();
+    throw error;
+  }
+};
+
+// ==================== REGISTER WITH EMAIL & PASSWORD ====================
+const registerWithEmail = async (req, res) => {
+  try {
+    const { name,email, password, referredBy } = req.body;
+    if (!email || !password || !name) {
+      return res.status(400).json({ success: false, message: "Email, password, and name are required" });
+    }
+
+    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+    if (!emailRegex.test(email)) return res.status(400).json({ success: false, message: "Invalid email format" });
+    if (password.length < 6) return res.status(400).json({ success: false, message: "Password must be at least 6 characters" });
+
+    await checkRateLimit(`register_${email}`);
+
+    // Check if user already exists in our DB
+    const existingDbUser = await User.findOne({ email: email.toLowerCase() });
+    if (existingDbUser) {
+      return res.status(400).json({ success: false, message: "Email already registered. Please log in." });
+    }
+
+    // Create Firebase Auth user
+    let firebaseUser;
+    try {
+      firebaseUser = await admin.auth().createUser({
+        email: email.toLowerCase(),
+        password,
+        displayName: name.trim(),
+        emailVerified: true, // Set to false if you want email verification flow
+      });
+    } catch (err) {
+      if (err.code === "auth/email-already-exists") {
+        // Firebase already has this email but our DB doesn't → try to get the existing Firebase user
+        firebaseUser = await admin.auth().getUserByEmail(email.toLowerCase());
+        // Optionally delete and recreate? Better to handle gracefully.
+        // For consistency, we will use the existing Firebase UID but ensure our DB has a record.
+      } else {
+        throw err;
+      }
+    }
+
+    // Prepare user data
+    const userData = {
+      firebaseUid: firebaseUser.uid,
+      name: name.trim(),
+      email: email.toLowerCase(),
+      authMethod: "email",
+      isVerified: true,
+      role: "user",
+      createdAt: new Date(),
+    };
+
+    // Create user in MongoDB with referral handling
+    const user = await createUserWithReferral(userData, referredBy);
+
+    // Generate tokens
+    const customToken = await admin.auth().createCustomToken(user.firebaseUid);
+    const jwtToken = jwt.sign(
+      { userId: user._id, firebaseUid: user.firebaseUid, email: user.email, role: user.role,referredBy: user.referredBy,myreferralCode: user.myreferralCode },
+      process.env.JWT_SECRET,
+      { expiresIn: "7d" }
+    );
+
+    return res.status(201).json({
+      success: true,
+      message: "User registered successfully!",
+      user: {
+        _id: user._id,
+        firebaseUid: user.firebaseUid,
+        name: user.name,
+        email: user.email,
+        role: user.role,
+        authMethod: user.authMethod,
+        isVerified: user.isVerified,
+        createdAt: user.createdAt,
+        myreferralCode: user.myreferralCode,
+        referredBy: user.referredBy,
+      },
+      customToken,
+      jwtToken,
+    });
+  } catch (error) {
+    console.error("Email registration error:", error);
+    if (error.message?.includes("Too many attempts")) return res.status(429).json({ success: false, message: error.message });
+    if (error.code === 11000) return res.status(400).json({ success: false, message: "Email already exists." });
+    if (error.code === "auth/email-already-exists") return res.status(400).json({ success: false, message: "Email already registered in Firebase." });
+    if (error.code === "auth/invalid-email") return res.status(400).json({ success: false, message: "Invalid email format." });
+    if (error.code === "auth/weak-password") return res.status(400).json({ success: false, message: "Password too weak." });
+    return res.status(500).json({ success: false, message: "Registration failed. Please try again." });
+  }
+};
+
+// ==================== LOGIN WITH EMAIL & PASSWORD (USING ID TOKEN) ====================
+// Client must first call Firebase Client SDK signInWithEmailAndPassword, then send the ID token.
+const loginWithEmail = async (req, res) => {
+  try {
+    const { idToken } = req.body;
+    if (!idToken) {
+      return res.status(400).json({ success: false, message: "ID token required" });
+    }
+
+    // Verify the Firebase ID token
+    const decodedToken = await admin.auth().verifyIdToken(idToken);
+    const firebaseUser = await admin.auth().getUser(decodedToken.uid);
+
+    // Find user in our DB
+    let user = await User.findOne({ firebaseUid: firebaseUser.uid });
+    if (!user) {
+      // If user exists by email but different UID (e.g., social login first, then email) → handle linking
+      user = await User.findOne({ email: firebaseUser.email?.toLowerCase() });
+      if (user) {
+        // Link accounts: update user's firebaseUid to match the one used for login
+        user.firebaseUid = firebaseUser.uid;
+        user.authMethod = "email"; // or keep existing? decide
+        await user.save();
+      } else {
+        return res.status(404).json({ success: false, message: "No account found. Please register." });
+      }
     }
 
     user.lastLogin = new Date();
     await user.save();
 
+    const customToken = await admin.auth().createCustomToken(user.firebaseUid);
     const jwtToken = jwt.sign(
       { userId: user._id, firebaseUid: user.firebaseUid, email: user.email, role: user.role },
       process.env.JWT_SECRET,
       { expiresIn: "7d" }
     );
-    const customToken = await admin.auth().createCustomToken(decodedToken.uid);
+
+    return res.status(200).json({
+      success: true,
+      message: "Login successful",
+      customToken,
+      jwtToken,
+      user: {
+        _id: user._id,
+        firebaseUid: user.firebaseUid,
+        name: user.name,
+        email: user.email,
+        phoneNumber: user.phoneNumber,
+        authMethod: user.authMethod,
+        role: user.role,
+        isVerified: user.isVerified,
+        lastLogin: user.lastLogin,
+        createdAt: user.createdAt,
+        myreferralCode: user.myreferralCode,
+        referredBy: user.referredBy,
+      },
+    });
+  } catch (error) {
+    console.error("Login error:", error);
+    if (error.message?.includes("Too many attempts")) return res.status(429).json({ success: false, message: error.message });
+    if (error.code === "auth/user-not-found") return res.status(404).json({ success: false, message: "No account found. Please register." });
+    if (error.code === "auth/invalid-id-token") return res.status(401).json({ success: false, message: "Invalid credentials" });
+    return res.status(401).json({ success: false, message: "Authentication failed" });
+  }
+};
+
+// ==================== GOOGLE SIGN-IN ====================
+const googleSignIn = async (req, res) => {
+  try {
+    const { idToken, referredBy } = req.body;
+    if (!idToken) {
+      return res.status(400).json({ success: false, message: "ID token is required" });
+    }
+
+    const decodedToken = await admin.auth().verifyIdToken(idToken);
+    const firebaseUser = await admin.auth().getUser(decodedToken.uid);
+
+    let user = await User.findOne({ firebaseUid: decodedToken.uid });
+
+    if (!user) {
+      // Check if email already exists with another auth method
+      const existingUserByEmail = await User.findOne({ email: firebaseUser.email?.toLowerCase() });
+      if (existingUserByEmail) {
+        // Account linking: update existing user with Google provider data
+        existingUserByEmail.firebaseUid = decodedToken.uid;
+        existingUserByEmail.name = firebaseUser.displayName || existingUserByEmail.name;
+        existingUserByEmail.avatar = firebaseUser.photoURL || existingUserByEmail.avatar;
+        existingUserByEmail.authMethod = "google";
+        existingUserByEmail.isVerified = firebaseUser.emailVerified || true;
+        existingUserByEmail.lastLogin = new Date();
+        await existingUserByEmail.save();
+        user = existingUserByEmail;
+      } else {
+        // Create new user with referral
+        const userData = {
+          firebaseUid: decodedToken.uid,
+          name: firebaseUser.displayName || firebaseUser.email?.split("@")[0] || "User",
+          email: firebaseUser.email?.toLowerCase(),
+          authMethod: "google",
+          isVerified: firebaseUser.emailVerified || true,
+          role: "user",
+          avatar: firebaseUser.photoURL,
+          createdAt: new Date(),
+        };
+        user = await createUserWithReferral(userData, referredBy);
+      }
+    } else {
+      // Update existing user
+      user.name = firebaseUser.displayName || user.name;
+      user.avatar = firebaseUser.photoURL || user.avatar;
+      user.isVerified = firebaseUser.emailVerified || true;
+      user.lastLogin = new Date();
+      await user.save();
+    }
+
+    const customToken = await admin.auth().createCustomToken(user.firebaseUid);
+    const jwtToken = jwt.sign(
+      { userId: user._id, firebaseUid: user.firebaseUid, email: user.email, role: user.role },
+      process.env.JWT_SECRET,
+      { expiresIn: "7d" }
+    );
 
     return res.status(200).json({
       success: true,
@@ -103,371 +381,86 @@ const googleSignIn = async (req, res) => {
     });
   } catch (error) {
     console.error("Google sign-in error:", error);
-    if (error.message?.includes("Too many attempts"))
-      return res.status(429).json({ success: false, message: error.message });
-    if (error.code === "auth/id-token-expired")
-      return res.status(401).json({ success: false, message: "Token expired. Please try again." });
-    if (error.code === "auth/invalid-id-token")
-      return res.status(401).json({ success: false, message: "Invalid token." });
+    if (error.message?.includes("Too many attempts")) return res.status(429).json({ success: false, message: error.message });
+    if (error.code === "auth/id-token-expired") return res.status(401).json({ success: false, message: "Token expired. Please try again." });
+    if (error.code === "auth/invalid-id-token") return res.status(401).json({ success: false, message: "Invalid token." });
     return res.status(500).json({ success: false, message: "Google sign-in failed." });
   }
 };
 
-const registerWithEmail = async (req, res) => {
-  try {
-    const { email, password, name, referredBy } = req.body;
-    
-    if (!email || !password || !name) {
-      return res.status(400).json({ success: false, message: "Email, password, and name are required" });
-    }
-    
-    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
-    if (!emailRegex.test(email)) {
-      return res.status(400).json({ success: false, message: "Invalid email format" });
-    }
-    
-    if (password.length < 6) {
-      return res.status(400).json({ success: false, message: "Password must be at least 6 characters" });
-    }
-    
-    checkRateLimit(`register_${email}`);
-
-    const existingDbUser = await User.findOne({ email: email.toLowerCase() });
-    if (existingDbUser) {
-      return res.status(400).json({ success: false, message: "Email already registered. Please log in." });
-    }
-    
-    // Check and cleanup existing Firebase user (optional - be careful with this)
-    try {
-      const existingFirebase = await admin.auth().getUserByEmail(email.toLowerCase());
-      if (existingFirebase) {
-        // Don't auto-delete - inform user instead
-        return res.status(400).json({ 
-          success: false, 
-          message: "Email already exists in system. Please log in or use password reset." 
-        });
-      }
-    } catch (err) {
-      // User not found in Firebase - this is fine, continue
-      if (err.code !== "auth/user-not-found") {
-        console.error("Firebase lookup error:", err);
-      }
-    }
-    
-    const firebaseUser = await admin.auth().createUser({
-      email: email.toLowerCase(),
-      password,
-      displayName: name.trim(),
-      emailVerified: false, // Set to false to require email verification
-    });
-    
-    const userData = {
-      firebaseUid: firebaseUser.uid,
-      name: name.trim(),
-      email: email.toLowerCase(),
-      authMethod: "email",
-      isVerified: false, // Match Firebase
-      role: "user",
-      createdAt: new Date(),
-      myreferralCode: randomReferralCode(),
-      referredBy: null,
-    };
-    
-    let referrerDoc = null;
-    let referralDetails = null;
-    
-    if (referredBy) {
-      const referralConfig = await ReferralConfig.findOne();
-      if (referralConfig) {
-        const now = new Date();
-        referralDetails = {
-          name,
-          expiryDate: new Date(now.getTime() + referralConfig.daysUntilExpiry * 24 * 60 * 60 * 1000),
-          amount: referralConfig.value || 0,
-          type: referralConfig.type || "percentage",
-          firstOrderStatus: false,
-          creditStatus: false,
-          referredAt: now,
-        };
-        referrerDoc = await User.findOne({ myreferralCode: referredBy });
-        if (referrerDoc && referralDetails) {
-          userData.referredBy = referredBy; 
-        } else {
-          referrerDoc = null;
-          referralDetails = null;
-        }
-      }
-    }
-    
-    const user = new User(userData);
-    await user.save();
-    
-    // Generate tokens
-    const customToken = await admin.auth().createCustomToken(firebaseUser.uid);
-    const jwtToken = jwt.sign(
-      { userId: user._id, firebaseUid: user.firebaseUid, email: user.email, role: user.role },
-      process.env.JWT_SECRET,
-      { expiresIn: "7d" }
-    );
-    
-    // Send email verification link
-    try {
-      const emailVerificationLink = await admin.auth().generateEmailVerificationLink(email.toLowerCase());
-      await sendEmail({
-        to: email.toLowerCase(),
-        template: "verifyEmail",
-        data: {
-          name: name.trim(),
-          email: email.toLowerCase(),
-          verificationLink: emailVerificationLink,
-        },
-      });
-    } catch (emailError) {
-      console.error("Failed to send verification email:", emailError);
-    }
-    
-    // Handle referral after user is created
-    if (referrerDoc && referralDetails) {
-      if (!referrerDoc.referredTo) referrerDoc.referredTo = new Map();
-      referrerDoc.referredTo.set(user._id.toString(), referralDetails);
-      await referrerDoc.save();
-      
-      try {
-        await sendEmail({
-          to: referrerDoc.email,
-          template: "getReferrerCongratulationEmail",
-          data: {
-            referredUserName: user.name,
-            discountValue: referralDetails.amount,
-            discountType: referralDetails.type,
-            expiryDate: referralDetails.expiryDate,
-          },
-        });
-      } catch (emailError) {
-        console.error("Failed to send referral email:", emailError);
-      }
-    }
-    
-    return res.status(201).json({
-      success: true,
-      message: "User registered successfully! Please check your email for verification.",
-      user: {
-        _id: user._id,
-        firebaseUid: user.firebaseUid,
-        name: user.name,
-        email: user.email,
-        role: user.role,
-        authMethod: user.authMethod,
-        isVerified: user.isVerified,
-        createdAt: user.createdAt,
-        myreferralCode: user.myreferralCode,
-        referredBy: user.referredBy,
-      },
-      customToken,
-      jwtToken,
-    });
-    
-  } catch (error) {
-    console.error("Email registration error:", error);
-    
-    if (error.message?.includes("Too many attempts")) {
-      return res.status(429).json({ success: false, message: error.message });
-    }
-    
-    // Handle Firebase specific errors
-    if (error.code === "auth/email-already-exists") {
-      return res.status(400).json({ 
-        success: false, 
-        message: "An account with this email already exists. Please try logging in instead." 
-      });
-    }
-    
-    if (error.code === "auth/invalid-email") {
-      return res.status(400).json({ 
-        success: false, 
-        message: "Invalid email address format." 
-      });
-    }
-    
-    if (error.code === "auth/weak-password") {
-      return res.status(400).json({ 
-        success: false, 
-        message: "Password is too weak. Please choose a stronger password." 
-      });
-    }
-    
-    if (error.code === 11000) {
-      return res.status(400).json({ 
-        success: false, 
-        message: "Email already exists." 
-      });
-    }
-    
-    return res.status(500).json({ 
-      success: false, 
-      message: "Registration failed. Please try again." 
-    });
-  }
-};
-
-const loginWithEmail = async (req, res) => {
-  try {
-    const { email, password } = req.body;
-    if (!email || !password) {
-      return res.status(400).json({ success: false, message: "Email and password required" });
-    }
-    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
-    if (!emailRegex.test(email)) return res.status(400).json({ success: false, message: "Invalid email format" });
-    checkRateLimit(`login_${email}`);
-    
-    const firebaseUser = await admin.auth().getUserByEmail(email.toLowerCase());
-    let user = await User.findOne({
-      $or: [{ firebaseUid: firebaseUser.uid }, { email: email.toLowerCase() }],
-    });
-    
-    if (!user) {
-      user = new User({
-        firebaseUid: firebaseUser.uid,
-        name: firebaseUser.displayName || email.split("@")[0],
-        email: email.toLowerCase(),
-        authMethod: "email",
-        isVerified: firebaseUser.emailVerified,
-        role: "user",
-        createdAt: new Date(),
-        myreferralCode: randomReferralCode(),
-      });
-      await user.save();
-    }
-    
-    user.lastLogin = new Date();
-    await user.save();
-    
-    const customToken = await admin.auth().createCustomToken(firebaseUser.uid);
-    const jwtToken = jwt.sign(
-      { userId: user._id, firebaseUid: user.firebaseUid, email: user.email, role: user.role },
-      process.env.JWT_SECRET,
-      { expiresIn: "7d" }
-    );
-    
-    return res.status(200).json({
-      success: true,
-      message: "Login successful",
-      customToken,
-      jwtToken,
-      user: {
-        _id: user._id,
-        firebaseUid: user.firebaseUid,
-        name: user.name,
-        email: user.email,
-        phoneNumber: user.phoneNumber,
-        authMethod: user.authMethod,
-        role: user.role,
-        isVerified: user.isVerified,
-        lastLogin: user.lastLogin,
-        createdAt: user.createdAt,
-        myreferralCode: user.myreferralCode,
-        referredBy: user.referredBy,
-      },
-    });
-  } catch (error) {
-    console.error("Login error:", error);
-    if (error.message?.includes("Too many attempts"))
-      return res.status(429).json({ success: false, message: error.message });
-    if (error.code === "auth/user-not-found")
-      return res.status(404).json({ success: false, message: "No account found. Please register." });
-    if (error.code === "auth/invalid-email")
-      return res.status(400).json({ success: false, message: "Invalid email format." });
-    if (error.code === "auth/wrong-password")
-      return res.status(401).json({ success: false, message: "Invalid email or password" });
-    return res.status(401).json({ success: false, message: "Invalid email or password" });
-  }
-};
-
+// ==================== PHONE OTP (SEND & VERIFY) ====================
 const sendPhoneOTP = async (req, res) => {
   try {
     const { phoneNumber } = req.body;
     if (!phoneNumber) return res.status(400).json({ success: false, message: "Phone number required" });
+
     const phoneRegex = /^\+[1-9]\d{1,14}$/;
     if (!phoneRegex.test(phoneNumber))
       return res.status(400).json({ success: false, message: "Invalid phone format (include country code, e.g., +1)" });
-    checkRateLimit(`phone_otp_${phoneNumber}`, 3, 15 * 60 * 1000);
-    
-    let firebaseUser;
-    try {
-      firebaseUser = await admin.auth().getUserByPhoneNumber(phoneNumber);
-    } catch (err) {
-      if (err.code !== "auth/user-not-found") throw err;
-    }
-    
-    let user = await User.findOne({ phoneNumber });
-    if (!user) {
-      user = new User({
-        phoneNumber,
-        authMethod: "phone",
-        role: "user",
-        isVerified: false,
-        name: `User ${phoneNumber.slice(-4)}`,
-        myreferralCode: randomReferralCode(),
-      });
-      await user.save();
-    }
-    
+
+    await checkRateLimit(`phone_otp_${phoneNumber}`, 3, 15 * 60 * 1000);
+
+    // Do NOT create a user record here. OTP must be verified first.
+    // Just return success – the Firebase client SDK will send the SMS.
     return res.status(200).json({
       success: true,
-      message: "Ready to send OTP. Use Firebase client SDK to send verification code.",
+      message: "OTP sent via Firebase. Use Firebase client SDK to verify.",
       phoneNumber,
-      userId: user._id,
     });
   } catch (error) {
     console.error("Send OTP error:", error);
-    if (error.message?.includes("Too many attempts"))
-      return res.status(429).json({ success: false, message: error.message });
+    if (error.message?.includes("Too many attempts")) return res.status(429).json({ success: false, message: error.message });
     return res.status(500).json({ success: false, message: "Failed to send OTP" });
   }
 };
 
 const verifyPhoneOTP = async (req, res) => {
   try {
-    const { phoneNumber, name, firebaseIdToken } = req.body;
+    const { phoneNumber, name, firebaseIdToken, referredBy } = req.body;
     if (!phoneNumber || !firebaseIdToken) {
       return res.status(400).json({ success: false, message: "Phone number and Firebase ID token required" });
     }
-    checkRateLimit(`verify_otp_${phoneNumber}`, 5, 15 * 60 * 1000);
-    
+
+    await checkRateLimit(`verify_otp_${phoneNumber}`, 5, 15 * 60 * 1000);
+
     const decodedToken = await admin.auth().verifyIdToken(firebaseIdToken);
     if (decodedToken.phone_number !== phoneNumber) {
       return res.status(400).json({ success: false, message: "Phone number mismatch" });
     }
-    
     const firebaseUser = await admin.auth().getUser(decodedToken.uid);
+
+    // Check if user already exists in our DB
     let user = await User.findOne({ phoneNumber });
-    
+    if (user && user.firebaseUid && user.firebaseUid !== firebaseUser.uid) {
+      // Potential account linking scenario – handle gracefully
+      user.firebaseUid = firebaseUser.uid;
+    }
+
     if (!user) {
-      user = new User({
+      // Create new user with referral
+      const userData = {
         firebaseUid: firebaseUser.uid,
         phoneNumber,
         authMethod: "phone",
         role: "user",
         isVerified: true,
         name: name?.trim() || firebaseUser.displayName || `User ${phoneNumber.slice(-4)}`,
-        myreferralCode: randomReferralCode(),
-      });
+        createdAt: new Date(),
+      };
+      user = await createUserWithReferral(userData, referredBy);
     } else {
-      user.firebaseUid = firebaseUser.uid;
-      user.isVerified = true;
       user.lastLogin = new Date();
       if (name && name.trim()) user.name = name.trim();
+      await user.save();
     }
-    await user.save();
-    
     const jwtToken = jwt.sign(
       { userId: user._id, firebaseUid: user.firebaseUid, phoneNumber: user.phoneNumber, role: user.role },
       process.env.JWT_SECRET,
       { expiresIn: "7d" }
     );
-    const customToken = await admin.auth().createCustomToken(firebaseUser.uid);
-    const isNewUser = !user.lastLogin || user.createdAt.getTime() === user.lastLogin.getTime();
-    
+    const customToken = await admin.auth().createCustomToken(user.firebaseUid);
+
+    const isNewUser = user.createdAt.getTime() === user.lastLogin?.getTime() || !user.lastLogin;
     return res.status(200).json({
       success: true,
       message: isNewUser ? "Registration successful!" : "Login successful!",
@@ -490,29 +483,18 @@ const verifyPhoneOTP = async (req, res) => {
     });
   } catch (error) {
     console.error("Verify OTP error:", error);
-    if (error.message.includes("Too many attempts")) {
-      return res.status(429).json({
-        success: false,
-        message: error.message,
-      });
-    }
-    res.status(500).json({
-      success: false,
-      message: "OTP verification failed. Please try again.",
-    });
+    if (error.message?.includes("Too many attempts")) return res.status(429).json({ success: false, message: error.message });
+    if (error.code === "auth/id-token-expired") return res.status(401).json({ success: false, message: "Verification expired" });
+    if (error.code === "auth/invalid-id-token") return res.status(400).json({ success: false, message: "Invalid verification code" });
+    return res.status(500).json({ success: false, message: "Phone verification failed" });
   }
 };
 
+// ==================== GENERIC FIREBASE TOKEN VERIFICATION ====================
 const verifyFirebaseToken = async (req, res) => {
   try {
-    const { idToken } = req.body;
-
-    if (!idToken) {
-      return res.status(400).json({
-        success: false,
-        message: "ID token is required",
-      });
-    }
+    const { idToken, referredBy } = req.body;
+    if (!idToken) return res.status(400).json({ success: false, message: "ID token required" });
 
     const decodedToken = await admin.auth().verifyIdToken(idToken);
     const firebaseUid = decodedToken.uid;
@@ -521,41 +503,41 @@ const verifyFirebaseToken = async (req, res) => {
     let user = await User.findOne({ firebaseUid });
 
     if (!user) {
-      const authMethod = firebaseUser.phoneNumber ? "phone" : "email";
-      const name = firebaseUser.displayName || `User ${firebaseUser.phoneNumber?.slice(-4) || firebaseUser.email?.split("@")[0]}`;
+      // Try to find by email or phone if they exist but different UID (account linking)
+      let existingUser = null;
+      if (firebaseUser.email) existingUser = await User.findOne({ email: firebaseUser.email.toLowerCase() });
+      if (!existingUser && firebaseUser.phoneNumber) existingUser = await User.findOne({ phoneNumber: firebaseUser.phoneNumber });
 
-      user = new User({
-        firebaseUid: firebaseUser.uid,
-        name: name,
-        email: firebaseUser.email || null,
-        phoneNumber: firebaseUser.phoneNumber || null,
-        authMethod: authMethod,
-        isVerified: firebaseUser.emailVerified || !!firebaseUser.phoneNumber,
-        role: "user",
-        createdAt: new Date(),
-        myreferralCode: randomReferralCode(),
-      });
-
-      await user.save();
-
-      if (authMethod === "email" && firebaseUser.email) {
-        try {
-          await sendEmail({
-            to: firebaseUser.email,
-            template: "welcome",
-            data: {
-              name: user.name,
-              email: firebaseUser.email,
-            },
-          });
-        } catch (emailError) {
-          console.error("Failed to send welcome email:", emailError);
-        }
+      if (existingUser) {
+        // Link accounts
+        existingUser.firebaseUid = firebaseUser.uid;
+        existingUser.name = firebaseUser.displayName || existingUser.name;
+        existingUser.avatar = firebaseUser.photoURL || existingUser.avatar;
+        existingUser.authMethod = firebaseUser.phoneNumber ? "phone" : "email";
+        existingUser.isVerified = firebaseUser.emailVerified || !!firebaseUser.phoneNumber;
+        await existingUser.save();
+        user = existingUser;
+      } else {
+        // Create new user with referral
+        const authMethod = firebaseUser.phoneNumber ? "phone" : "email";
+        const name = firebaseUser.displayName || `User ${firebaseUser.phoneNumber?.slice(-4) || firebaseUser.email?.split("@")[0]}`;
+        const userData = {
+          firebaseUid: firebaseUser.uid,
+          name,
+          email: firebaseUser.email || null,
+          phoneNumber: firebaseUser.phoneNumber || null,
+          authMethod,
+          isVerified: firebaseUser.emailVerified || !!firebaseUser.phoneNumber,
+          role: "user",
+          avatar: firebaseUser.photoURL,
+          createdAt: new Date(),
+        };
+        user = await createUserWithReferral(userData, referredBy);
       }
+    } else {
+      user.lastLogin = new Date();
+      await user.save();
     }
-
-    user.lastLogin = new Date();
-    await user.save();
 
     const jwtToken = jwt.sign(
       { userId: user._id, firebaseUid: user.firebaseUid, email: user.email, phoneNumber: user.phoneNumber, role: user.role },
@@ -605,9 +587,11 @@ const forgotPassword = async (req, res) => {
     const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
     if (!emailRegex.test(email)) return res.status(400).json({ success: false, message: "Invalid email format" });
 
-    checkRateLimit(`forgot_${email}`, 3, 60 * 60 * 1000);
+    await checkRateLimit(`forgot_${email}`, 3, 60 * 60 * 1000);
 
+    // Check if user exists in Firebase
     await admin.auth().getUserByEmail(email.toLowerCase());
+
     const resetLink = await admin.auth().generatePasswordResetLink(email.toLowerCase());
 
     await sendEmail({
@@ -619,10 +603,8 @@ const forgotPassword = async (req, res) => {
     return res.status(200).json({ success: true, message: "Password reset email sent" });
   } catch (error) {
     console.error("Forgot password error:", error);
-    if (error.message?.includes("Too many attempts"))
-      return res.status(429).json({ success: false, message: error.message });
-    if (error.code === "auth/user-not-found")
-      return res.status(404).json({ success: false, message: "No account found with this email" });
+    if (error.message?.includes("Too many attempts")) return res.status(429).json({ success: false, message: error.message });
+    if (error.code === "auth/user-not-found") return res.status(404).json({ success: false, message: "No account found with this email" });
     return res.status(500).json({ success: false, message: "Failed to send reset email" });
   }
 };

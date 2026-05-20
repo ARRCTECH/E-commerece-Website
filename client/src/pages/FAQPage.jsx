@@ -12,12 +12,12 @@ import {
   Shield,
   MessageCircle,
 } from "lucide-react";
-// import Navbar from "../components/Navbar"
-// import Footer from "../components/Footer"
+
 const FAQPage = () => {
   const [searchQuery, setSearchQuery] = useState("");
   const [activeCategory, setActiveCategory] = useState("all");
   const [openItems, setOpenItems] = useState(new Set());
+
   const categories = [
     { id: "all", label: "All Questions", icon: HelpCircle },
     { id: "orders", label: "Orders & Shipping", icon: Package },
@@ -26,128 +26,41 @@ const FAQPage = () => {
     { id: "returns", label: "Returns & Exchanges", icon: RotateCcw },
     { id: "account", label: "Account & Security", icon: Shield },
   ];
+
+  // Sirf aapke 6 questions - kuch extra nahi
   const faqData = [
     {
       category: "orders",
-      question: "How do I place an order?",
-      answer:
-        "To place an order, simply browse our products, select your desired items, choose size and color, add to cart, and proceed to checkout. You'll need to provide shipping details and payment information to complete your order.",
+      question: "Is COD available?",
+      answer: "Yes, COD is available with 50% advance payment.",
     },
     {
       category: "orders",
-      question: "Can I modify or cancel my order after placing it?",
-      answer:
-        "You can modify or cancel your order within 1 hour of placing it. After that, the order goes into processing and cannot be changed. Please contact our customer service immediately if you need to make changes.",
+      question: "Is video call available for product consultation?",
+      answer: "Yes, video call is available if our agent is free.",
     },
     {
       category: "orders",
-      question: "How do I track my order?",
-      answer:
-        "Once your order is shipped, you'll receive a tracking number via email and SMS. You can track your order on our website by entering the tracking number, or through the courier partner's website.",
+      question: "Can I visit your physical store/shop?",
+      answer: "Yes, you can visit our store at the given address on our website.",
     },
     {
       category: "payments",
-      question: "What payment methods do you accept?",
-      answer:
-        "We accept all major credit/debit cards (Visa, MasterCard, American Express), UPI payments, net banking, and digital wallets like Paytm, PhonePe, and Google Pay. We also offer Cash on Delivery for select locations.",
-    },
-    {
-      category: "payments",
-      question: "Is it safe to pay online on your website?",
-      answer:
-        "Yes, absolutely! We use industry-standard SSL encryption and partner with trusted payment gateways like Razorpay and Stripe. Your payment information is never stored on our servers and is processed securely.",
-    },
-    {
-      category: "payments",
-      question: "When will my payment be charged?",
-      answer:
-        "For prepaid orders, payment is charged immediately upon order confirmation. For Cash on Delivery orders, payment is collected when the order is delivered to you.",
+      question: "Is there any discount on prepaid orders?",
+      answer: "Yes, you will get special discounts on prepaid orders.",
     },
     {
       category: "delivery",
-      question: "What are your shipping charges?",
-      answer:
-        "We offer free shipping on orders above ₹999. For orders below ₹999, standard shipping charges are ₹99. Express delivery charges vary by location and are displayed at checkout.",
-    },
-    {
-      category: "delivery",
-      question: "How long does delivery take?",
-      answer:
-        "Standard delivery takes 5-7 business days across India. Express delivery (1-2 days) is available in major cities like Mumbai, Delhi, Bangalore, Chennai, Hyderabad, and Pune.",
-    },
-    {
-      category: "delivery",
-      question: "Do you deliver internationally?",
-      answer:
-        "Currently, we only deliver within India. We're working on expanding our international shipping and will update you once it's available.",
+      question: "How many days will delivery take?",
+      answer: "Within Maharashtra, delivery mostly takes 2-3 days. Outside Maharashtra, delivery will take 5-7 days.",
     },
     {
       category: "returns",
       question: "What is your return policy?",
-      answer:
-        "We offer a 30-day return policy from the date of delivery. Items must be unused, unwashed, with original tags attached, and in original packaging. Certain items like innerwear, cosmetics, and personalized items are not returnable.",
-    },
-    {
-      category: "returns",
-      question: "How do I return an item?",
-      answer:
-        "To return an item, log into your account, go to 'My Orders', select the item you want to return, choose a reason, and schedule a pickup. Our courier partner will collect the item from your address free of charge.",
-    },
-    {
-      category: "returns",
-      question: "When will I receive my refund?",
-      answer:
-        "Refunds are processed within 5-7 business days after we receive and verify the returned item. The amount will be credited to your original payment method or Kasuni Bliss wallet, as per your preference.",
-    },
-    {
-      category: "returns",
-      question: "Can I exchange an item instead of returning it?",
-      answer:
-        "Yes, you can exchange items for a different size or color (subject to availability). The exchange process is similar to returns - schedule a pickup and our team will arrange the exchange.",
-    },
-    {
-      category: "account",
-      question: "How do I create an account?",
-      answer:
-        "You can create an account by clicking 'Sign Up' on our website or app. We use OTP-based verification through your mobile number for quick and secure registration.",
-    },
-    {
-      category: "account",
-      question: "I forgot my password. How do I reset it?",
-      answer:
-        "We use OTP-based login, so you don't need to remember passwords. Simply enter your mobile number and we'll send you an OTP to log in securely.",
-    },
-    {
-      category: "account",
-      question: "How do I update my profile information?",
-      answer:
-        "Log into your account and go to 'My Profile' to update your personal information, addresses, and preferences. Make sure to save changes after updating.",
-    },
-    {
-      category: "orders",
-      question: "What sizes do you offer?",
-      answer:
-        "We offer sizes from XS to XXL for most items. Each product page has a detailed size chart to help you choose the right fit. If you're unsure, our customer service team can help you select the perfect size.",
-    },
-    {
-      category: "orders",
-      question: "Are your products authentic?",
-      answer:
-        "Yes, all our products are 100% authentic. We source directly from brands and authorized distributors. Each product comes with authenticity guarantee and proper brand tags.",
-    },
-    {
-      category: "delivery",
-      question: "Can I change my delivery address after placing an order?",
-      answer:
-        "You can change your delivery address within 1 hour of placing the order. After that, the order goes into processing and the address cannot be changed. Please contact customer service immediately if needed.",
-    },
-    {
-      category: "payments",
-      question: "Do you offer EMI options?",
-      answer:
-        "Yes, we offer EMI options on orders above ₹3,000 through select credit cards and digital payment platforms. EMI options and tenure will be displayed at checkout based on your payment method.",
+      answer: "Our return policy has been described in the shipping info section. Please refer to the shipping information page for complete details.",
     },
   ];
+
   const toggleItem = (index) => {
     const newOpenItems = new Set(openItems);
     if (newOpenItems.has(index)) {
@@ -157,6 +70,7 @@ const FAQPage = () => {
     }
     setOpenItems(newOpenItems);
   };
+
   const filteredFAQs = faqData.filter((faq) => {
     const matchesCategory = activeCategory === "all" || faq.category === activeCategory;
     const matchesSearch =
@@ -165,9 +79,9 @@ const FAQPage = () => {
       faq.answer.toLowerCase().includes(searchQuery.toLowerCase());
     return matchesCategory && matchesSearch;
   });
+
   return (
     <div className="min-h-screen bg-gray-50">
-      {/* <Navbar /> */}
       {/* Hero Section */}
       <section className="py-16 bg-gradient-to-br from-red-50 to-red-50">
         <div className="container px-4 mx-auto">
@@ -197,6 +111,7 @@ const FAQPage = () => {
           </motion.div>
         </div>
       </section>
+
       {/* FAQ Content */}
       <section className="py-16">
         <div className="container px-4 mx-auto">
@@ -228,7 +143,8 @@ const FAQPage = () => {
                 ))}
               </div>
             </motion.div>
-            {/* FAQ Items */}
+
+            {/* FAQ Items - Sirf 6 Questions */}
             <div className="space-y-4">
               <AnimatePresence>
                 {filteredFAQs.map((faq, index) => (
@@ -270,6 +186,7 @@ const FAQPage = () => {
                 ))}
               </AnimatePresence>
             </div>
+
             {/* No Results */}
             {filteredFAQs.length === 0 && (
               <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} className="py-16 text-center">
@@ -292,44 +209,11 @@ const FAQPage = () => {
           </div>
         </div>
       </section>
+
       {/* Contact Support */}
-      <section className="py-16 bg-white">
-        <div className="container px-4 mx-auto">
-          <motion.div
-            initial={{ opacity: 0, y: 30 }}
-            whileInView={{ opacity: 1, y: 0 }}
-            transition={{ duration: 0.8 }}
-            viewport={{ once: true }}
-            className="max-w-3xl mx-auto text-center"
-          >
-            <div className="p-8 text-white bg-gradient-to-br from-red-500 to-red-500 rounded-2xl">
-              <MessageCircle className="w-16 h-16 mx-auto mb-6 opacity-90" />
-              <h2 className="mb-4 text-3xl font-bold">Still have questions?</h2>
-              <p className="mb-8 text-xl opacity-90">
-                Can't find what you're looking for? Our customer support team is here to help!
-              </p>
-              <div className="flex flex-col justify-center gap-4 sm:flex-row">
-                <motion.button
-                  whileHover={{ scale: 1.05 }}
-                  whileTap={{ scale: 0.95 }}
-                  className="px-8 py-3 font-semibold text-red-500 transition-colors bg-white rounded-lg hover:bg-gray-100"
-                >
-                  Contact Support
-                </motion.button>
-                <motion.button
-                  whileHover={{ scale: 1.05 }}
-                  whileTap={{ scale: 0.95 }}
-                  className="px-8 py-3 font-semibold text-white transition-colors border-2 border-white rounded-lg hover:bg-white hover:text-red-500"
-                >
-                  Live Chat
-                </motion.button>
-              </div>
-            </div>
-          </motion.div>
-        </div>
-      </section>
-      {/* <Footer /> */}
+      
     </div>
   );
 };
+
 export default FAQPage;

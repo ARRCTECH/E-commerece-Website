@@ -28,7 +28,7 @@ const Footer = () => {
   const [subscribed, setSubscribed] = useState(false);
 
   const trust = [
-    { Icon: Truck, title: "Free Shipping", sub: "On orders ₹999+" },
+    { Icon: Truck, title: "Free Shipping", sub:"all orders free shipping" },
     { Icon: RotateCcw, title: "Easy Returns", sub: "7-day window" },
     { Icon: ShieldCheck, title: "Secure Checkout", sub: "100% protected" },
     { Icon: Headphones, title: "24/7 Support", sub: "Always here" },
@@ -123,14 +123,10 @@ const Footer = () => {
               </p>
               <div className="mt-3 flex items-center gap-2">
                 {[
-                  { Icon: Facebook, href: "#", label: "Facebook" },
-                  { Icon: Instagram, href: "#", label: "Instagram" },
-                  {
-                    Icon: FaPinterest,
-                    href: "https://www.pinterest.com/@FactorySale",
-                    label: "Pinterest",
-                  },
-                  { Icon: Youtube, href: "#", label: "YouTube" },
+                  { Icon: Facebook, href: "https://www.facebook.com/profile.php?id=61568941858515&mibextid=ZbWKwL", label: "Facebook" },
+                  { Icon: Instagram, href: "https://www.instagram.com/factorysaleusa?utm_source=qr&igsh=Nm9uNnFjdjhqNnBm", label: "Instagram" },
+                  
+                  { Icon: Youtube, href: "https://youtube.com/@factorysale-r5n?si=_4Kz0Y4c_xY_mQeu", label: "YouTube" },
                 ].map(({ Icon, href, label }) => (
                   <a
                     key={label}
@@ -201,15 +197,15 @@ const Footer = () => {
               <ul className="mt-5 space-y-3 text-[13px]">
                 <li className="flex items-start gap-3 text-neutral-400">
                   <ContactIcon><MapPin className="h-3.5 w-3.5" /></ContactIcon>
-                  <span>Delhi, India</span>
+                  <span>ulhasnagar, India</span>
                 </li>
                 <li>
                   <a
-                    href="tel:9211891719"
+                    href="tel:88301 55383"
                     className="flex items-start gap-3 text-neutral-400 transition hover:text-white"
                   >
                     <ContactIcon><Phone className="h-3.5 w-3.5" /></ContactIcon>
-                    <span>+91 9211 891 719</span>
+                    <span>+91 88301 55383</span>
                   </a>
                 </li>
                 <li>
@@ -218,7 +214,7 @@ const Footer = () => {
                     className="flex items-start gap-3 break-all text-neutral-400 transition hover:text-white"
                   >
                     <ContactIcon><Mail className="h-3.5 w-3.5" /></ContactIcon>
-                    <span>support@FactorySale.com</span>
+                    <span>factorysaleusadata@gmail.com</span>
                   </a>
                 </li>
               </ul>
@@ -243,7 +239,7 @@ const Footer = () => {
               <ul className="mt-5 space-y-3 text-[13px]">
                 <li className="flex items-start gap-3 text-neutral-400">
                   <ContactIcon><MapPin className="h-3.5 w-3.5" /></ContactIcon>
-                  <span>Delhi, India</span>
+                  <span>Ulhasnagar</span>
                 </li>
                 <li>
                   <a
@@ -251,7 +247,7 @@ const Footer = () => {
                     className="flex items-start gap-3 text-neutral-400 transition hover:text-white"
                   >
                     <ContactIcon><Phone className="h-3.5 w-3.5" /></ContactIcon>
-                    <span>+91 9211 891 719</span>
+                    <span>+91 8830155383</span>
                   </a>
                 </li>
                 <li>
@@ -260,7 +256,7 @@ const Footer = () => {
                     className="flex items-start gap-3 break-all text-neutral-400 transition hover:text-white"
                   >
                     <ContactIcon><Mail className="h-3.5 w-3.5" /></ContactIcon>
-                    <span>support@FactorySale.com</span>
+                    <span>factorysaleusadata@gmail.com</span>
                   </a>
                 </li>
               </ul>

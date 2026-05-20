@@ -3,10 +3,6 @@
  * These utilities help improve MongoDB query performance
  */
 
-/**
- * Optimized projection for Product model
- * Use for list views to reduce payload size
- */
 const productListProjection = {
   name: 1,
   price: 1,
@@ -20,11 +16,6 @@ const productListProjection = {
   tags: 1,
   createdAt: 1,
 };
-
-/**
- * Optimized projection for Category model
- * Use for list views to reduce payload size
- */
 const categoryListProjection = {
   name: 1,
   slug: 1,
@@ -33,11 +24,6 @@ const categoryListProjection = {
   productCount: 1,
   parentId: 1,
 };
-
-/**
- * Optimized projection for User model
- * Use for admin list views to reduce payload size and exclude sensitive data
- */
 const userListProjection = {
   name: 1,
   email: 1,
@@ -48,11 +34,6 @@ const userListProjection = {
   createdAt: 1,
   lastLogin: 1,
 };
-
-/**
- * Optimized projection for Order model
- * Use for list views to reduce payload size
- */
 const orderListProjection = {
   orderNumber: 1,
   user: 1,

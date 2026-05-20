@@ -6,7 +6,7 @@ const WhatsAppScrollableComponent = () => {
   const [activeIndex, setActiveIndex] = useState(0)
   const [scrollPosition, setScrollPosition] = useState(0)
   const scrollContainerRef = useRef(null)
-  const whatsappLink = "https://chat.whatsapp.com/Gk6xdrfvHj06xjcmi6dG4A"
+  const whatsappLink = "https://chat.whatsapp.com/Gk6xdrfvHj06xjcmi6dG4a"
 
   // Left Side Content
   const leftContent = {
@@ -269,7 +269,7 @@ const WhatsAppScrollableComponent = () => {
         </div>
       </motion.div>
 
-      <style jsx>{`
+      <style>{`
         .hide-scrollbar::-webkit-scrollbar {
           display: none;
         }
