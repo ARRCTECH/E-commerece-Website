@@ -136,6 +136,7 @@ const initialState = {
   error: null,
   filters: {
     category: "",
+    subcategory: "", 
     priceRange: [0, 10000],
     sizes: [],
     colors: [],

@@ -5,7 +5,7 @@ import { useNavigate } from "react-router-dom";
 import { motion, AnimatePresence } from "framer-motion";
 import {
   Package, Eye, X, Truck, CheckCircle, Clock, AlertCircle,
-  Layers, Palette, CreditCard, Wallet, Banknote, AlertTriangle, 
+  Layers, Palette, CreditCard, Wallet, Banknote, AlertTriangle,
   ShoppingBag, MapPin, Calendar, ChevronLeft, ChevronRight,
   Sparkles, TrendingUp, Shield, Star, Gift, Award, Download, FileText
 } from "lucide-react";
@@ -194,7 +194,7 @@ const MyOrdersPage = () => {
           <div className="relative mb-8 overflow-hidden bg-gradient-to-r from-gray-900 via-gray-800 to-gray-900 rounded-2xl shadow-xl">
             <div className="absolute top-0 right-0 w-64 h-64 bg-red-500/10 rounded-full -mt-32 -mr-32 blur-3xl" />
             <div className="absolute bottom-0 left-0 w-64 h-64 bg-red-500/10 rounded-full -mb-32 -ml-32 blur-3xl" />
-            
+
             <div className="relative px-6 py-8 sm:px-8 sm:py-10">
               <div className="flex flex-col items-center text-center md:flex-row md:justify-between md:text-left">
                 <div>
@@ -284,10 +284,10 @@ const MyOrdersPage = () => {
                               <p className="text-xs text-gray-500">
                                 {order?.createdAt
                                   ? new Date(order.createdAt).toLocaleDateString("en-IN", {
-                                      year: "numeric",
-                                      month: "short",
-                                      day: "numeric",
-                                    })
+                                    year: "numeric",
+                                    month: "short",
+                                    day: "numeric",
+                                  })
                                   : "N/A"}
                               </p>
                             </div>
@@ -338,11 +338,14 @@ const MyOrdersPage = () => {
                         {order?.items?.slice(0, 3).map((item, itemIndex) => (
                           <div key={itemIndex} className="relative group/image">
                             <img
-                              src={
-                                item?.product?.images?.[0]?.url ||
-                                item?.image ||
-                                `https://placehold.co/64x64/f3f4f6/9ca3af?text=${encodeURIComponent(item?.name?.charAt(0) || "P")}`
-                              }
+                              src={`https://placehold.co/64x64/f3f4f6/9ca3af?text=${(() => {
+                                try {
+                                  const firstChar = item?.name?.charAt(0) || "P";
+                                  return encodeURIComponent(firstChar);
+                                } catch (e) {
+                                  return "P";
+                                }
+                              })()}`}
                               alt={item?.name || "Product"}
                               className="h-16 w-16 rounded-xl border-2 border-gray-100 object-cover bg-gray-50 shadow-md transition-all duration-300 group-hover/image:scale-105 group-hover/image:shadow-lg"
                               loading="lazy"
@@ -448,9 +451,9 @@ const MyOrdersPage = () => {
                         )}
                         {/* ✅ Download Invoice Button - Using the same component as OrderDetailsPage */}
                         {canDownloadInvoice(order) && (
-                          <InvoiceDownloadButton 
-                            order={order} 
-                            variant="button" 
+                          <InvoiceDownloadButton
+                            order={order}
+                            variant="button"
                             className=" items-center gap-1.5 px-4 py-2 rounded-xl border-2 border-emerald-200 bg-white text-emerald-600 font-semibold text-sm hover:bg-emerald-50 hover:border-emerald-300 transition-all duration-300"
                           />
                         )}
@@ -493,11 +496,10 @@ const MyOrdersPage = () => {
                     <button
                       key={pageNum}
                       onClick={() => handlePageChange(pageNum)}
-                      className={`min-w-[40px] px-3 py-2 rounded-xl font-semibold text-sm transition-all duration-300 ${
-                        pageNum === currentPage
+                      className={`min-w-[40px] px-3 py-2 rounded-xl font-semibold text-sm transition-all duration-300 ${pageNum === currentPage
                           ? "bg-gradient-to-r from-red-600 to-red-500 text-white shadow-lg scale-105"
                           : "border-2 border-gray-200 bg-white text-gray-600 hover:border-red-300 hover:bg-red-50 hover:text-red-600"
-                      }`}
+                        }`}
                     >
                       {pageNum}
                     </button>

@@ -1234,75 +1234,171 @@ const getPublicOrder = async (req, res) => {
 
 const cancelOrder = async (req, res) => {
   try {
+    console.log('='.repeat(60));
+    console.log('🟢 CANCEL ORDER FUNCTION STARTED');
+    console.log('='.repeat(60));
+    console.log('📌 Order ID:', req.params.orderId);
+    console.log('📌 User ID:', req.user.userId);
+    console.log('📌 Cancel Reason:', req.body.reason);
+    
     const { orderId } = req.params;
     const { reason } = req.body;
     const userId = req.user.userId;
 
+    console.log('🔍 Step 1: Finding order in database...');
     const order = await Order.findOne({ _id: orderId, user: userId });
+    
     if (!order) {
+      console.log('❌ Order not found for ID:', orderId);
       return res.status(404).json({ success: false, message: "Order not found" });
     }
+    
+    console.log('✅ Order found:', {
+      orderNumber: order.orderNumber,
+      currentStatus: order.status,
+      shippingStatus: order.shippingStatus,
+      paymentMethod: order.paymentInfo?.method,
+      paymentStatus: order.paymentInfo?.status,
+      totalAmount: order.total,
+      shipmozoOrderId: order.shipmozoDetails?.orderId,
+      shipmozoStatus: order.shipmozoDetails?.status
+    });
 
     const status = String(order.status || "").toUpperCase();
     const cancellable = ["PLACED", "CONFIRMED", "PROCESSING"];
     const terminal = ["SHIPPED", "OUT_FOR_DELIVERY", "DELIVERED", "CANCELLED", "RETURNED"];
 
+    console.log('🔍 Step 2: Checking if order can be cancelled...');
+    console.log('   Current Status:', status);
+    console.log('   Cancellable Statuses:', cancellable);
+    console.log('   Terminal Statuses:', terminal);
+
     if (terminal.includes(status)) {
+      console.log('❌ Order cannot be cancelled - Terminal status:', status);
       return res.status(400).json({ success: false, message: "Order cannot be cancelled after shipping/delivery" });
     }
+    
     if (!cancellable.includes(status)) {
+      console.log('❌ Order cannot be cancelled - Not in cancellable status:', status);
       return res.status(400).json({ success: false, message: "Order cannot be cancelled at this stage" });
     }
+    
+    console.log('✅ Order is eligible for cancellation');
 
-    // Cancel in Shipmozo if AWB exists
-    if (order.shipmozoDetails?.awbNumber && order.shipmozoDetails?.orderId) {
+    // ✅ NEW: Cancel in Shipmozo if orderId exists (even without AWB)
+    if (order.shipmozoDetails?.orderId) {
+      console.log('🔍 Step 3: Cancelling order in Shipmozo...');
+      console.log('   Shipmozo Order ID:', order.shipmozoDetails.orderId);
+      console.log('   Shipmozo Status:', order.shipmozoDetails.status);
+      
       try {
-        await shipmozoService.cancelOrder(order.shipmozoDetails.orderId, order.shipmozoDetails.awbNumber);
-        console.log(`✅ Order cancelled in Shipmozo: ${order.shipmozoDetails.orderId}`);
+        // Try to cancel using cancelOrder API (works for both DRAFT and AWB orders)
+        const cancelResult = await shipmozoService.cancelOrder(
+          order.shipmozoDetails.orderId, 
+          order.shipmozoDetails.awbNumber || null
+        );
+        
+        if (cancelResult.success) {
+          console.log('✅ Order cancelled in Shipmozo successfully');
+          order.shipmozoDetails.status = "CANCELLED";
+        } else {
+          console.log('⚠️ Shipmozo cancel returned:', cancelResult);
+        }
       } catch (cancelError) {
-        console.error("Shipmozo cancel error:", cancelError);
+        console.error('❌ Shipmozo cancel error:', cancelError.message);
+        console.log('⚠️ Continuing with local cancellation...');
       }
+    } else {
+      console.log('ℹ️ No Shipmozo order found, skipping Shipmozo cancellation');
     }
 
     // Refund if prepaid
-    try {
-      const method = order.paymentInfo?.method;
-      const pStatus = order.paymentInfo?.status;
-      if ((method === "RAZORPAY" || method === "PARTIAL_COD") && pStatus === "PAID") {
-        const amountPaise = Math.max(0, Math.round((order.total || 0) * 100));
+    console.log('🔍 Step 4: Checking refund eligibility...');
+    const method = order.paymentInfo?.method;
+    const pStatus = order.paymentInfo?.status;
+    console.log('   Payment Method:', method);
+    console.log('   Payment Status:', pStatus);
+    
+    if ((method === "RAZORPAY" || method === "PARTIAL_COD") && pStatus === "PAID") {
+      console.log('✅ Order is eligible for refund');
+      const amountPaise = Math.max(0, Math.round((order.total || 0) * 100));
+      console.log('   Refund Amount:', order.total);
+      console.log('   Refund Amount in Paise:', amountPaise);
+      
+      try {
+        console.log('   Attempting Razorpay refund...');
         const refund = await razorpay.payments.refund(order.paymentInfo.razorpayPaymentId, {
           amount: amountPaise,
           speed: "optimum",
           notes: { orderNumber: order.orderNumber || String(order._id) },
         });
+        
+        console.log('✅ Refund successful:', {
+          refundId: refund.id,
+          amount: refund.amount / 100,
+          status: refund.status
+        });
+        
         order.paymentInfo.status = "REFUNDED";
         order.paymentInfo.razorpayRefundId = refund?.id;
+      } catch (refundErr) {
+        console.error('❌ Refund error:', refundErr.message);
+        if (refundErr.response) {
+          console.error('   Response status:', refundErr.response.status);
+          console.error('   Response data:', JSON.stringify(refundErr.response.data, null, 2));
+        }
+        order.paymentInfo.refundInitiated = true;
+        order.paymentInfo.refundError = refundErr.message;
       }
-    } catch (refundErr) {
-      console.error("Refund error:", refundErr);
-      order.paymentInfo.refundInitiated = true;
-      order.paymentInfo.refundError = refundErr.message;
+    } else {
+      console.log('ℹ️ Order not eligible for refund (Payment Method:', method, ', Payment Status:', pStatus, ')');
     }
 
+    // Update order status
+    console.log('🔍 Step 5: Updating order status...');
     order.status = "CANCELLED";
     order.shippingStatus = "CANCELLED";
     order.cancelReason = reason || "Cancelled by user";
     order.cancelledAt = new Date();
+    
+    console.log('   New Status:', order.status);
+    console.log('   New Shipping Status:', order.shippingStatus);
+    console.log('   Cancel Reason:', order.cancelReason);
+    
     await order.save();
+    console.log('✅ Order status updated in database');
 
     // Restock items
+    console.log('🔍 Step 6: Restocking items...');
+    let restockCount = 0;
     for (const item of order.items) {
       if (item?.product && item?.quantity) {
+        console.log(`   Restocking product ${item.product} with quantity ${item.quantity}`);
         await Product.findByIdAndUpdate(item.product, { $inc: { stock: item.quantity } });
+        restockCount++;
       }
     }
+    console.log(`✅ Restocked ${restockCount} items`);
 
+    console.log('='.repeat(60));
+    console.log('✅ ORDER CANCELLED SUCCESSFULLY');
+    console.log('='.repeat(60));
+    
     res.json({ success: true, message: "Order cancelled successfully", order });
   } catch (error) {
-    console.error("Cancel order error:", error);
-    res.status(500).json({ success: false, message: "Failed to cancel order" });
+    console.error('='.repeat(60));
+    console.error('❌ CANCEL ORDER ERROR');
+    console.error('='.repeat(60));
+    console.error('Error Message:', error.message);
+    console.error('Error Stack:', error.stack);
+    if (error.response) {
+      console.error('Response Status:', error.response.status);
+      console.error('Response Data:', JSON.stringify(error.response.data, null, 2));
+    }
+    res.status(500).json({ success: false, message: error.message || "Failed to cancel order" });
   }
 };
+
 
 // ===============================
 // Exports

@@ -4,23 +4,41 @@ import { motion, AnimatePresence } from "framer-motion";
 import { 
   ChevronDown, X, Tag, DollarSign, Star, Filter, 
   Sliders, ShoppingBag, Zap, TrendingUp, Award, 
-  Sparkles, Palette, Layers, Clock, Gem, Shield
+  Sparkles, Palette, Layers, Clock, Gem, Shield, FolderTree
 } from "lucide-react";
 
 const ProductFilters = memo(({ filters, categories, onFilterChange, onClearFilters, onClose }) => {
   const [expandedSections, setExpandedSections] = useState({
     categories: true,
+    subcategories: false,
     price: true,
     rating: true,
   });
   const [selectedRatings, setSelectedRatings] = useState([]);
   const [priceRangeValue, setPriceRangeValue] = useState({ min: filters.minPrice || 0, max: filters.maxPrice || 10000 });
 
-  // ✅ Initialize selected ratings from filters
+  // Get main categories (parentCategory is null)
+  const mainCategories = categories.filter(cat => !cat.parentCategory);
+  
+  // Get subcategories for selected main category
+  const getSubcategories = () => {
+    if (!filters.category) return [];
+    const selectedMainCat = categories.find(cat => cat.slug === filters.category);
+    if (!selectedMainCat) return [];
+    return categories.filter(cat => 
+      cat.parentCategory && (
+        cat.parentCategory?._id?.toString() === selectedMainCat._id?.toString() ||
+        cat.parentCategory?.toString() === selectedMainCat._id?.toString()
+      )
+    );
+  };
+
+  const subcategories = getSubcategories();
+
+  // Initialize selected ratings from filters
   useEffect(() => {
     if (filters.minRating && filters.minRating !== "") {
       const rating = Number.parseFloat(filters.minRating);
-      // Select all ratings >= the min rating
       const ratingsToSelect = [];
       if (rating <= 4) ratingsToSelect.push(4);
       if (rating <= 3) ratingsToSelect.push(3);
@@ -39,6 +57,15 @@ const ProductFilters = memo(({ filters, categories, onFilterChange, onClearFilte
     });
   }, [filters.minPrice, filters.maxPrice]);
 
+  // Auto expand subcategories when a main category is selected
+  useEffect(() => {
+    if (filters.category && subcategories.length > 0) {
+      setExpandedSections(prev => ({ ...prev, subcategories: true }));
+    } else {
+      setExpandedSections(prev => ({ ...prev, subcategories: false }));
+    }
+  }, [filters.category, subcategories.length]);
+
   const toggleSection = (section) => {
     setExpandedSections((prev) => ({ ...prev, [section]: !prev[section] }));
   };
@@ -54,12 +81,10 @@ const ProductFilters = memo(({ filters, categories, onFilterChange, onClearFilte
     });
   };
 
-  // ✅ UNCOMMENTED AND FIXED: Rating change handler
   const handleRatingChange = (rating) => {
     let newRatings;
     const currentMinRating = filters.minRating ? parseFloat(filters.minRating) : null;
     
-    // If the clicked rating is already the active one, clear it
     if (currentMinRating === rating) {
       newRatings = [];
       setSelectedRatings(newRatings);
@@ -70,7 +95,6 @@ const ProductFilters = memo(({ filters, categories, onFilterChange, onClearFilte
       return;
     }
     
-    // Otherwise, set the new rating
     newRatings = [];
     for (let i = rating; i <= 4; i++) {
       newRatings.push(i);
@@ -78,7 +102,6 @@ const ProductFilters = memo(({ filters, categories, onFilterChange, onClearFilte
     
     setSelectedRatings(newRatings);
     
-    // Send the minRating to parent
     onFilterChange({
       ...filters,
       minRating: rating.toString(),
@@ -91,11 +114,14 @@ const ProductFilters = memo(({ filters, categories, onFilterChange, onClearFilte
     if (onClearFilters) onClearFilters();
   };
 
-  // ✅ Fixed active filters count
   const activeFiltersCount = () => {
     let count = 0;
     
     if (filters.category && filters.category !== "" && filters.category !== null && filters.category !== undefined) {
+      count++;
+    }
+    
+    if (filters.subcategory && filters.subcategory !== "" && filters.subcategory !== null && filters.subcategory !== undefined) {
       count++;
     }
     
@@ -141,21 +167,33 @@ const ProductFilters = memo(({ filters, categories, onFilterChange, onClearFilte
     return <Tag className="w-3.5 h-3.5" />;
   };
 
-  // ✅ Helper to check if rating is selected
   const isRatingSelected = (rating) => {
     if (!filters.minRating || filters.minRating === "") return false;
     const minRating = parseFloat(filters.minRating);
     return rating === minRating;
   };
 
+  // Handle category select (clears subcategory when main category changes)
+  const handleCategoryChange = (categorySlug) => {
+    onFilterChange({ 
+      category: categorySlug,
+      subcategory: ""  // Clear subcategory when main category changes
+    });
+  };
+
+  // Handle subcategory select
+  const handleSubcategoryChange = (subcategorySlug) => {
+    onFilterChange({ subcategory: subcategorySlug });
+  };
+
   return (
     <motion.div
       initial={{ opacity: 0, x: -20 }}
       animate={{ opacity: 1, x: 0 }}
-      className="relative bg-white rounded-2xl shadow-xl border border-gray-100 overflow-hidden"
+      className="relative bg-gray-100 rounded-2xl shadow-xl border border-gray-100 overflow-hidden"
     >
       {/* Premium Header */}
-      <div className="px-5 pt-2 pb-4 mb-10 bg-gradient-to-r from-gray-900 to-gray-800">
+      <div className="px-5 pt-2 pb-4 mb-2 bg-gradient-to-r from-gray-900 to-gray-800">
         <div className="absolute top-0 right-0 w-32 h-32 bg-white/5 rounded-full -mr-16 -mt-16 blur-2xl" />
         <div className="absolute bottom-0 left-0 w-24 h-24 bg-white/5 rounded-full -ml-12 -mb-12 blur-2xl" />
         
@@ -199,7 +237,7 @@ const ProductFilters = memo(({ filters, categories, onFilterChange, onClearFilte
       {/* Filter sections */}
       <div className="p-4 space-y-4 max-h-[calc(100vh-200px)] overflow-y-auto custom-scrollbar">
         
-        {/* Categories Section */}
+        {/* Categories Section - Only Main Categories */}
         <div className="bg-white rounded-xl border border-gray-100 shadow-sm overflow-hidden">
           <motion.button
             whileHover={{ backgroundColor: "#F9FAFB" }}
@@ -237,7 +275,7 @@ const ProductFilters = memo(({ filters, categories, onFilterChange, onClearFilte
                         type="radio"
                         name="category"
                         checked={!filters.category || filters.category === ""}
-                        onChange={() => onFilterChange({ category: "" })}
+                        onChange={() => handleCategoryChange("")}
                         className="w-4 h-4 text-red-600 border-gray-300 focus:ring-red-500"
                       />
                       <span className="text-sm text-gray-700 group-hover:text-red-600 transition">All Categories</span>
@@ -245,7 +283,7 @@ const ProductFilters = memo(({ filters, categories, onFilterChange, onClearFilte
                     <span className="text-[11px] text-gray-400 bg-gray-100 px-2 py-1 rounded-full">All</span>
                   </label>
                   
-                  {categories
+                  {mainCategories
                     .filter(cat => {
                       const excludedSlugs = ["anime-t-shirt", "ksauni-tshirts-styles"];
                       return !excludedSlugs.includes(cat.slug);
@@ -260,7 +298,7 @@ const ProductFilters = memo(({ filters, categories, onFilterChange, onClearFilte
                             type="radio"
                             name="category"
                             checked={filters.category === category.slug}
-                            onChange={() => onFilterChange({ category: category.slug })}
+                            onChange={() => handleCategoryChange(category.slug)}
                             className="w-4 h-4 text-red-600 border-gray-300 focus:ring-red-500"
                           />
                           <span className="flex items-center gap-2 text-sm text-gray-700 group-hover:text-red-600 transition">
@@ -278,6 +316,80 @@ const ProductFilters = memo(({ filters, categories, onFilterChange, onClearFilte
             )}
           </AnimatePresence>
         </div>
+
+        {/* Subcategories Section - Only shows when main category is selected */}
+        {filters.category && subcategories.length > 0 && (
+          <div className="bg-white rounded-xl border border-gray-100 shadow-sm overflow-hidden">
+            <motion.button
+              whileHover={{ backgroundColor: "#F9FAFB" }}
+              onClick={() => toggleSection("subcategories")}
+              className="flex items-center justify-between w-full px-4 py-3 text-left transition-colors"
+            >
+              <div className="flex items-center gap-2.5">
+                <div className="p-1.5 bg-purple-50 rounded-lg">
+                  <FolderTree className="w-3.5 h-3.5 text-purple-600" />
+                </div>
+                <h3 className="text-sm font-semibold text-gray-800">Subcategories</h3>
+              </div>
+              <motion.div
+                animate={{ rotate: expandedSections.subcategories ? 180 : 0 }}
+                transition={{ duration: 0.3 }}
+                className="p-1 rounded-full bg-gray-100"
+              >
+                <ChevronDown className="w-3.5 h-3.5 text-gray-500" />
+              </motion.div>
+            </motion.button>
+            
+            <AnimatePresence>
+              {expandedSections.subcategories && (
+                <motion.div
+                  initial={{ height: 0, opacity: 0 }}
+                  animate={{ height: "auto", opacity: 1 }}
+                  exit={{ height: 0, opacity: 0 }}
+                  transition={{ duration: 0.2 }}
+                  className="overflow-hidden"
+                >
+                  <div className="px-4 pb-4 space-y-1.5">
+                    <label className="flex items-center justify-between p-2 rounded-lg cursor-pointer hover:bg-gray-50 transition group">
+                      <div className="flex items-center gap-3">
+                        <input
+                          type="radio"
+                          name="subcategory"
+                          checked={!filters.subcategory || filters.subcategory === ""}
+                          onChange={() => handleSubcategoryChange("")}
+                          className="w-4 h-4 text-purple-600 border-gray-300 focus:ring-purple-500"
+                        />
+                        <span className="text-sm text-gray-700 group-hover:text-purple-600 transition">All Subcategories</span>
+                      </div>
+                    </label>
+                    
+                    {subcategories.map((subcategory) => (
+                      <label
+                        key={subcategory._id}
+                        className="flex items-center justify-between p-2 rounded-lg cursor-pointer hover:bg-gray-50 transition group"
+                      >
+                        <div className="flex items-center gap-3">
+                          <input
+                            type="radio"
+                            name="subcategory"
+                            checked={filters.subcategory === subcategory.slug}
+                            onChange={() => handleSubcategoryChange(subcategory.slug)}
+                            className="w-4 h-4 text-purple-600 border-gray-300 focus:ring-purple-500"
+                          />
+                          <span className="flex items-center gap-2 text-sm text-gray-700 group-hover:text-purple-600 transition pl-5">
+                            {getCategoryIcon(subcategory.name)}
+                            {subcategory.name}
+                          </span>
+                        </div>
+                        
+                      </label>
+                    ))}
+                  </div>
+                </motion.div>
+              )}
+            </AnimatePresence>
+          </div>
+        )}
 
         {/* Price Range Section */}
         <div className="bg-white rounded-xl border border-gray-100 shadow-sm overflow-hidden">
@@ -375,7 +487,68 @@ const ProductFilters = memo(({ filters, categories, onFilterChange, onClearFilte
           </AnimatePresence>
         </div>
 
-        
+        {/* Rating Section */}
+        <div className="bg-white rounded-xl border border-gray-100 shadow-sm overflow-hidden">
+          <motion.button
+            whileHover={{ backgroundColor: "#F9FAFB" }}
+            onClick={() => toggleSection("rating")}
+            className="flex items-center justify-between w-full px-4 py-3 text-left transition-colors"
+          >
+            <div className="flex items-center gap-2.5">
+              <div className="p-1.5 bg-yellow-50 rounded-lg">
+                <Star className="w-3.5 h-3.5 text-yellow-600" />
+              </div>
+              <h3 className="text-sm font-semibold text-gray-800">Customer Ratings</h3>
+            </div>
+            <motion.div
+              animate={{ rotate: expandedSections.rating ? 180 : 0 }}
+              transition={{ duration: 0.3 }}
+              className="p-1 rounded-full bg-gray-100"
+            >
+              <ChevronDown className="w-3.5 h-3.5 text-gray-500" />
+            </motion.div>
+          </motion.button>
+          
+          <AnimatePresence>
+            {expandedSections.rating && (
+              <motion.div
+                initial={{ height: 0, opacity: 0 }}
+                animate={{ height: "auto", opacity: 1 }}
+                exit={{ height: 0, opacity: 0 }}
+                transition={{ duration: 0.2 }}
+                className="overflow-hidden"
+              >
+                <div className="px-4 pb-4 space-y-2">
+                  {[4, 3, 2, 1].map((rating) => (
+                    <label
+                      key={rating}
+                      className="flex items-center gap-3 p-2 rounded-lg cursor-pointer hover:bg-gray-50 transition group"
+                    >
+                      <input
+                        type="radio"
+                        name="rating"
+                        checked={isRatingSelected(rating)}
+                        onChange={() => handleRatingChange(rating)}
+                        className="w-4 h-4 text-yellow-500 border-gray-300 focus:ring-yellow-500"
+                      />
+                      <div className="flex items-center gap-1">
+                        {[...Array(5)].map((_, i) => (
+                          <Star
+                            key={i}
+                            className={`w-4 h-4 ${
+                              i < rating ? "text-yellow-400 fill-current" : "text-gray-300"
+                            }`}
+                          />
+                        ))}
+                        <span className="text-sm text-gray-700 ml-2">& Up</span>
+                      </div>
+                    </label>
+                  ))}
+                </div>
+              </motion.div>
+            )}
+          </AnimatePresence>
+        </div>
 
         {/* Active filters summary */}
         {getActiveCount > 0 && (
@@ -385,7 +558,16 @@ const ProductFilters = memo(({ filters, categories, onFilterChange, onClearFilte
                 <span className="inline-flex items-center gap-1.5 px-2.5 py-1 text-[11px] bg-red-50 text-red-700 rounded-full border border-red-200">
                   <Tag className="w-3 h-3" />
                   {categories.find(c => c.slug === filters.category)?.name || filters.category}
-                  <button onClick={() => onFilterChange({ category: "" })} className="ml-0.5 hover:text-red-900">
+                  <button onClick={() => handleCategoryChange("")} className="ml-0.5 hover:text-red-900">
+                    <X className="w-2.5 h-2.5" />
+                  </button>
+                </span>
+              )}
+              {filters.subcategory && filters.subcategory !== "" && (
+                <span className="inline-flex items-center gap-1.5 px-2.5 py-1 text-[11px] bg-purple-50 text-purple-700 rounded-full border border-purple-200">
+                  <FolderTree className="w-3 h-3" />
+                  {categories.find(c => c.slug === filters.subcategory)?.name || filters.subcategory}
+                  <button onClick={() => handleSubcategoryChange("")} className="ml-0.5 hover:text-purple-900">
                     <X className="w-2.5 h-2.5" />
                   </button>
                 </span>

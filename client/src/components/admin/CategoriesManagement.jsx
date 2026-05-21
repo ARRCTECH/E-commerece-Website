@@ -23,6 +23,7 @@ const CategoriesManagement = ({ products = [] }) => {
   const [showModal, setShowModal] = useState(false)
   const [editingCategory, setEditingCategory] = useState(null)
   const [searchTerm, setSearchTerm] = useState("")
+  const [filterType, setFilterType] = useState("all")
   const [formData, setFormData] = useState({
     name: "",
     description: "",
@@ -130,9 +131,28 @@ const CategoriesManagement = ({ products = [] }) => {
     }
   }
 
-  const filteredCategories = categories.filter((category) =>
-    category.name.toLowerCase().includes(searchTerm.toLowerCase()),
-  )
+  // Filter categories based on search term and filter type
+  const getFilteredCategories = () => {
+    let filtered = [...categories]
+    
+    // Search filter
+    if (searchTerm) {
+      filtered = filtered.filter((category) =>
+        category.name.toLowerCase().includes(searchTerm.toLowerCase()),
+      )
+    }
+    
+    // Type filter
+    if (filterType === "main") {
+      filtered = filtered.filter((category) => !category.parentCategory)
+    } else if (filterType === "sub") {
+      filtered = filtered.filter((category) => category.parentCategory)
+    }
+    
+    return filtered
+  }
+
+  const filteredCategories = getFilteredCategories()
 
   const parentCategories = categories.filter((category) => !category.parentCategory)
 
@@ -193,6 +213,11 @@ const CategoriesManagement = ({ products = [] }) => {
     return rangeWithDots
   }
 
+  // Reset page when search or filter changes
+  useEffect(() => {
+    setCurrentPage(1)
+  }, [searchTerm, filterType])
+
   return (
     <div className="min-h-screen bg-gradient-to-br from-rose-50/40 via-white to-red-50/30 p-3 sm:p-5 lg:p-8 space-y-5">
       {/* Header */}
@@ -230,9 +255,11 @@ const CategoriesManagement = ({ products = [] }) => {
             <div className="relative">
               <FolderTree className="absolute w-4 h-4 text-gray-400 -translate-y-1/2 left-3 top-1/2 pointer-events-none" />
               <select
+                value={filterType}
+                onChange={(e) => setFilterType(e.target.value)}
                 className="pl-10 pr-8 py-2.5 text-sm bg-gray-50 border border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-red-500/30 focus:border-red-500 appearance-none cursor-pointer"
               >
-                <option value="">All Categories</option>
+                <option value="all">All Categories</option>
                 <option value="main">Main Categories</option>
                 <option value="sub">Subcategories</option>
               </select>
@@ -325,7 +352,7 @@ const CategoriesManagement = ({ products = [] }) => {
                 <th className="px-6 py-4 text-xs font-bold text-left text-gray-700 uppercase tracking-wider">Homepage</th>
                 <th className="px-6 py-4 text-xs font-bold text-left text-gray-700 uppercase tracking-wider">Sort Order</th>
                 <th className="px-6 py-4 text-xs font-bold text-right text-gray-700 uppercase tracking-wider">Actions</th>
-               </tr>
+              </tr>
             </thead>
             <tbody className="divide-y divide-gray-100">
               {isLoading ? (

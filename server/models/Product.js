@@ -48,7 +48,8 @@ const productSchema = new mongoose.Schema(
       required: true,
     },
     subcategory: {
-      type: String,
+      type: mongoose.Schema.Types.ObjectId,
+      ref: "Category",  
     },
     sizes: [
       {
@@ -71,7 +72,7 @@ const productSchema = new mongoose.Schema(
         images: [String],
       },
     ],
-    
+
     // ========== 🆕 BULK PRODUCT FIELDS ==========
     isBulkProduct: {
       type: Boolean,
@@ -104,7 +105,7 @@ const productSchema = new mongoose.Schema(
       },
     },
     // ========== BULK FIELDS END ==========
-    
+
     tags: [
       {
         type: String,
@@ -201,20 +202,20 @@ const productSchema = new mongoose.Schema(
 
 // ========== VIRTUAL FIELDS ==========
 
-productSchema.virtual("piecesPerSet").get(function() {
+productSchema.virtual("piecesPerSet").get(function () {
   if (!this.isBulkProduct) return 0;
   return (this.sizes?.length || 0) * (this.bulkConfig?.piecesPerSize || 1);
 });
 
-productSchema.virtual("isBulk").get(function() {
+productSchema.virtual("isBulk").get(function () {
   return this.isBulkProduct === true;
 });
 
-productSchema.virtual("totalColors").get(function() {
+productSchema.virtual("totalColors").get(function () {
   return this.colors?.length || 0;
 });
 
-productSchema.virtual("totalSizes").get(function() {
+productSchema.virtual("totalSizes").get(function () {
   return this.sizes?.length || 0;
 });
 
@@ -232,7 +233,7 @@ productSchema.pre("save", async function (next) {
 
     const isNameModified = this.isModified("name");
     let actualNameChange = false;
-    
+
     if (!this.isNew && isNameModified) {
       const currentDoc = await this.constructor.findById(this._id).select("name");
       if (currentDoc) {
@@ -320,25 +321,25 @@ productSchema.index({ name: "text", description: "text" });
 
 // ========== INSTANCE METHODS ==========
 
-productSchema.methods.isInStock = function(quantity = 1) {
+productSchema.methods.isInStock = function (quantity = 1) {
   return this.stock >= quantity;
 };
 
-productSchema.methods.decreaseStock = async function(quantity) {
+productSchema.methods.decreaseStock = async function (quantity) {
   this.stock -= quantity;
   this.totalSold = (this.totalSold || 0) + quantity;
   await this.save();
   return this;
 };
 
-productSchema.methods.increaseStock = async function(quantity) {
+productSchema.methods.increaseStock = async function (quantity) {
   this.stock += quantity;
   await this.save();
   return this;
 };
 
 // Calculate bulk price (for bulk products)
-productSchema.methods.calculateBulkPrice = function(selectedColorCount, sets = 1) {
+productSchema.methods.calculateBulkPrice = function (selectedColorCount, sets = 1) {
   if (!this.isBulkProduct) {
     return {
       totalPrice: this.price * sets,
@@ -364,34 +365,34 @@ productSchema.methods.calculateBulkPrice = function(selectedColorCount, sets = 1
 };
 
 // Get available colors (in stock)
-productSchema.methods.getAvailableColors = function() {
+productSchema.methods.getAvailableColors = function () {
   return this.colors.filter(color => color.inStock !== false);
 };
 
 // ========== STATIC METHODS ==========
 
-productSchema.statics.getActiveProducts = async function(filters = {}) {
+productSchema.statics.getActiveProducts = async function (filters = {}) {
   const query = { isActive: true, ...filters };
   return this.find(query)
     .populate("category", "name slug")
     .sort({ createdAt: -1 });
 };
 
-productSchema.statics.getBulkProducts = async function(filters = {}) {
+productSchema.statics.getBulkProducts = async function (filters = {}) {
   const query = { isActive: true, isBulkProduct: true, ...filters };
   return this.find(query)
     .populate("category", "name slug")
     .sort({ createdAt: -1 });
 };
 
-productSchema.statics.getRegularProducts = async function(filters = {}) {
+productSchema.statics.getRegularProducts = async function (filters = {}) {
   const query = { isActive: true, isBulkProduct: false, ...filters };
   return this.find(query)
     .populate("category", "name slug")
     .sort({ createdAt: -1 });
 };
 
-productSchema.statics.searchProducts = async function(searchTerm) {
+productSchema.statics.searchProducts = async function (searchTerm) {
   return this.find(
     { $text: { $search: searchTerm }, isActive: true },
     { score: { $meta: "textScore" } }
