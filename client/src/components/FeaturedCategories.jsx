@@ -17,10 +17,11 @@ const FeaturedCategories = () => {
 
   if (isLoading) return <LoadingSpinner />;
 
-  const featured =
-    categories?.filter((c) => c.showOnHomepage)?.slice(0, 8) || [];
+  // Filter only parent categories (parentCategory is null) and showOnHomepage is true
+  const allFeatured = categories?.filter((c) => c.showOnHomepage && !c.parentCategory) || [];
+  const featured = allFeatured.slice(0, 8);
 
-  // mobile 2 cards per page (changed from 4 to 2 for bigger cards)
+  // mobile 2 cards per page
   const chunkedCategories = [];
   for (let i = 0; i < featured.length; i += 2) {
     chunkedCategories.push(featured.slice(i, i + 2));
@@ -66,7 +67,7 @@ const FeaturedCategories = () => {
             </Link>
           </div>
 
-          {/* Mobile horizontal slider - 2 cards per page with increased height */}
+          {/* Mobile horizontal slider - 2 cards per page */}
           <div className="sm:hidden overflow-x-auto snap-x snap-mandatory scrollbar-hide pb-4">
             <div className="flex gap-4 px-1">
               {chunkedCategories.map((group, pageIndex) => (
@@ -102,8 +103,6 @@ const CategoryCard = ({ category, index }) => (
   <Link to={`/products?category=${category.slug}`} className="group block">
     <div className="relative overflow-hidden rounded-2xl bg-neutral-100 transition-all duration-500 hover:shadow-xl group-hover:-translate-y-1">
       <div className="relative w-full aspect-[2/3] sm:aspect-[3/4] md:aspect-[2/3] overflow-hidden">
-        {/* Increased height: aspect-[2/3] is taller than [3/4] */}
-
         <img
           src={
             category.image?.url ||
@@ -113,10 +112,8 @@ const CategoryCard = ({ category, index }) => (
           className="object-cover object-center w-full h-full transition-transform duration-700 group-hover:scale-105"
         />
 
-        {/* Gradient Overlay - darker for better text visibility */}
         <div className="absolute inset-0 bg-gradient-to-t from-black/90 via-black/40 to-transparent" />
 
-        {/* Top left number */}
         <div className="absolute top-4 left-4 flex items-center gap-2 z-10">
           <span className="text-white/50 text-xs font-light tabular-nums">
             {String(index + 1).padStart(2, "0")}
@@ -124,7 +121,6 @@ const CategoryCard = ({ category, index }) => (
           <span className="h-px w-5 bg-white/40" />
         </div>
 
-        {/* Bottom content - improved spacing */}
         <div className="absolute inset-x-0 bottom-0 p-4 sm:p-5 z-10">
           <p className="text-[9px] sm:text-[10px] tracking-[0.35em] uppercase text-white/70 font-light mb-2 sm:mb-3">
             Explore

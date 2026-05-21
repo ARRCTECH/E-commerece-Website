@@ -54,10 +54,11 @@ const ProductsPage = () => {
     { value: "rating", label: "Highest Rated" },
   ]
 
-  // ✅ Count active filters
+  // Count active filters
   const activeFiltersCount = useMemo(() => {
     let count = 0
     if (filters.category && filters.category !== "") count++
+    if (filters.subcategory && filters.subcategory !== "") count++
     if (filters.search && filters.search !== "") count++
     if (filters.minPrice && filters.minPrice !== "") count++
     if (filters.maxPrice && filters.maxPrice !== "") count++
@@ -69,15 +70,16 @@ const ProductsPage = () => {
     return count
   }, [filters])
 
-  // ✅ Fetch categories once
+  // Fetch categories once
   useEffect(() => {
     dispatch(fetchCategories())
   }, [dispatch])
 
-  // ✅ Initialize filters from URL on mount
+  // Initialize filters from URL on mount
   useEffect(() => {
     const urlFilters = {
       category: searchParams.get("category") || categorySlug || "",
+      subcategory: searchParams.get("subcategory") || "",
       search: searchParams.get("search") || "",
       minPrice: searchParams.get("minPrice") || "",
       maxPrice: searchParams.get("maxPrice") || "",
@@ -110,7 +112,7 @@ const ProductsPage = () => {
     setIsFilterInitialized(true)
   }, [dispatch, categorySlug, searchParams])
 
-  // ✅ Sync categorySlug → URL and Redux
+  // Sync categorySlug → URL and Redux
   useEffect(() => {
     if (categorySlug && isFilterInitialized) {
       const newParams = new URLSearchParams(searchParams)
@@ -127,12 +129,13 @@ const ProductsPage = () => {
     }
   }, [categorySlug, dispatch, filters, isFilterInitialized, searchParams, setSearchParams])
 
-  // ✅ Fetch products when filters change
+  // Fetch products when filters change
   useEffect(() => {
     if (isFilterInitialized) {
       const queryParams = {}
       
       if (filters.category && filters.category !== "") queryParams.category = filters.category
+      if (filters.subcategory && filters.subcategory !== "") queryParams.subcategory = filters.subcategory
       if (filters.search && filters.search !== "") queryParams.search = filters.search
       if (filters.minPrice && filters.minPrice !== "") queryParams.minPrice = filters.minPrice
       if (filters.maxPrice && filters.maxPrice !== "") queryParams.maxPrice = filters.maxPrice
@@ -147,7 +150,7 @@ const ProductsPage = () => {
     }
   }, [dispatch, filters, isFilterInitialized, sortBy])
 
-  // ✅ Add to cart
+  // Add to cart
   const handleAddToCart = useCallback(
     async (product, e) => {
       e.preventDefault()
@@ -176,7 +179,7 @@ const ProductsPage = () => {
     [dispatch],
   )
 
-  // ✅ Wishlist handler
+  // Wishlist handler
   const handleWishlist = useCallback(
     async (product, e) => {
       e.preventDefault()
@@ -196,7 +199,7 @@ const ProductsPage = () => {
     [dispatch, wishlistItems],
   )
 
-  // ✅ Handle filter change
+  // Handle filter change
   const handleFilterChange = useCallback(
     (newFilters) => {
       const mergedFilters = { ...filters, ...newFilters }
@@ -206,6 +209,8 @@ const ProductsPage = () => {
       
       if (mergedFilters.category && mergedFilters.category !== "") 
         newParams.set("category", mergedFilters.category)
+      if (mergedFilters.subcategory && mergedFilters.subcategory !== "") 
+        newParams.set("subcategory", mergedFilters.subcategory)
       if (mergedFilters.search && mergedFilters.search !== "") 
         newParams.set("search", mergedFilters.search)
       if (mergedFilters.minPrice && mergedFilters.minPrice !== "") 
@@ -232,10 +237,11 @@ const ProductsPage = () => {
     [dispatch, filters, setSearchParams],
   )
 
-  // ✅ Clear all filters
+  // Clear all filters
   const clearAllFilters = useCallback(() => {
     const emptyFilters = {
       category: "",
+      subcategory: "",
       search: "",
       minPrice: "",
       maxPrice: "",
@@ -254,15 +260,16 @@ const ProductsPage = () => {
   const currentSortLabel = sortOptions.find(opt => opt.value === sortBy)?.label || "Sort by"
 
   return (
-    <div className="min-h-screen bg-gray-50">
-      {/* Mobile Header - Filter and Sort Bar */}
-      <div className="sticky top-0 z-30 bg-white border-b border-gray-200 shadow-sm">
-        <div className="px-3 py-2 sm:px-4">
+    <div className="min-h-screen bg-gray-50 mt-10 ">
+      {/* Mobile Header - Filter and Sort Bar (only visible on mobile) */}
+      <div className="sticky top-0 z-30 bg-white border-b border-gray-200 shadow-sm md:hidden">
+        <div className="px-3 py-2">
           <div className="flex items-center justify-between gap-2">
             {/* Filter Button */}
             <button
               onClick={() => setShowFilters(true)}
-              className="flex items-center justify-center gap-1.5 px-3 py-2 text-sm font-medium text-gray-700 bg-gray-100 rounded-lg active:bg-gray-200 transition-colors flex-1 sm:flex-none"
+              className="flex items-center justify-center gap-1.5 px-3 py-2 text-sm font-medium text-gray-700 bg-gray-100 rounded-lg active:bg-gray-200 transition-colors flex-1"
+              style={{ height: '40px' }}
             >
               <SlidersHorizontal className="w-4 h-4" />
               <span>Filters</span>
@@ -274,10 +281,11 @@ const ProductsPage = () => {
             </button>
             
             {/* Sort Button */}
-            <div className="relative flex-1 sm:flex-none">
+            <div className="relative flex-1">
               <button
                 onClick={() => setShowSortMenu(!showSortMenu)}
                 className="flex items-center justify-center gap-1.5 w-full px-3 py-2 text-sm font-medium text-gray-700 bg-gray-100 rounded-lg active:bg-gray-200 transition-colors"
+                style={{ height: '40px' }}
               >
                 <span>Sort: {currentSortLabel}</span>
                 <ChevronDown className={`w-4 h-4 transition-transform ${showSortMenu ? 'rotate-180' : ''}`} />
@@ -316,6 +324,7 @@ const ProductsPage = () => {
               <button
                 onClick={clearAllFilters}
                 className="px-3 py-2 text-sm text-red-500 whitespace-nowrap active:text-red-600"
+                style={{ height: '40px' }}
               >
                 Clear All
               </button>
@@ -329,6 +338,14 @@ const ProductsPage = () => {
                 <span className="inline-flex items-center gap-1 px-2 py-1 text-xs bg-red-50 text-red-600 rounded-full whitespace-nowrap">
                   {categories.find(c => c.slug === filters.category)?.name || filters.category}
                   <button onClick={() => handleFilterChange({ category: "" })} className="hover:text-red-800">
+                    <X className="w-3 h-3" />
+                  </button>
+                </span>
+              )}
+              {filters.subcategory && filters.subcategory !== "" && (
+                <span className="inline-flex items-center gap-1 px-2 py-1 text-xs bg-purple-50 text-purple-600 rounded-full whitespace-nowrap">
+                  Sub: {categories.find(c => c.slug === filters.subcategory)?.name || filters.subcategory}
+                  <button onClick={() => handleFilterChange({ subcategory: "" })} className="hover:text-red-800">
                     <X className="w-3 h-3" />
                   </button>
                 </span>
@@ -354,10 +371,10 @@ const ProductsPage = () => {
         </div>
       </div>
 
-      <div className="px-3 py-3 mx-auto max-w-7xl sm:px-4 sm:py-4 md:py-6">
+      <div className="">
         <div className="flex flex-col gap-4 md:flex-row md:gap-6">
           
-          {/* Desktop Sidebar - Hidden on mobile */}
+          {/* Desktop Sidebar - Always visible on desktop */}
           <aside className="hidden md:block md:w-64 lg:w-72 flex-shrink-0">
             <div className="sticky top-24">
               <ProductFilters
@@ -373,7 +390,7 @@ const ProductsPage = () => {
           {/* Main Content */}
           <main className="flex-1">
             {/* Results Count - Desktop */}
-            <div className="hidden md:flex mb-4 items-center justify-between">
+            <div className="hidden md:flex mb-1 items-center justify-between">
               <p className="text-sm text-gray-500">
                 Showing <span className="font-semibold text-gray-700">{products.length}</span> products
                 {activeFiltersCount > 0 && (
@@ -462,7 +479,7 @@ const ProductsPage = () => {
                 </div>
                 
                 {/* Product Grid - Responsive */}
-                <div className="grid grid-cols-2 gap-2 sm:gap-3 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-3">
+                <div className="grid grid-cols-2 gap-3 sm:gap-4 md:grid-cols-2 lg:grid-cols-4 xl:grid-cols-4">
                   <AnimatePresence>
                     {products.map((product) => (
                       <ProductCard

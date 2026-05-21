@@ -1,7 +1,7 @@
 const Product = require("../models/Product");
 const Category = require("../models/Category");
 const Counter = require('../models/Counter');
-const { uploadToCloudinary, uploadToCloudinaryVideo,deleteFromCloudinary} = require("../utils/cloudinary");
+const { uploadToCloudinary, uploadToCloudinaryVideo, deleteFromCloudinary } = require("../utils/cloudinary");
 const mongoose = require("mongoose");
 
 
@@ -133,13 +133,11 @@ const prepareUpdateData = (updateData, existingProduct) => {
   return cleanedData;
 };
 
-// ===============================
-// Get all products with filters (Regular + Bulk both)
-// ===============================
 const getProducts = async (req, res) => {
   try {
     const {
       category,
+      subcategory,
       tag,
       minPrice,
       maxPrice,
@@ -150,33 +148,70 @@ const getProducts = async (req, res) => {
       sizes,
       colors,
       rating,
-      type, // 🆕 'bulk', 'regular', or 'all'
+      type,
     } = req.query;
 
     const query = { isActive: true };
 
-    // 🆕 Filter by product type
     if (type === 'bulk') {
       query.isBulkProduct = true;
     } else if (type === 'regular') {
       query.isBulkProduct = false;
     }
 
-    if (category) {
+    if (subcategory) {
+      let subcategoryId = subcategory;
+      if (!mongoose.Types.ObjectId.isValid(subcategory)) {
+        const subCatDoc = await Category.findOne({ 
+          slug: subcategory, 
+          isActive: true 
+        }).select("_id parentCategory");
+        
+        if (!subCatDoc) {
+          return res.status(404).json({ success: false, message: "Subcategory not found" });
+        }
+        subcategoryId = subCatDoc._id;
+      }
+      query.subcategory = subcategoryId;
+      
+    } else if (category) {
       let categoryId = category;
       if (!mongoose.Types.ObjectId.isValid(category)) {
-        const catDoc = await Category.findOne({ slug: category, isActive: true }).select("_id");
+        const catDoc = await Category.findOne({ slug: category, isActive: true })
+          .select("_id parentCategory");
+          
         if (!catDoc) {
           return res.status(404).json({ success: false, message: "Category not found" });
         }
         categoryId = catDoc._id;
+        
+        if (!catDoc.parentCategory) {
+          const subCategories = await Category.find({ 
+            parentCategory: categoryId, 
+            isActive: true 
+          }).select("_id");
+          const allCategoryIds = [categoryId, ...subCategories.map(sub => sub._id)];
+          query.category = { $in: allCategoryIds };
+        } else {
+          query.category = categoryId;
+        }
+      } else {
+        const catDoc = await Category.findById(categoryId).select("parentCategory");
+        if (catDoc && !catDoc.parentCategory) {
+          const subCategories = await Category.find({ 
+            parentCategory: categoryId, 
+            isActive: true 
+          }).select("_id");
+          const allCategoryIds = [categoryId, ...subCategories.map(sub => sub._id)];
+          query.category = { $in: allCategoryIds };
+        } else {
+          query.category = categoryId;
+        }
       }
-      query.category = categoryId;
     }
 
     if (tag) query.tags = { $in: [tag] };
 
-    // 🆕 Price filter - handle regular and bulk differently
     if (minPrice || maxPrice) {
       if (type === 'bulk') {
         query["bulkConfig.pricePerSet"] = {};
@@ -218,6 +253,7 @@ const getProducts = async (req, res) => {
     const [products, total] = await Promise.all([
       Product.find(query)
         .populate("category", "name slug")
+        .populate("subcategory", "name slug")
         .sort(sortOption)
         .skip((page - 1) * limit)
         .limit(Number(limit)),
@@ -426,8 +462,8 @@ const createProduct = async (req, res) => {
       productDetails,
       material,
       fits,
-      isBulkProduct,      // 🆕
-      bulkConfig,      // 🆕
+      isBulkProduct,
+      bulkConfig,
     } = req.body;
 
     const getNextSequence = async (seqName) => {
@@ -453,20 +489,17 @@ const createProduct = async (req, res) => {
       });
     }
 
-    // Images
     const images = [];
-    if (req.files['images'] && req.files['images'].length) {
+    if (req.files && req.files['images'] && req.files['images'].length) {
       for (const file of req.files['images']) {
         const result = await uploadToCloudinary(file.buffer, "productsimage");
-        images.push({ url: result.secure_url }); // use actual product name
+        images.push({ url: result.secure_url });
       }
     }
 
-    // Videos
     const videos = [];
-    if (req.files['videos'] && req.files['videos'].length) {
+    if (req.files && req.files['videos'] && req.files['videos'].length) {
       for (const file of req.files['videos']) {
-        // Use a separate function that trims first 30 seconds
         const result = await uploadToCloudinaryVideo(file.buffer, "productsvideo");
         videos.push({ url: result.secure_url });
       }
@@ -481,7 +514,7 @@ const createProduct = async (req, res) => {
       images,
       videos,
       category,
-      subcategory: subcategory ? subcategory.trim() : "",
+      subcategory: subcategory || null,
       sizes: sizesWithIds,
       colors: parseJson(colors, []),
       tags: parseJson(tags, []),
@@ -494,7 +527,6 @@ const createProduct = async (req, res) => {
       fits: fits || "regular",
     };
 
-    // 🆕 Add bulk fields if product is bulk
     if (isBulk) {
       productData.isBulkProduct = true;
       productData.bulkConfig = {
@@ -765,12 +797,10 @@ const deleteProduct = async (req, res) => {
   }
 };
 
-
 // ===============================
 // Add product review
 // ===============================
 const addReview = async (req, res) => {
-  // Existing code - unchanged
   try {
     const { id } = req.params;
     const { rating, comment } = req.body;
@@ -826,7 +856,6 @@ const getSearchedProducts = async (req, res) => {
       return res.status(400).json({ success: false, message: "Query string is required" });
     }
 
-    // Create a case‑insensitive regex from the search term
     const searchRegex = new RegExp(q.trim(), "i");
 
     const products = await Product.find({
@@ -848,7 +877,6 @@ const getSearchedProducts = async (req, res) => {
 // Get products by category ID
 // ===============================
 const getProductsByCategory = async (req, res) => {
-  // Existing code - works for both regular and bulk
   try {
     const { categoryId } = req.params;
     const {
@@ -918,8 +946,12 @@ const getProductsByCategorySlug = async (req, res) => {
     const cat = await Category.findOne({ slug: req.params.slug, isActive: true }).select("_id");
     if (!cat) return res.status(404).json({ success: false, message: "Category not found" });
 
+    const subCategories = await Category.find({ parentCategory: cat._id }).select("_id");
+    const subCategoryIds = subCategories.map(sub => sub._id);
+    const allCategoryIds = [cat._id, ...subCategoryIds];
+
     const products = await Product.find({
-      category: cat._id,
+      category: { $in: allCategoryIds },
       isActive: true
     }).populate("category", "name slug");
 

@@ -15,16 +15,16 @@ const createTransport = () => {
 // Email templates
 const templates = {
   welcome: (data) => ({
-    subject: "Welcome to Fashion Store!",
+    subject: "Welcome toFactory Sale!",
     html: `
       <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto;">
         <div style="background: linear-gradient(135deg, #ec4899, #be185d); padding: 40px; text-align: center;">
-          <h1 style="color: white; margin: 0; font-size: 28px;">Welcome to Fashion Store!</h1>
+          <h1 style="color: white; margin: 0; font-size: 28px;">Welcome toFactory Sale!</h1>
         </div>
         <div style="padding: 40px; background: #f9fafb;">
           <h2 style="color: #1f2937; margin-bottom: 20px;">Hello ${data.name}!</h2>
           <p style="color: #4b5563; line-height: 1.6; margin-bottom: 20px;">
-            Thank you for joining Fashion Store! We're excited to have you as part of our community.
+            Thank you for joiningFactory Sale! We're excited to have you as part of our community.
           </p>
           <p style="color: #4b5563; line-height: 1.6; margin-bottom: 30px;">
             Your account has been created with the email: <strong>${data.email}</strong>
@@ -41,7 +41,7 @@ const templates = {
         </div>
         <div style="background: #1f2937; padding: 20px; text-align: center;">
           <p style="color: #9ca3af; margin: 0; font-size: 14px;">
-            © 2024 Fashion Store. All rights reserved.
+            © 2024Factory Sale. All rights reserved.
           </p>
         </div>
       </div>
@@ -49,7 +49,7 @@ const templates = {
   }),
 
   passwordReset: (data) => ({
-    subject: "Reset Your Password - Fashion Store",
+    subject: "Reset Your Password -Factory Sale",
     html: `
       <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto;">
         <div style="background: linear-gradient(135deg, #ec4899, #be185d); padding: 40px; text-align: center;">
@@ -58,7 +58,7 @@ const templates = {
         <div style="padding: 40px; background: #f9fafb;">
           <h2 style="color: #1f2937; margin-bottom: 20px;">Hello ${data.name}!</h2>
           <p style="color: #4b5563; line-height: 1.6; margin-bottom: 20px;">
-            We received a request to reset your password for your Fashion Store account.
+            We received a request to reset your password for yourFactory Sale account.
           </p>
           <p style="color: #4b5563; line-height: 1.6; margin-bottom: 30px;">
             Click the button below to reset your password. This link will expire in 1 hour.
@@ -75,7 +75,7 @@ const templates = {
         </div>
         <div style="background: #1f2937; padding: 20px; text-align: center;">
           <p style="color: #9ca3af; margin: 0; font-size: 14px;">
-            © 2024 Fashion Store. All rights reserved.
+            © 2024Factory Sale. All rights reserved.
           </p>
         </div>
       </div>
@@ -222,7 +222,7 @@ const templates = {
       <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; background: #ffffff;">
         <div style="background: linear-gradient(135deg, #ec4899, #be185d); padding: 30px; text-align: center;">
           <h1 style="color: white; margin: 0; font-size: 28px;">✅ Order Confirmed!</h1>
-          <p style="color: white; margin: 10px 0 0 0; opacity: 0.9; font-size: 16px;">Thank you for shopping with Fashion Store</p>
+          <p style="color: white; margin: 10px 0 0 0; opacity: 0.9; font-size: 16px;">Thank you for shopping withFactory Sale</p>
         </div>
         <div style="padding: 30px; background: #f9fafb;">
           <h2 style="color: #1f2937; margin-bottom: 20px;">Hello ${data.customerName || "Valued Customer"}!</h2>
@@ -302,8 +302,8 @@ const templates = {
           <div style="background: #fefce8; padding: 20px; border-radius: 8px; border-left: 4px solid #eab308; margin: 25px 0;">
             <p style="margin: 0; color: #92400e; font-size: 14px;">
               <strong>Need Help?</strong> Contact our customer support team at 
-              <a href="mailto:support@fashionstore.com" style="color: #92400e; text-decoration: underline;">support@fashionstore.com</a>
-              or call us at <strong>+91-XXXXXXXXXX</strong>
+              <a href="mailto:factorysaleusadata@gmail.com" style="color: #92400e; text-decoration: underline;">factorysaleusadata@gmail.com</a>
+              or call us at <strong>+91 8830155383</strong>
             </p>
           </div>
           <p style="color: #6b7280; font-size: 16px; text-align: center; margin-top: 30px;">
@@ -312,7 +312,7 @@ const templates = {
         </div>
         <div style="background: #1f2937; padding: 25px; text-align: center;">
           <p style="color: #9ca3af; margin: 0 0 10px 0; font-size: 14px;">
-            © 2024 Fashion Store. All rights reserved.
+            © 2024Factory Sale. All rights reserved.
           </p>
           <p style="color: #6b7280; margin: 0; font-size: 12px;">
             You received this email because you placed an order with us. If you have any questions, please contact support.

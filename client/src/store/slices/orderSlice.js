@@ -114,6 +114,7 @@ export const cancelOrder = createAsyncThunk(
   async ({ orderId, reason }, { rejectWithValue }) => {
     try {
       const response = await orderAPI.cancelOrder(orderId, reason);
+      console.log("cancel order res",response.data);
       return response.data;
     } catch (error) {
       return rejectWithValue(error.response?.data?.message || "Failed to cancel order");
