@@ -93,8 +93,6 @@ const Footer = () => {
 
       <div className="relative mx-auto max-w-7xl px-4 sm:px-6 lg:px-8 pt-12 pb-8">
 
-
-
         {/* ============ Main Grid ============ */}
         <div className="grid gap-10 lg:grid-cols-12">
           {/* Brand Section */}
@@ -125,7 +123,6 @@ const Footer = () => {
                 {[
                   { Icon: Facebook, href: "https://www.facebook.com/profile.php?id=61568941858515&mibextid=ZbWKwL", label: "Facebook" },
                   { Icon: Instagram, href: "https://www.instagram.com/factorysaleusa?utm_source=qr&igsh=Nm9uNnFjdjhqNnBm", label: "Instagram" },
-                  
                   { Icon: Youtube, href: "https://youtube.com/@factorysale-r5n?si=_4Kz0Y4c_xY_mQeu", label: "YouTube" },
                 ].map(({ Icon, href, label }) => (
                   <a
@@ -220,7 +217,6 @@ const Footer = () => {
               </ul>
             </div>
 
-
             {/* Quick Links */}
             <div>
               <FooterHeading>Company</FooterHeading>
@@ -269,7 +265,7 @@ const Footer = () => {
           <p className="text-[10px] uppercase tracking-[0.2em] text-neutral-500">
             © {new Date().getFullYear()} Factory Sale · All rights reserved
           </p>
-          <div className="flex items-center gap-4 text-[10px] uppercase tracking-[0.2em] text-neutral-500">
+          <div className="flex flex-wrap items-center justify-center gap-3 text-[10px] uppercase tracking-[0.2em] text-neutral-500">
             <Link to="/privacy" className="transition hover:text-white">Privacy</Link>
             <span className="h-3 w-px bg-white/15" />
             <Link to="/terms" className="transition hover:text-white">Terms</Link>
@@ -277,6 +273,15 @@ const Footer = () => {
             <span className="inline-flex items-center gap-1.5">
               Made with <span className="text-rose-500 animate-pulse">♥</span> in India
             </span>
+            <span className="h-3 w-px bg-white/15 hidden sm:inline-block" />
+            <a
+              href="https://arrctechie.in"
+              target="_blank"
+              rel="noopener noreferrer"
+              className="transition hover:text-white inline-flex items-center gap-1"
+            >
+              Developed by <span className="font-medium text-rose-400">Arrc Techie</span>
+            </a>
           </div>
         </div>
       </div>
