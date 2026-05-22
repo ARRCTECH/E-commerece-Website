@@ -51,7 +51,18 @@ exports.updateReferralDetails = async (req, res) => {
                 console.log(`Order not delivered or not found`);
                 continue;
             }
-            if(new Date() > referral.expiryDate){
+            const lastSync = new Date(order.shipmozoDetails.lastSyncAt);
+            const now = new Date();
+            const tenDaysInMs = 10 * 24 * 60 * 60 * 1000; 
+            if (now - lastSync > tenDaysInMs) {
+                console.log('Last sync was more than 10 days ago');
+                continue;
+                count++;
+            } else {
+                console.log('Last sync is within 10 days');
+            }
+
+            if (new Date() > referral.expiryDate) {
                 console.log(`Referral for order has expired`);
                 continue;
                 count++;
@@ -78,8 +89,8 @@ exports.updateReferralDetails = async (req, res) => {
             });
         } else {
             referralDoc.numberOfReferrals = totalReferrals;
-            referralDoc.percentageValue += percentageValue;   
-            referralDoc.discountValue += discountValue;     
+            referralDoc.percentageValue += percentageValue;
+            referralDoc.discountValue += discountValue;
         }
         await referralDoc.save();
         res.status(200).json({
@@ -121,7 +132,19 @@ exports.updateReferralDetailswithoutSaving = async (req, res) => {
                 console.log(`Order not delivered or not found`);
                 continue;
             }
-            if(new Date() > referral.expiryDate){
+
+            const lastSync = new Date(order.shipmozoDetails.lastSyncAt);
+            const now = new Date();
+            const tenDaysInMs = 10 * 24 * 60 * 60 * 1000; 
+            if (now - lastSync > tenDaysInMs) {
+                console.log('Last sync was more than 10 days ago');
+                continue;
+                count++;
+            } else {
+                console.log('Last sync is within 10 days');
+            }
+
+            if (new Date() > referral.expiryDate) {
                 console.log(`Referral for order has expired`);
                 continue;
                 count++;
@@ -148,8 +171,8 @@ exports.updateReferralDetailswithoutSaving = async (req, res) => {
             });
         } else {
             referralDoc.numberOfReferrals = totalReferrals;
-            referralDoc.percentageValue += percentageValue;   
-            referralDoc.discountValue += discountValue;     
+            referralDoc.percentageValue += percentageValue;
+            referralDoc.discountValue += discountValue;
         }
         res.status(200).json({
             success: true,

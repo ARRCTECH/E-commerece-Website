@@ -1311,7 +1311,7 @@ export const {
   logout, 
   clearPhoneAuthState,
   resetGoogleRedirecting ,
-   extraReducers
+  extraReducers,
 } = authSlice.actions;
 
 // Export reducer

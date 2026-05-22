@@ -49,17 +49,17 @@ const checkIfBulkOrder = (items) => {
 
 const getPaymentMethods = async (items) => {
   const isBulk = checkIfBulkOrder(items);
-  
+
   if (!isBulk) {
     return { cod: true, online: true, partialCod: false, partialPercentage: 0 };
   }
-  
+
   const partialSetting = await PartialCodSetting.findOne();
-  
+
   if (partialSetting && partialSetting.isEnabled) {
     return { cod: false, online: true, partialCod: true, partialPercentage: partialSetting.percentage };
   }
-  
+
   return { cod: true, online: true, partialCod: false, partialPercentage: 0 };
 };
 
@@ -133,7 +133,7 @@ const createRazorpayOrder = async (req, res) => {
   try {
     console.log("========== CREATE RAZORPAY ORDER (FULL PAYMENT) ==========");
     console.log("Request body:", JSON.stringify(req.body, null, 2));
-    
+
     const userId = req.user?.userId || null;
     const { items, shippingAddress, couponCode, selectedShippingRate, amount, freediscount, referralDiscount } = req.body;
 
@@ -218,7 +218,7 @@ const createRazorpayOrder = async (req, res) => {
 
     // ✅ Shipping charges (free as per your requirement)
     const shippingCharges = 0;
-    
+
     // ✅ Calculate final total
     const total = Math.round(subtotal + shippingCharges - totalDiscount);
     const orderNumber = `FH-${Date.now()}`;
@@ -230,8 +230,8 @@ const createRazorpayOrder = async (req, res) => {
       amount: Math.round(total * 100),
       currency: "INR",
       receipt: `receipt_${Date.now()}`,
-      notes: { 
-        userId: userId || "guest", 
+      notes: {
+        userId: userId || "guest",
         couponCode: couponCode || "",
         type: "full_payment",
         onlineDiscount: onlineDiscountAmount,
@@ -253,22 +253,22 @@ const createRazorpayOrder = async (req, res) => {
       referralDiscount: referralDiscount || 0,
       discount: totalDiscount,  // ✅ Total discount (coupon + online)
       total,
-      pricing: { 
-        subtotal, 
-        shippingCharges, 
-        tax: 0, 
-        discount: totalDiscount, 
-        total, 
-        freediscount: freediscount || 0, 
-        referralDiscount: referralDiscount || 0,  
+      pricing: {
+        subtotal,
+        shippingCharges,
+        tax: 0,
+        discount: totalDiscount,
+        total,
+        freediscount: freediscount || 0,
+        referralDiscount: referralDiscount || 0,
         selectedShippingRate,
         onlineDiscount: onlineDiscountAmount  // ✅ Store online discount separately
       },
       coupon: couponDetails,
-      paymentInfo: { 
-        razorpayOrderId: razorpayOrder.id, 
-        method: "RAZORPAY", 
-        status: "PENDING" 
+      paymentInfo: {
+        razorpayOrderId: razorpayOrder.id,
+        method: "RAZORPAY",
+        status: "PENDING"
       },
       status: "PLACED",
       shippingStatus: "PENDING",
@@ -287,14 +287,14 @@ const createRazorpayOrder = async (req, res) => {
           orderNumber,
           items: validatedItems.map(({ _id, __v, ...rest }) => rest),
           shippingAddress,
-          pricing: { 
-            subtotal, 
-            shippingCharges, 
-            tax: 0, 
-            discount: totalDiscount, 
-            total, 
-            freediscount: freediscount || 0, 
-            referralDiscount: referralDiscount || 0, 
+          pricing: {
+            subtotal,
+            shippingCharges,
+            tax: 0,
+            discount: totalDiscount,
+            total,
+            freediscount: freediscount || 0,
+            referralDiscount: referralDiscount || 0,
             selectedShippingRate,
             onlineDiscount: onlineDiscountAmount
           },
@@ -315,18 +315,18 @@ const createRazorpayOrder = async (req, res) => {
 
     res.json({
       success: true,
-      razorpayOrder: { 
-        id: razorpayOrder.id, 
-        amount: razorpayOrder.amount, 
-        currency: razorpayOrder.currency 
+      razorpayOrder: {
+        id: razorpayOrder.id,
+        amount: razorpayOrder.amount,
+        currency: razorpayOrder.currency
       },
-      orderSummary: { 
-        orderNumber, 
-        total, 
-        freediscount: freediscount || 0, 
+      orderSummary: {
+        orderNumber,
+        total,
+        freediscount: freediscount || 0,
         referralDiscount: referralDiscount || 0,
         onlineDiscount: onlineDiscountAmount,
-        items: validatedItems.length, 
+        items: validatedItems.length,
         isGuest: !userId,
         totalQuantity: totalQuantity
       },
@@ -334,11 +334,11 @@ const createRazorpayOrder = async (req, res) => {
       isBulkOrder,
       orderId: order._id
     });
-    
+
   } catch (error) {
     console.error("❌ Create Razorpay order error:", error);
-    res.status(500).json({ 
-      success: false, 
+    res.status(500).json({
+      success: false,
       message: error.message || "Failed to create order",
       error: process.env.NODE_ENV === "development" ? error.stack : undefined
     });
@@ -353,54 +353,54 @@ const createPartialCodOrder = async (req, res) => {
   try {
     console.log("========== CREATE PARTIAL COD ORDER ==========");
     console.log("Request body:", JSON.stringify(req.body, null, 2));
-    
+
     const userId = req.user?.userId || null;
-    const { 
-      items, 
-      shippingAddress, 
-      couponCode, 
+    const {
+      items,
+      shippingAddress,
+      couponCode,
       totalAmount,
       onlineAmount,
       codAmount,
       percentage
     } = req.body;
-    
+
     if (!items || items.length === 0) {
       return res.status(400).json({ success: false, message: "Cart items are required" });
     }
-    
+
     if (!shippingAddress || !shippingAddress.fullName || !shippingAddress.phoneNumber) {
       return res.status(400).json({ success: false, message: "Complete shipping address is required" });
     }
-    
+
     if (!onlineAmount || onlineAmount <= 0) {
       return res.status(400).json({ success: false, message: "Online amount must be greater than 0" });
     }
-    
+
     let subtotal = 0;
     let validatedItems = [];
-    
+
     // ✅ IMPORTANT: Partial COD साठी original amounts वापरा, discounted नाही
     // तू frontend वरून पाठवलेला totalAmount हाच original आहे
-    
+
     for (const item of items) {
       const product = await Product.findById(item.productId);
       if (!product) {
         return res.status(400).json({ success: false, message: `Product not found` });
       }
-      
+
       let itemPrice = product.price;
       let itemTotal = product.price * (item.quantity || 1);
-      
+
       if (item.isBulkProduct) {
         const pricePerSet = item.pricePerSet || product.bulkConfig?.pricePerSet || product.price;
         const totalSets = item.totalSets || item.quantity || 1;
         itemTotal = pricePerSet * totalSets;
         itemPrice = pricePerSet;
       }
-      
+
       subtotal += itemTotal;
-      
+
       validatedItems.push({
         product: product._id,
         name: product.name,
@@ -419,19 +419,19 @@ const createPartialCodOrder = async (req, res) => {
           pricePerSet: item.pricePerSet
         })
       });
-      
+
       if (!item.isBulkProduct && product.stock < (item.quantity || 1)) {
-        return res.status(400).json({ 
-          success: false, 
-          message: `Insufficient stock for ${product.name}` 
+        return res.status(400).json({
+          success: false,
+          message: `Insufficient stock for ${product.name}`
         });
       }
     }
-    
+
     const shippingCharges = 0;
     let discount = 0;
     let couponDetails = null;
-    
+
     if (couponCode) {
       const coupon = await Coupon.findOne({ code: couponCode, isActive: true });
       if (coupon && new Date() <= coupon.validUntil && subtotal >= (coupon.minOrderValue || 0)) {
@@ -441,33 +441,33 @@ const createPartialCodOrder = async (req, res) => {
         couponDetails = { code: coupon.code, discountAmount: discount };
       }
     }
-    
+
     // ✅ Partial COD साठी total = original subtotal - coupon discount (कोणताही online discount नाही)
     const finalTotal = Math.round(subtotal + shippingCharges - discount);
     const orderNumber = `FH-${Date.now()}`;
-    
+
     console.log("💰 Order Summary:", { subtotal, shippingCharges, discount, finalTotal });
-    
+
     // ✅ ONLINE AMOUNT ही finalTotal च्या percentage वर calculate करा (discounted amount वरून नाही)
     const calculatedOnlineAmount = Math.round(finalTotal * (percentage / 100));
     const calculatedCodAmount = finalTotal - calculatedOnlineAmount;
-    
+
     console.log(`🟢 Partial COD Breakdown: Original Total: ₹${finalTotal}, ${percentage}% Online: ₹${calculatedOnlineAmount}, COD: ₹${calculatedCodAmount}`);
-    
+
     const razorpayOrder = await razorpay.orders.create({
       amount: Math.round(calculatedOnlineAmount * 100),
       currency: "INR",
       receipt: `partial_${orderNumber}`,
-      notes: { 
-        type: "partial_cod", 
+      notes: {
+        type: "partial_cod",
         codAmount: calculatedCodAmount,
         fullAmount: finalTotal,
         percentage: percentage
       }
     });
-    
+
     console.log("✅ Razorpay order created:", razorpayOrder.id);
-    
+
     const order = new Order({
       user: userId,
       orderNumber,
@@ -477,16 +477,16 @@ const createPartialCodOrder = async (req, res) => {
       shippingCharge: shippingCharges,
       discount,
       total: finalTotal,
-      pricing: { 
-        subtotal, 
-        shippingCharges, 
-        tax: 0, 
-        discount, 
+      pricing: {
+        subtotal,
+        shippingCharges,
+        tax: 0,
+        discount,
         total: finalTotal
       },
       coupon: couponDetails,
-      paymentInfo: { 
-        method: "PARTIAL_COD", 
+      paymentInfo: {
+        method: "PARTIAL_COD",
         status: "PENDING",
         razorpayOrderId: razorpayOrder.id
       },
@@ -502,21 +502,21 @@ const createPartialCodOrder = async (req, res) => {
         onlinePaymentStatus: "PENDING"
       }
     });
-    
+
     await order.save();
     console.log("✅ Order saved:", order._id);
-    
+
     if (userId) {
       await User.findByIdAndUpdate(userId, { cart: [] });
       console.log("✅ User cart cleared");
     }
-    
+
     for (const item of validatedItems) {
       if (!item.isBulkProduct) {
         await Product.findByIdAndUpdate(item.product, { $inc: { stock: -item.quantity } });
       }
     }
-    
+
     res.json({
       success: true,
       message: "Partial COD order created successfully",
@@ -533,11 +533,11 @@ const createPartialCodOrder = async (req, res) => {
         percentage: percentage || 30
       }
     });
-    
+
   } catch (error) {
     console.error("❌ Partial COD Error:", error);
-    res.status(500).json({ 
-      success: false, 
+    res.status(500).json({
+      success: false,
       message: error.message || "Failed to create partial COD order"
     });
   }
@@ -550,50 +550,50 @@ const createPartialCodOrder = async (req, res) => {
 const verifyPartialCodPayment = async (req, res) => {
   try {
     const { razorpay_order_id, razorpay_payment_id, razorpay_signature } = req.body;
-    
+
     const body = `${razorpay_order_id}|${razorpay_payment_id}`;
     const expectedSignature = crypto
       .createHmac("sha256", process.env.RAZORPAY_KEY_SECRET)
       .update(body)
       .digest("hex");
-    
+
     if (expectedSignature !== razorpay_signature) {
       return res.status(400).json({ success: false, message: "Payment verification failed" });
     }
-    
+
     const order = await Order.findOne({ "paymentInfo.razorpayOrderId": razorpay_order_id });
     if (!order) {
       return res.status(404).json({ success: false, message: "Order not found" });
     }
-    
+
     order.paymentInfo.status = "PARTIALLY_PAID";
     order.paymentInfo.razorpayPaymentId = razorpay_payment_id;
     order.paymentInfo.razorpaySignature = razorpay_signature;
     order.status = "CONFIRMED";
     order.shippingStatus = "PROCESSING";
-    
+
     if (order.partialCod) {
       order.partialCod.onlinePaymentStatus = "PAID";
       order.partialCod.onlinePaymentId = razorpay_payment_id;
       order.partialCod.onlinePaymentPaidAt = new Date();
     }
-    
+
     await order.save();
-    
+
     // ✅ Send response immediately
     res.json({
       success: true,
       message: "Partial payment successful! Remaining amount to be paid on delivery.",
       order: shapeOrder(order),
     });
-    
+
     // ✅ BACKGROUND: Push order to Shipmozo (DRAFT mode - NO auto-assign)
     setImmediate(async () => {
       try {
         console.log(`🟢 Background: Pushing order to Shipmozo (DRAFT) for ${order.orderNumber}`);
-        
+
         const freshOrder = await Order.findById(order._id);
-        
+
         const shipmozoData = {
           orderNumber: freshOrder.orderNumber,
           customer: {
@@ -617,10 +617,10 @@ const verifyPartialCodPayment = async (req, res) => {
           paymentType: "COD",
           weight: 200  // grams (dummy)
         };
-        
+
         // ✅ ONLY push order - NO auto-assign
         const pushResult = await shipmozoService.pushOrder(shipmozoData);
-        
+
         if (pushResult.success) {
           freshOrder.shipmozoDetails = {
             orderId: pushResult.orderId,
@@ -644,7 +644,7 @@ const verifyPartialCodPayment = async (req, res) => {
         console.error("❌ Background Shipmozo error:", bgError);
       }
     });
-    
+
   } catch (error) {
     console.error("Verify partial COD payment error:", error);
     res.status(500).json({ success: false, message: "Payment verification failed" });
@@ -747,9 +747,9 @@ const verifyPaymentAndCreateOrder = async (req, res) => {
     setImmediate(async () => {
       try {
         console.log(`🟢 Background: Pushing order to Shipmozo (DRAFT) for ${order.orderNumber}`);
-        
+
         const freshOrder = await Order.findById(order._id);
-        
+
         const shipmozoData = {
           orderNumber: freshOrder.orderNumber,
           customer: {
@@ -774,10 +774,10 @@ const verifyPaymentAndCreateOrder = async (req, res) => {
           paymentType: "PREPAID",
           weight: 200  // grams (dummy)
         };
-        
+
         // ✅ ONLY push order - NO auto-assign
         const pushResult = await shipmozoService.pushOrder(shipmozoData);
-        
+
         if (pushResult.success) {
           freshOrder.shipmozoDetails = {
             orderId: pushResult.orderId,
@@ -886,15 +886,15 @@ const placeCodOrder = async (req, res) => {
       referralDiscount: referralDiscount || 0,
       discount,  // ✅ फक्त coupon discount
       total,
-      pricing: { 
-        subtotal, 
-        shippingCharges, 
-        tax: 0, 
-        discount, 
-        total, 
-        freediscount, 
-        referralDiscount, 
-        selectedShippingRate 
+      pricing: {
+        subtotal,
+        shippingCharges,
+        tax: 0,
+        discount,
+        total,
+        freediscount,
+        referralDiscount,
+        selectedShippingRate
       },
       coupon: couponDetails,
       paymentInfo: { method: "COD", status: "PENDING", razorpayOrderId: orderNumber },
@@ -947,9 +947,9 @@ const placeCodOrder = async (req, res) => {
     setImmediate(async () => {
       try {
         console.log(`🟢 Background: Pushing COD order to Shipmozo (DRAFT) for ${order.orderNumber}`);
-        
+
         const freshOrder = await Order.findById(order._id);
-        
+
         const shipmozoData = {
           orderNumber: freshOrder.orderNumber,
           customer: {
@@ -973,9 +973,9 @@ const placeCodOrder = async (req, res) => {
           paymentType: "COD",
           weight: 200
         };
-        
+
         const pushResult = await shipmozoService.pushOrder(shipmozoData);
-        
+
         if (pushResult.success) {
           freshOrder.shipmozoDetails = {
             orderId: pushResult.orderId,
@@ -999,6 +999,215 @@ const placeCodOrder = async (req, res) => {
   }
 };
 
+async function returnOrder(req, res) {
+  try {
+    const { orderId, reason } = req.body;
+
+    if (!orderId) {
+      return res.status(400).json({ success: false, error: 'Order ID is required' });
+    }
+
+    const order = await Order.findById(orderId);
+    if (!order) {
+      return res.status(404).json({ success: false, error: `Order ${orderId} not found` });
+    }
+
+    // Check return eligibility
+    if (order.status === 'RETURNED') {
+      return res.status(400).json({ success: false, error: 'Order already returned' });
+    }
+    if (order.status === 'CANCELLED') {
+      return res.status(400).json({ success: false, error: 'Order already cancelled' });
+    }
+    if (order.status !== 'DELIVERED') {
+      return res.status(400).json({ success: false, error: 'Return can only be initiated for delivered orders' });
+    }
+
+    let refundResult = null;
+    let refundAmount = 0;
+    const paymentMethod = order.paymentInfo?.method?.toUpperCase();
+    const paymentStatus = order.paymentInfo?.status?.toUpperCase();
+
+    // ---------- RAZORPAY REFUND LOGIC ----------
+    if ((paymentMethod === 'RAZORPAY' || paymentMethod === 'PARTIAL_COD') && paymentStatus === 'PAID') {
+      try {
+        const paymentId = order.paymentInfo?.razorpayPaymentId;
+        if (!paymentId) {
+          throw new Error('No Razorpay payment ID found for this order');
+        }
+
+        // Determine refund amount
+        if (paymentMethod === 'RAZORPAY') {
+          refundAmount = Math.max(0, order.total || 0);
+        } else if (paymentMethod === 'PARTIAL_COD') {
+          // Ensure partialCod object exists
+          refundAmount = Math.max(0, order.partialCod?.onlineAmount || order.partialCod?.amount || 0);
+        }
+
+        if (refundAmount <= 0) {
+          throw new Error(`Refund amount is zero or negative for order ${order.orderNumber}`);
+        }
+
+        // Ensure razorpay instance is defined
+        if (!razorpay || typeof razorpay.payments?.refund !== 'function') {
+          throw new Error('Razorpay is not properly initialized');
+        }
+
+        const amountPaise = Math.round(refundAmount * 100);
+        console.log(`🔄 Initiating refund for payment ${paymentId}, amount ₹${refundAmount} (${amountPaise} paise)`);
+
+        const refund = await razorpay.payments.refund(paymentId, {
+          amount: amountPaise,
+          speed: 'normal', // change to 'optimum' for instant refund
+          notes: {
+            orderNumber: order.orderNumber || String(order._id),
+            reason: reason || 'Customer return',
+            returnInitiatedBy: req.user?.userId || 'system'
+          }
+        });
+
+        refundResult = {
+          id: refund.id,
+          amount: refund.amount / 100,
+          status: refund.status,
+          createdAt: new Date(refund.created_at * 1000),
+          paymentId: paymentId
+        };
+        console.log(`✅ Refund successful: ID ${refund.id}, amount ₹${refundAmount}`);
+
+        // Update payment info
+        order.paymentInfo.status = 'REFUNDED';
+        order.paymentInfo.refundId = refund.id;
+        order.paymentInfo.refundAmount = refundAmount;
+        order.paymentInfo.refundedAt = new Date();
+
+        if (paymentMethod === 'PARTIAL_COD' && order.partialCod) {
+          order.partialCod.onlinePaymentStatus = 'REFUNDED';
+          order.partialCod.refundId = refund.id;
+          order.partialCod.refundAmount = refundAmount;
+          order.partialCod.refundedAt = new Date();
+        }
+      } catch (refundErr) {
+        console.error('❌ Razorpay refund error:', refundErr.message, refundErr);
+        refundResult = { error: refundErr.message };
+        order.paymentInfo.refundInitiated = true;
+        order.paymentInfo.refundError = refundErr.message;
+      }
+    } else if (paymentMethod === 'COD') {
+      console.log(`ℹ️ COD order ${order.orderNumber} – no refund needed`);
+      refundResult = { message: 'COD order – no refund required' };
+    } else {
+      console.warn(`⚠️ Order ${order.orderNumber} has payment method ${paymentMethod} / status ${paymentStatus} – not refunding`);
+      refundResult = { message: 'Payment not eligible for refund' };
+    }
+
+    // ---------- SHIPMOZO RETURN (optional, only if service exists) ----------
+    let shipmozoResult = null;
+    if (order.shipmozoDetails?.awbNumber && typeof shipmozoService?.returnOrder === 'function') {
+      try {
+        const shipmozoData = {
+          orderNumber: order.orderNumber,
+          customer: {
+            name: order.shippingAddress.fullName,
+            phone: order.shippingAddress.phoneNumber,
+            email: order.shippingAddress.email || "",
+          },
+          address: {
+            addressLine1: order.shippingAddress.addressLine1,
+            addressLine2: order.shippingAddress.addressLine2 || "",
+            pinCode: order.shippingAddress.pinCode,
+            city: order.shippingAddress.city,
+            state: order.shippingAddress.state,
+          },
+          items: order.items.map(item => ({
+            name: item.name,
+            quantity: item.quantity,
+            price: item.price,
+          })),
+          totalAmount: order.total,
+          referralDiscount: order.pricing?.referralDiscount || 0,
+          paymentType: paymentMethod === 'COD' ? 'COD' : 'PREPAID',
+          weight: 200,
+        };
+        const pushResult = await shipmozoService.returnOrder(shipmozoData);
+        if (pushResult.success) {
+          shipmozoResult = {
+            orderId: pushResult.orderId,
+            referenceId: pushResult.referenceId,
+            status: pushResult.status || 'RETURN_CREATED'
+          };
+        } else {
+          shipmozoResult = { error: pushResult.error || 'Shipmozo return creation failed' };
+        }
+      } catch (shipErr) {
+        console.error('Shipmozo return error:', shipErr);
+        shipmozoResult = { error: shipErr.message };
+      }
+    } else if (order.shipmozoDetails?.awbNumber) {
+      console.warn('⚠️ shipmozoService.returnOrder not available – skipping Shipmozo integration');
+    }
+
+    // ---------- UPDATE ORDER STATUS ----------
+    order.status = 'RETURNED';
+    order.shippingStatus = 'RETURNED';
+    order.returnReason = reason || '';
+    order.returnedAt = new Date();
+
+    if (shipmozoResult) {
+      if (!shipmozoResult.error) {
+        order.shipmozoDetails = {
+          ...order.shipmozoDetails,
+          returnOrderId: shipmozoResult.orderId,
+          returnReferenceId: shipmozoResult.referenceId,
+          returnStatus: shipmozoResult.status,
+          returnInitiatedAt: new Date()
+        };
+      } else {
+        order.shipmozoDetails = {
+          ...order.shipmozoDetails,
+          returnError: shipmozoResult.error,
+          returnInitiatedAt: new Date()
+        };
+      }
+    }
+
+    await order.save();
+
+    // ---------- RESTOCK PRODUCTS (only non‑bulk) ----------
+    for (const item of order.items) {
+      if (item?.product && item?.quantity && !item.isBulkProduct) {
+        await Product.findByIdAndUpdate(item.product, { $inc: { stock: item.quantity } });
+        console.log(`✅ Restocked ${item.quantity} of ${item.name}`);
+      }
+    }
+
+    // ---------- RESPONSE ----------
+    const isRefundSuccess = refundResult && !refundResult.error;
+    res.status(200).json({
+      success: true,
+      message: isRefundSuccess
+        ? `Return processed successfully. ₹${refundAmount} will be refunded to your original payment method within 5-7 business days.`
+        : 'Return recorded (refund may be pending or not applicable).',
+      refund: refundResult,
+      shipmozo: shipmozoResult,
+      order: {
+        id: order._id,
+        orderNumber: order.orderNumber,
+        status: order.status,
+        returnReason: order.returnReason,
+        returnedAt: order.returnedAt,
+        refundAmount: refundResult?.amount || null
+      }
+    });
+  } catch (error) {
+    console.error('❌ Return order unexpected error:', error);
+    res.status(500).json({
+      success: false,
+      error: 'Internal server error',
+      details: error.message
+    });
+  }
+}
 
 // ===============================
 // Get User Orders
@@ -1085,10 +1294,10 @@ const trackOrder = async (req, res) => {
       const trackingResult = await shipmozoService.trackOrder(order.shipmozoDetails.awbNumber);
       if (trackingResult.success) {
         trackingData = trackingResult;
-        
+
         if (trackingResult.scanHistories && trackingResult.scanHistories.length > 0) {
           order.trackingHistory = trackingResult.scanHistories;
-          
+
           const latestStatus = trackingResult.scanHistories[0]?.status;
           if (latestStatus === "Delivered") {
             order.shippingStatus = "DELIVERED";
@@ -1128,13 +1337,13 @@ const getShippingRates = async (req, res) => {
     try {
       const pickupPincode = process.env.SHIPMOZO_PICKUP_PINCODE || "421005";
       const ratesResult = await shipmozoService.getShippingRates(
-        pickupPincode, 
-        deliveryPincode, 
+        pickupPincode,
+        deliveryPincode,
         weight * 1000, // convert to grams
         1000, // order amount
         cod > 0 ? "COD" : "PREPAID"
       );
-      
+
       if (ratesResult.success && ratesResult.rates && ratesResult.rates.length > 0) {
         const formattedRates = ratesResult.rates.map(rate => ({
           courier_company_id: rate.courier_id,
@@ -1145,7 +1354,7 @@ const getShippingRates = async (req, res) => {
           etd: rate.tat ? `${rate.tat} days` : "3-5 days",
           rate_type: rate.courier_type || "surface"
         }));
-        
+
         return res.status(200).json({ success: true, rates: formattedRates, source: "shipmozo" });
       }
     } catch (e) {
@@ -1156,7 +1365,7 @@ const getShippingRates = async (req, res) => {
     const firstDigit = parseInt(deliveryPincode.charAt(0));
     let baseRate = 50;
     let expressRate = 80;
-    
+
     if (firstDigit >= 1 && firstDigit <= 3) {
       baseRate = 40;
       expressRate = 70;
@@ -1210,18 +1419,18 @@ const getShippingRates = async (req, res) => {
 const getPublicOrder = async (req, res) => {
   try {
     const { orderId } = req.params;
-    
-    const order = await Order.findOne({ 
+
+    const order = await Order.findOne({
       $or: [
         { orderNumber: orderId },
         { "shipmozoDetails.awbNumber": orderId }
       ]
     }).populate('items.product');
-    
+
     if (!order) {
       return res.status(404).json({ success: false, message: 'Order not found' });
     }
-    
+
     res.json({ success: true, order: shapeOrder(order) });
   } catch (error) {
     res.status(500).json({ success: false, message: 'Server error' });
@@ -1320,5 +1529,6 @@ module.exports = {
   getPublicOrder,
   getPaymentMethodsHandler,
   createPartialCodOrder,
-  verifyPartialCodPayment
+  verifyPartialCodPayment,
+  returnOrder
 };

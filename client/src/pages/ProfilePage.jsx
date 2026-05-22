@@ -3,33 +3,11 @@ import { useDispatch, useSelector } from "react-redux";
 import { motion, AnimatePresence } from "framer-motion";
 import axios from "axios";
 import {
-  User,
-  Camera,
-  Package,
-  Heart,
-  UserPlus,
-  Mail,
-  MessageCircle,
-  Facebook,
-  Twitter,
-  Linkedin,
-  Send,
-  Copy,
-  Shield,
-  Plus,
-  Edit2,
-  Trash2,
-  MapPin,
-  Phone,
-  Calendar,
-  Award,
-  TrendingUp,
-  Sparkles,
-  ChevronRight,
-  CheckCircle,
-  Clock,
+  User, Camera, Package, UserPlus, Mail, MessageCircle,
+  Facebook, Twitter, Linkedin, Send, Copy, Shield, Edit2,
+  ChevronRight, Sparkles, X
 } from "lucide-react";
-import { updateProfile, changePassword, uploadAvatar, getProfile } from "../store/slices/authSlice";
+import { changePassword, uploadAvatar, getProfile } from "../store/slices/authSlice";
 import { fetchUserOrders } from "../store/slices/orderSlice";
 import { fetchWishlist } from "../store/slices/wishlistSlice";
 import toast from "react-hot-toast";
@@ -42,48 +20,95 @@ const ProfilePage = () => {
   const { orders = [] } = useSelector((state) => state.orders);
   const { items: wishlistItems = [] } = useSelector((state) => state.wishlist);
 
+  // UI State
   const [activeTab, setActiveTab] = useState("profile");
   const [isEditing, setIsEditing] = useState(false);
   const [originalProfile, setOriginalProfile] = useState(null);
-  const [profileData, setProfileData] = useState({
-    name: "",
-    email: "",
-    phone: "",
-    dateOfBirth: "",
-    gender: "",
-    addresses: [],
-    myreferralCode: "",
-    referredBy: "",
-    expireReferralDate: "",
-  });
-
+  const [isUpdatingProfile, setIsUpdatingProfile] = useState(false);
   const [showPasswordForm, setShowPasswordForm] = useState(false);
   const [passwordData, setPasswordData] = useState({
     currentPassword: "",
     newPassword: "",
     confirmPassword: "",
   });
-
-  const [showAddressForm, setShowAddressForm] = useState(false);
-  const [editingAddress, setEditingAddress] = useState(null);
-  const [isAddressSaving, setIsAddressSaving] = useState(false);
-  const [newAddress, setNewAddress] = useState({
-    type: "home",
-    fullName: "",
-    phone: "",
-    addressLine1: "",
-    addressLine2: "",
-    city: "",
-    state: "",
-    pincode: "",
-    isDefault: false,
-  });
-
-  const [dataforreferral, setDataforreferral] = useState(null);
+  const [referralData, setReferralData] = useState(null);
   const [totalEarning, setTotalEarning] = useState(0);
 
-  // --- Helper functions (memoized) ---
-  const getTotalEarning = useCallback(async () => {
+  // Modal state for save confirmation
+  const [showSaveModal, setShowSaveModal] = useState(false);
+  const [savedDetails, setSavedDetails] = useState({
+    name: "",
+    phoneNumber: "",
+    dateOfBirth: "",
+    gender: "",
+  });
+
+  // Validation errors (only gender remains)
+  const [validationErrors, setValidationErrors] = useState({
+    gender: "",
+  });
+
+  // Form State (derived from Redux user only)
+  const [profileForm, setProfileForm] = useState({
+    name: "",
+    email: "",
+    phoneNumber: "",
+    dateOfBirth: "",
+    gender: "",
+    addresses: [],
+    myreferralCode: "",
+    referredBy: null,
+    expireReferralDate: null,
+  });
+
+  // Sync form state with Redux user
+  useEffect(() => {
+    if (user) {
+      setProfileForm({
+        name: user.name || "",
+        email: user.email || "",
+        phoneNumber: user.phoneNumber || user.phone || "",
+        dateOfBirth: user.dateOfBirth ? format(new Date(user.dateOfBirth), "yyyy-MM-dd") : "",
+        gender: user.gender || "",
+        addresses: user.addresses || [],
+        myreferralCode: user.myreferralCode || "",
+        referredBy: user.referredBy || null,
+        expireReferralDate: user.expireReferralDate || null,
+      });
+    }
+  }, [user]);
+
+  // Load saved tab from localStorage
+  useEffect(() => {
+    const savedTab = localStorage.getItem("activeButton");
+    if (savedTab && ["profile", "orders", "security", "referral"].includes(savedTab)) {
+      setActiveTab(savedTab);
+    }
+  }, []);
+
+  // Fetch orders, wishlist, and referral data
+  useEffect(() => {
+    if (user?._id) {
+      dispatch(fetchUserOrders({ limit: 5 }));
+      dispatch(fetchWishlist());
+      fetchReferralData();
+      fetchTotalEarning();
+    }
+  }, [user?._id, dispatch]);
+
+  const fetchReferralData = useCallback(async () => {
+    if (!user?._id) return;
+    try {
+      const res = await axios.post(`${import.meta.env.VITE_API_URL}/referral/fetchReferral`, {
+        userId: user._id,
+      });
+      setReferralData(res.data.data);
+    } catch (error) {
+      console.error("Error fetching referral details:", error.response?.data || error.message);
+    }
+  }, [user?._id]);
+
+  const fetchTotalEarning = useCallback(async () => {
     if (!user?._id) return;
     try {
       const res = await axios.post(`${import.meta.env.VITE_API_URL}/referral-total-earning`, {
@@ -95,90 +120,137 @@ const ProfilePage = () => {
     }
   }, [user?._id]);
 
-  const getReferralDetails = useCallback(async () => {
-    if (!user?._id) return;
-    try {
-      const res = await axios.post(`${import.meta.env.VITE_API_URL}/referral/fetchReferral`, {
-        userId: user._id,
-      });
-      setDataforreferral(res.data.data);
-    } catch (error) {
-      console.error("Error fetching referral details:", error.response?.data || error.message);
-    }
-  }, [user?._id]);
-
-  // --- Effects ---
-  // 1. Restore active tab from localStorage (only once on mount)
-  useEffect(() => {
-    const savedTab = localStorage.getItem("activeButton");
-    if (savedTab && ["profile", "orders", "security", "referral"].includes(savedTab)) {
-      setActiveTab(savedTab);
-    }
-  }, []);
-
-  // 2. Update profile data when user changes
-  useEffect(() => {
-    if (user) {
-      setProfileData({
-        name: user.name || "",
-        email: user.email || "",
-        phone: user.phone || "",
-        dateOfBirth: user.dateOfBirth ? format(new Date(user.dateOfBirth), "yyyy-MM-dd") : "",
-        gender: user.gender || "",
-        addresses: user.addresses || [],
-        myreferralCode: user.myreferralCode || "",
-        referredBy: user.referredBy || null,
-        expireReferralDate: user.expireReferralDate || null,
-      });
-    }
-  }, [user]);
-
-  // 3. Fetch referral data and earnings when user ID is available
-  useEffect(() => {
-    if (user?._id) {
-      getReferralDetails();
-      getTotalEarning();
-    }
-  }, [user?._id, getReferralDetails, getTotalEarning]);
-
-  // 4. Fetch orders and wishlist on mount (and when user changes)
-  useEffect(() => {
-    if (user) {
-      dispatch(fetchUserOrders({ limit: 5 }));
-      dispatch(fetchWishlist());
-      dispatch(getProfile());
-    }
-  }, [dispatch, user]);
-
-  // --- Handlers ---
   const handleTabChange = (tabId) => {
     setActiveTab(tabId);
     localStorage.setItem("activeButton", tabId);
   };
 
-  const handleProfileUpdate = async (e) => {
-    e.preventDefault();
-    try {
-      await dispatch(updateProfile(profileData)).unwrap();
-      toast.success("Profile updated successfully!");
-      setIsEditing(false);
-      setOriginalProfile(null);
-    } catch (error) {
-      toast.error(error.message || "Update failed");
-    }
-  };
-
   const startEditing = () => {
-    setOriginalProfile({ ...profileData });
+    setOriginalProfile({ ...profileForm });
     setIsEditing(true);
+    // Reset validation errors when starting edit
+    setValidationErrors({ gender: "" });
   };
 
   const cancelEditing = () => {
     if (originalProfile) {
-      setProfileData(originalProfile);
+      setProfileForm(originalProfile);
     }
     setIsEditing(false);
     setOriginalProfile(null);
+    setValidationErrors({ gender: "" });
+  };
+
+  const [details, setDetails] = useState({
+    name: "",
+    phoneNumber: "",
+    dateOfBirth: "",
+    gender: "",
+  });
+
+  const fetchDetails = async () => {
+    const token = localStorage.getItem("authToken");
+    if (!token) {
+      toast.error("Authentication token missing. Please login again.");
+      return;
+    }
+    try {
+      const response = await axios.get(
+        `${import.meta.env.VITE_API_URL}/auth/profile`,
+        { headers: { Authorization: `Bearer ${token}` } }
+      );
+      setDetails({
+        name: response.data.user.name,
+        phoneNumber: response.data.user.phoneNumber,
+        dateOfBirth: response.data.user.dateOfBirth
+          ? format(new Date(response.data.user.dateOfBirth), "yyyy-MM-dd")
+          : "",
+        gender: response.data.user.gender
+      });
+    } catch (error) {
+      console.error("API error:", error);
+      toast.error("Failed to load profile. Please try again.");
+    }
+  };
+
+  useEffect(() => {
+    fetchDetails();
+  }, []);
+
+  // No phone validation – only gender is required
+  const validateGender = (gender) => {
+    if (!gender) return "Please select your gender";
+    return "";
+  };
+
+  const handleDetailsChange = (field, value) => {
+    setDetails(prev => ({ ...prev, [field]: value }));
+    // Clear gender error when user starts typing
+    if (field === 'gender') setValidationErrors(prev => ({ ...prev, gender: "" }));
+  };
+
+  // Profile update – phone number sent as raw input
+  const handleProfileUpdate = async (e) => {
+    e.preventDefault();
+
+    // Validate only gender
+    const genderError = validateGender(details.gender);
+    if (genderError) {
+      setValidationErrors({ gender: genderError });
+      return;
+    }
+
+    setIsUpdatingProfile(true);
+    try {
+      const token = localStorage.getItem("authToken");
+      if (!token) {
+        toast.error("Authentication token missing. Please login again.");
+        return;
+      }
+
+      const payload = {
+        name: details.name,
+        dateOfBirth: details.dateOfBirth,
+        gender: details.gender,
+        phoneNumber: details.phoneNumber, // sent as is – no formatting
+      };
+
+      const response = await axios.put(
+        `${import.meta.env.VITE_API_URL}/auth/profile`,
+        payload,
+        { headers: { Authorization: `Bearer ${token}` } }
+      );
+
+      // Update local state with response data
+      setDetails(prev => ({
+        ...prev,
+        name: response.data.name || payload.name,
+        phoneNumber: response.data.phoneNumber || payload.phoneNumber,
+        dateOfBirth: response.data.dateOfBirth || payload.dateOfBirth,
+        gender: response.data.gender || payload.gender,
+      }));
+
+      // Refresh Redux store
+      await dispatch(getProfile()).unwrap();
+
+      // Prepare details for the modal
+      setSavedDetails({
+        name: response.data.name || payload.name,
+        phoneNumber: response.data.phoneNumber || payload.phoneNumber,
+        dateOfBirth: response.data.dateOfBirth || payload.dateOfBirth,
+        gender: response.data.gender || payload.gender,
+      });
+
+      setShowSaveModal(true);
+      setIsEditing(false);
+      setOriginalProfile(null);
+      setValidationErrors({ gender: "" });
+    } catch (error) {
+      console.error("Profile update error:", error);
+      toast.error(error.response?.data?.message || "Update failed");
+    } finally {
+      setIsUpdatingProfile(false);
+    }
   };
 
   const handleAvatarUpload = async (e) => {
@@ -210,84 +282,16 @@ const ProfilePage = () => {
       return;
     }
     try {
-      await dispatch(
-        changePassword({
-          currentPassword: passwordData.currentPassword,
-          newPassword: passwordData.newPassword,
-        })
-      ).unwrap();
+      await dispatch(changePassword({
+        currentPassword: passwordData.currentPassword,
+        newPassword: passwordData.newPassword,
+      })).unwrap();
       toast.success("Password changed successfully!");
       setShowPasswordForm(false);
       setPasswordData({ currentPassword: "", newPassword: "", confirmPassword: "" });
     } catch (error) {
       toast.error(error.message);
     }
-  };
-
-  const resetAddressForm = () => {
-    setNewAddress({
-      type: "home",
-      fullName: "",
-      phone: "",
-      addressLine1: "",
-      addressLine2: "",
-      city: "",
-      state: "",
-      pincode: "",
-      isDefault: false,
-    });
-    setEditingAddress(null);
-    setShowAddressForm(false);
-  };
-
-  const handleAddOrUpdateAddress = async (e) => {
-    e.preventDefault();
-    setIsAddressSaving(true);
-    try {
-      let updatedAddresses = [...profileData.addresses];
-      let newAddr;
-      if (editingAddress) {
-        updatedAddresses = updatedAddresses.map((addr) =>
-          addr._id === editingAddress._id ? { ...newAddress, _id: addr._id } : addr
-        );
-        toast.success("Address updated successfully!");
-      } else {
-        newAddr = { ...newAddress, _id: Date.now().toString() };
-        updatedAddresses.push(newAddr);
-        toast.success("Address added successfully!");
-      }
-      if (newAddress.isDefault) {
-        updatedAddresses = updatedAddresses.map((addr) => ({
-          ...addr,
-          isDefault: addr._id === (editingAddress?._id || newAddr._id),
-        }));
-      }
-      await dispatch(updateProfile({ ...profileData, addresses: updatedAddresses })).unwrap();
-      setProfileData((prev) => ({ ...prev, addresses: updatedAddresses }));
-      resetAddressForm();
-    } catch (error) {
-      toast.error(error.message);
-    } finally {
-      setIsAddressSaving(false);
-    }
-  };
-
-  const handleDeleteAddress = async (addressId) => {
-    if (!window.confirm("Are you sure you want to delete this address?")) return;
-    try {
-      const updatedAddresses = profileData.addresses.filter((addr) => addr._id !== addressId);
-      await dispatch(updateProfile({ ...profileData, addresses: updatedAddresses })).unwrap();
-      setProfileData((prev) => ({ ...prev, addresses: updatedAddresses }));
-      toast.success("Address deleted");
-    } catch (error) {
-      toast.error(error.message);
-    }
-  };
-
-  const startEditAddress = (address) => {
-    setEditingAddress(address);
-    setNewAddress({ ...address });
-    setShowAddressForm(true);
   };
 
   const copyToClipboard = () => {
@@ -300,9 +304,7 @@ const ProfilePage = () => {
   const shareText = "Join now using my referral link and get exciting rewards! 🚀";
   const shareUrls = {
     whatsapp: `https://wa.me/?text=${encodeURIComponent(`${shareText} ${referralLink}`)}`,
-    email: `mailto:?subject=${encodeURIComponent("Join with my referral link")}&body=${encodeURIComponent(
-      `${shareText}\n\n${referralLink}`
-    )}`,
+    email: `mailto:?subject=${encodeURIComponent("Join with my referral link")}&body=${encodeURIComponent(`${shareText}\n\n${referralLink}`)}`,
     facebook: `https://www.facebook.com/sharer/sharer.php?u=${encodeURIComponent(referralLink)}`,
     twitter: `https://twitter.com/intent/tweet?text=${encodeURIComponent(`${shareText} ${referralLink}`)}`,
     linkedin: `https://www.linkedin.com/sharing/share-offsite/?url=${encodeURIComponent(referralLink)}`,
@@ -324,11 +326,10 @@ const ProfilePage = () => {
     <div className="min-h-screen bg-gradient-to-br from-red-50 via-white to-red-50/80">
       <div className="container px-4 py-6 mx-auto sm:px-6 sm:py-10 lg:py-12">
         <div className="max-w-6xl mx-auto">
-          {/* Premium Profile Header */}
+          {/* Profile Header */}
           <div className="relative mb-8 overflow-hidden bg-white rounded-2xl shadow-xl">
             <div className="absolute top-0 right-0 w-80 h-80 bg-gradient-to-br from-red-500/10 to-rose-500/5 rounded-full -mt-40 -mr-40 blur-3xl" />
             <div className="absolute bottom-0 left-0 w-80 h-80 bg-gradient-to-tr from-amber-500/5 to-red-500/5 rounded-full -mb-40 -ml-40 blur-3xl" />
-
             <div className="relative p-6 sm:p-8">
               <div className="flex flex-col items-center gap-6 md:flex-row md:items-start">
                 {/* Avatar */}
@@ -361,18 +362,18 @@ const ProfilePage = () => {
                 </div>
 
                 {/* Stats */}
-                <div className="flex gap-3">
-                  <div className="px-5 py-3 text-center bg-white rounded-xl shadow-md border border-gray-100">
-                    <div className="text-2xl font-bold text-transparent bg-clip-text bg-gradient-to-r from-red-600 to-rose-600">{orders.length}</div>
-                    <div className="text-xs font-medium text-gray-500">Orders</div>
+                <div className="px-5 py-3 text-center bg-white rounded-xl shadow-md border border-gray-100">
+                  <div className="text-2xl font-bold text-transparent bg-clip-text bg-gradient-to-r from-red-600 to-rose-600">
+                    {orders.length}
                   </div>
+                  <div className="text-xs font-medium text-gray-500">Orders</div>
                 </div>
               </div>
             </div>
           </div>
 
           <div className="grid gap-6 lg:grid-cols-4 lg:gap-8">
-            {/* Premium Sidebar */}
+            {/* Sidebar */}
             <div className="lg:col-span-1">
               <div className="sticky top-4 bg-white rounded-2xl shadow-xl border border-gray-100 overflow-hidden">
                 <div className="p-2">
@@ -437,9 +438,9 @@ const ProfilePage = () => {
                               <label className="block mb-2 text-sm font-semibold text-gray-700">Full Name</label>
                               <input
                                 type="text"
-                                value={profileData.name}
-                                onChange={(e) => setProfileData({ ...profileData, name: e.target.value })}
-                                disabled={!isEditing}
+                                value={details.name}
+                                onChange={(e) => handleDetailsChange("name", e.target.value)}
+                                disabled={!isEditing || isUpdatingProfile}
                                 className="w-full px-4 py-2.5 text-gray-700 bg-white border border-gray-200 rounded-xl transition-all focus:outline-none focus:ring-2 focus:ring-red-900/30 focus:border-gray-900 disabled:bg-red-50 disabled:text-gray-500"
                               />
                             </div>
@@ -447,44 +448,39 @@ const ProfilePage = () => {
                               <label className="block mb-2 text-sm font-semibold text-gray-700">Email Address</label>
                               <input
                                 type="email"
-                                value={profileData.email}
+                                value={profileForm.email}
                                 disabled
                                 className="w-full px-4 py-2.5 text-gray-500 bg-red-50 border border-gray-200 rounded-xl"
-                              />
-                            </div>
-                            <div>
-                              <label className="block mb-2 text-sm font-semibold text-gray-700">Phone Number</label>
-                              <input
-                                type="tel"
-                                value={profileData.phone}
-                                onChange={(e) => setProfileData({ ...profileData, phone: e.target.value })}
-                                disabled={!isEditing}
-                                className="w-full px-4 py-2.5 text-gray-700 bg-white border border-gray-200 rounded-xl transition-all focus:outline-none focus:ring-2 focus:ring-red-900/30 focus:border-gray-900 disabled:bg-red-50 disabled:text-gray-500"
                               />
                             </div>
                             <div>
                               <label className="block mb-2 text-sm font-semibold text-gray-700">Date of Birth</label>
                               <input
                                 type="date"
-                                value={profileData.dateOfBirth}
-                                onChange={(e) => setProfileData({ ...profileData, dateOfBirth: e.target.value })}
-                                disabled={!isEditing}
+                                value={details.dateOfBirth}
+                                onChange={(e) => handleDetailsChange("dateOfBirth", e.target.value)}
+                                disabled={!isEditing || isUpdatingProfile}
                                 className="w-full px-4 py-2.5 text-gray-700 bg-white border border-gray-200 rounded-xl transition-all focus:outline-none focus:ring-2 focus:ring-red-900/30 focus:border-gray-900 disabled:bg-red-50 disabled:text-gray-500"
                               />
                             </div>
                             <div>
                               <label className="block mb-2 text-sm font-semibold text-gray-700">Gender</label>
                               <select
-                                value={profileData.gender}
-                                onChange={(e) => setProfileData({ ...profileData, gender: e.target.value })}
-                                disabled={!isEditing}
-                                className="w-full px-4 py-2.5 text-gray-700 bg-white border border-gray-200 rounded-xl transition-all focus:outline-none focus:ring-2 focus:ring-red-900/30 focus:border-gray-900 disabled:bg-red-50 disabled:text-gray-500"
+                                value={details.gender}
+                                onChange={(e) => handleDetailsChange("gender", e.target.value)}
+                                disabled={!isEditing || isUpdatingProfile}
+                                className={`w-full px-4 py-2.5 text-gray-700 bg-white border rounded-xl transition-all focus:outline-none focus:ring-2 focus:ring-red-900/30 focus:border-gray-900 disabled:bg-red-50 disabled:text-gray-500 ${
+                                  validationErrors.gender ? "border-red-500" : "border-gray-200"
+                                }`}
                               >
                                 <option value="">Select Gender</option>
                                 <option value="male">Male</option>
                                 <option value="female">Female</option>
                                 <option value="other">Other</option>
                               </select>
+                              {validationErrors.gender && (
+                                <p className="mt-1 text-xs text-red-500">{validationErrors.gender}</p>
+                              )}
                             </div>
                           </div>
 
@@ -493,167 +489,57 @@ const ProfilePage = () => {
                               <button
                                 type="button"
                                 onClick={cancelEditing}
-                                className="px-5 py-2.5 text-sm font-semibold text-gray-700 bg-white border border-gray-200 rounded-xl hover:bg-red-50 transition"
+                                disabled={isUpdatingProfile}
+                                className="px-5 py-2.5 text-sm font-semibold text-gray-700 bg-white border border-gray-200 rounded-xl hover:bg-red-50 transition disabled:opacity-50"
                               >
                                 Cancel
                               </button>
                               <button
                                 type="submit"
-                                className="px-5 py-2.5 text-sm font-semibold text-white transition-all rounded-xl bg-gradient-to-r from-red-900 to-red-800 shadow-lg hover:shadow-xl hover:scale-[1.02] active:scale-[0.98]"
+                                disabled={isUpdatingProfile}
+                                className="px-5 py-2.5 text-sm font-semibold text-white transition-all rounded-xl bg-gradient-to-r from-red-900 to-red-800 shadow-lg hover:shadow-xl hover:scale-[1.02] active:scale-[0.98] disabled:opacity-50 disabled:hover:scale-100"
                               >
-                                Save Changes
+                                {isUpdatingProfile ? "Saving..." : "Save Changes"}
                               </button>
                             </div>
                           )}
                         </form>
 
                         {/* Addresses Section */}
-                        <div className="pt-8 mt-10 border-t border-gray-100">
-                          <div className="flex flex-wrap items-center justify-between gap-3 mb-5">
-                            <div>
-                              <h3 className="text-xl font-bold text-gray-700">Saved Addresses</h3>
-                              <p className="text-sm text-gray-500">Manage your shipping locations</p>
-                            </div>
-                            {!showAddressForm && (
-                              <button
-                                onClick={() => setShowAddressForm(true)}
-                                className="inline-flex items-center gap-2 px-4 py-2 text-sm font-semibold text-white transition-all rounded-xl bg-gradient-to-r from-red-900 to-red-800 shadow-md hover:shadow-lg hover:scale-[1.02]"
-                              >
-                                <Plus className="w-4 h-4" /> Add Address
-                              </button>
-                            )}
-                          </div>
-
-                          {showAddressForm && (
-                            <div className="p-5 mb-5 border border-gray-100 rounded-2xl bg-red-50/50">
-                              <h4 className="mb-4 font-semibold text-gray-700">{editingAddress ? "Edit Address" : "New Address"}</h4>
-                              <form onSubmit={handleAddOrUpdateAddress} className="space-y-4">
-                                <div className="grid gap-3 md:grid-cols-2">
-                                  <input
-                                    type="text"
-                                    placeholder="Full Name"
-                                    value={newAddress.fullName}
-                                    onChange={(e) => setNewAddress({ ...newAddress, fullName: e.target.value })}
-                                    className="px-4 py-2.5 text-gray-700 bg-white border border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-red-900/30 focus:border-gray-900"
-                                    required
-                                  />
-                                  <input
-                                    type="tel"
-                                    placeholder="Phone Number"
-                                    value={newAddress.phone}
-                                    onChange={(e) => setNewAddress({ ...newAddress, phone: e.target.value })}
-                                    className="px-4 py-2.5 text-gray-700 bg-white border border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-red-900/30 focus:border-gray-900"
-                                    required
-                                  />
-                                  <input
-                                    type="text"
-                                    placeholder="Address Line 1"
-                                    value={newAddress.addressLine1}
-                                    onChange={(e) => setNewAddress({ ...newAddress, addressLine1: e.target.value })}
-                                    className="px-4 py-2.5 text-gray-700 bg-white border border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-red-900/30 focus:border-gray-900"
-                                    required
-                                  />
-                                  <input
-                                    type="text"
-                                    placeholder="Address Line 2 (Optional)"
-                                    value={newAddress.addressLine2}
-                                    onChange={(e) => setNewAddress({ ...newAddress, addressLine2: e.target.value })}
-                                    className="px-4 py-2.5 text-gray-700 bg-white border border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-red-900/30 focus:border-gray-900"
-                                  />
-                                  <input
-                                    type="text"
-                                    placeholder="City"
-                                    value={newAddress.city}
-                                    onChange={(e) => setNewAddress({ ...newAddress, city: e.target.value })}
-                                    className="px-4 py-2.5 text-gray-700 bg-white border border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-red-900/30 focus:border-gray-900"
-                                    required
-                                  />
-                                  <input
-                                    type="text"
-                                    placeholder="State"
-                                    value={newAddress.state}
-                                    onChange={(e) => setNewAddress({ ...newAddress, state: e.target.value })}
-                                    className="px-4 py-2.5 text-gray-700 bg-white border border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-red-900/30 focus:border-gray-900"
-                                    required
-                                  />
-                                  <input
-                                    type="text"
-                                    placeholder="Pincode"
-                                    value={newAddress.pincode}
-                                    onChange={(e) => setNewAddress({ ...newAddress, pincode: e.target.value })}
-                                    className="px-4 py-2.5 text-gray-700 bg-white border border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-red-900/30 focus:border-gray-900"
-                                    required
-                                  />
-                                </div>
-                                <div className="flex items-center gap-2">
-                                  <input
-                                    type="checkbox"
-                                    id="isDefault"
-                                    checked={newAddress.isDefault}
-                                    onChange={(e) => setNewAddress({ ...newAddress, isDefault: e.target.checked })}
-                                    className="w-4 h-4 text-gray-700 border-gray-300 rounded focus:ring-red-900"
-                                  />
-                                  <label htmlFor="isDefault" className="text-sm text-gray-700">
-                                    Set as default address
-                                  </label>
-                                </div>
-                                <div className="flex flex-col-reverse justify-end gap-2 sm:flex-row">
-                                  <button
-                                    type="button"
-                                    onClick={resetAddressForm}
-                                    className="px-4 py-2 text-sm font-semibold text-gray-700 bg-white border border-gray-200 rounded-xl hover:bg-red-50"
-                                  >
-                                    Cancel
-                                  </button>
-                                  <button
-                                    type="submit"
-                                    disabled={isAddressSaving}
-                                    className="px-4 py-2 text-sm font-semibold text-white transition-all rounded-xl bg-gradient-to-r from-red-900 to-red-800 shadow-md hover:shadow-lg disabled:opacity-50 disabled:cursor-not-allowed"
-                                  >
-                                    {isAddressSaving ? "Saving..." : editingAddress ? "Update" : "Save"} Address
-                                  </button>
-                                </div>
-                              </form>
-                            </div>
-                          )}
-
-                          <div className="space-y-3">
-                            {profileData.addresses.map((addr) => (
-                              <div key={addr._id} className="p-4 transition-all bg-white border border-gray-200 rounded-xl hover:border-gray-300 hover:shadow-md">
-                                <div className="flex items-start justify-between gap-3">
-                                  <div className="flex-1 min-w-0">
-                                    <p className="font-semibold text-gray-700">
-                                      {addr.fullName}
-                                      <span className="mx-2 text-gray-300">•</span>
-                                      <span className="text-xs font-medium text-gray-500 uppercase">{addr.type}</span>
-                                    </p>
-                                    <p className="mt-1 text-sm text-gray-600">
-                                      {addr.addressLine1}, {addr.addressLine2 && `${addr.addressLine2}, `}
-                                      {addr.city}, {addr.state} - {addr.pincode}
-                                    </p>
-                                    <p className="mt-0.5 text-sm text-gray-600">📞 {addr.phone}</p>
-                                    {addr.isDefault && (
-                                      <span className="inline-block px-2.5 py-0.5 mt-2 text-xs font-semibold text-white rounded-full bg-gradient-to-r from-red-900 to-red-800 shadow-sm">
-                                        Default
-                                      </span>
-                                    )}
-                                  </div>
-                                  <div className="flex gap-1.5 shrink-0">
-                                    <button onClick={() => startEditAddress(addr)} className="p-2 text-gray-500 transition-colors rounded-lg hover:bg-red-100 hover:text-gray-700">
-                                      <Edit2 className="w-4 h-4" />
-                                    </button>
-                                    <button onClick={() => handleDeleteAddress(addr._id)} className="p-2 text-gray-500 transition-colors rounded-lg hover:bg-red-50 hover:text-gray-600">
-                                      <Trash2 className="w-4 h-4" />
-                                    </button>
+                        {profileForm.addresses?.length > 0 && (
+                          <div className="pt-8 mt-10 border-t border-gray-100">
+                            <h3 className="text-lg font-semibold text-gray-700 mb-4">Saved Addresses</h3>
+                            <div className="space-y-3">
+                              {profileForm.addresses.map((addr) => (
+                                <div key={addr._id} className="p-4 transition-all bg-white border border-gray-200 rounded-xl">
+                                  <div className="flex items-start justify-between gap-3">
+                                    <div className="flex-1 min-w-0">
+                                      <p className="font-semibold text-gray-700">
+                                        {addr.fullName}
+                                        <span className="mx-2 text-gray-300">•</span>
+                                        <span className="text-xs font-medium text-gray-500 uppercase">
+                                          {addr.type === "home" && "🏠 Home"}
+                                          {addr.type === "work" && "💼 Work"}
+                                          {addr.type === "other" && "📍 Other"}
+                                        </span>
+                                      </p>
+                                      <p className="mt-1 text-sm text-gray-600">
+                                        {addr.addressLine1}, {addr.addressLine2 && `${addr.addressLine2}, `}
+                                        {addr.city}, {addr.state} - {addr.pincode}
+                                      </p>
+                                      <p className="mt-0.5 text-sm text-gray-600">📞 {addr.phone}</p>
+                                      {addr.isDefault && (
+                                        <span className="inline-block px-2.5 py-0.5 mt-2 text-xs font-semibold text-white rounded-full bg-gradient-to-r from-red-900 to-red-800 shadow-sm">
+                                          Default
+                                        </span>
+                                      )}
+                                    </div>
                                   </div>
                                 </div>
-                              </div>
-                            ))}
-                            {profileData.addresses.length === 0 && (
-                              <p className="py-6 text-sm text-center text-gray-500">No addresses saved yet.</p>
-                            )}
+                              ))}
+                            </div>
                           </div>
-                        </div>
+                        )}
                       </motion.div>
                     )}
 
@@ -800,12 +686,11 @@ const ProfilePage = () => {
                         </div>
 
                         <div className="space-y-6">
-                          {/* Stats Cards */}
                           <div className="grid gap-4 md:grid-cols-2">
                             <div className="relative p-6 overflow-hidden bg-gradient-to-br from-red-700 to-red-800 rounded-2xl shadow-xl">
                               <div className="absolute top-0 right-0 w-32 h-32 bg-white/5 rounded-full -mt-16 -mr-16 blur-2xl" />
                               <p className="relative text-sm font-medium text-gray-300">Total Referrals</p>
-                              <p className="relative mt-2 text-4xl font-bold text-white">{dataforreferral?.numberOfReferrals || 0}</p>
+                              <p className="relative mt-2 text-4xl font-bold text-white">{referralData?.numberOfReferrals || 0}</p>
                             </div>
                             <div className="relative p-6 overflow-hidden bg-white border border-gray-200 rounded-2xl shadow-lg">
                               <p className="text-sm font-medium text-gray-500">Referral Earnings</p>
@@ -834,60 +719,12 @@ const ProfilePage = () => {
                               <span className="ml-2 px-3 py-1 text-xs font-bold tracking-wider text-gray-700 uppercase bg-red-100 rounded-lg">{user?.myreferralCode || "N/A"}</span>
                             </p>
                             <div className="grid grid-cols-2 gap-3 mt-6 sm:grid-cols-3 lg:grid-cols-6">
-                              <a
-                                href={shareUrls.whatsapp}
-                                target="_blank"
-                                rel="noreferrer"
-                                className="flex items-center justify-center gap-2 px-3 py-3 text-sm font-medium text-gray-700 transition-all bg-white border border-gray-200 rounded-xl hover:border-gray-300 hover:bg-red-50 hover:shadow-md"
-                              >
-                                <MessageCircle className="w-4 h-4" />
-                                <span>WhatsApp</span>
-                              </a>
-                              <a
-                                href={shareUrls.email}
-                                target="_blank"
-                                rel="noreferrer"
-                                className="flex items-center justify-center gap-2 px-3 py-3 text-sm font-medium text-gray-700 transition-all bg-white border border-gray-200 rounded-xl hover:border-gray-300 hover:bg-red-50 hover:shadow-md"
-                              >
-                                <Mail className="w-4 h-4" />
-                                <span>Email</span>
-                              </a>
-                              <a
-                                href={shareUrls.facebook}
-                                target="_blank"
-                                rel="noreferrer"
-                                className="flex items-center justify-center gap-2 px-3 py-3 text-sm font-medium text-gray-700 transition-all bg-white border border-gray-200 rounded-xl hover:border-gray-300 hover:bg-red-50 hover:shadow-md"
-                              >
-                                <Facebook className="w-4 h-4" />
-                                <span>Facebook</span>
-                              </a>
-                              <a
-                                href={shareUrls.twitter}
-                                target="_blank"
-                                rel="noreferrer"
-                                className="flex items-center justify-center gap-2 px-3 py-3 text-sm font-medium text-gray-700 transition-all bg-white border border-gray-200 rounded-xl hover:border-gray-300 hover:bg-red-50 hover:shadow-md"
-                              >
-                                <Twitter className="w-4 h-4" />
-                                <span>Twitter</span>
-                              </a>
-                              <a
-                                href={shareUrls.linkedin}
-                                target="_blank"
-                                rel="noreferrer"
-                                className="flex items-center justify-center gap-2 px-3 py-3 text-sm font-medium text-gray-700 transition-all bg-white border border-gray-200 rounded-xl hover:border-gray-300 hover:bg-red-50 hover:shadow-md"
-                              >
-                                <Linkedin className="w-4 h-4" />
-                                <span>LinkedIn</span>
-                              </a>
-                              <a
-                                href={shareUrls.telegram}
-                                target="_blank"
-                                rel="noreferrer"
-                                className="flex items-center justify-center gap-2 px-3 py-3 text-sm font-medium text-gray-700 transition-all bg-white border border-gray-200 rounded-xl hover:border-gray-300 hover:bg-red-50 hover:shadow-md"
-                              >
-                                <Send className="w-4 h-4" />
-                                <span>Telegram</span>
-                              </a>
+                              <a href={shareUrls.whatsapp} target="_blank" rel="noreferrer" className="flex items-center justify-center gap-2 px-3 py-3 text-sm font-medium text-gray-700 transition-all bg-white border border-gray-200 rounded-xl hover:border-gray-300 hover:bg-red-50 hover:shadow-md"><MessageCircle className="w-4 h-4" /><span>WhatsApp</span></a>
+                              <a href={shareUrls.email} target="_blank" rel="noreferrer" className="flex items-center justify-center gap-2 px-3 py-3 text-sm font-medium text-gray-700 transition-all bg-white border border-gray-200 rounded-xl hover:border-gray-300 hover:bg-red-50 hover:shadow-md"><Mail className="w-4 h-4" /><span>Email</span></a>
+                              <a href={shareUrls.facebook} target="_blank" rel="noreferrer" className="flex items-center justify-center gap-2 px-3 py-3 text-sm font-medium text-gray-700 transition-all bg-white border border-gray-200 rounded-xl hover:border-gray-300 hover:bg-red-50 hover:shadow-md"><Facebook className="w-4 h-4" /><span>Facebook</span></a>
+                              <a href={shareUrls.twitter} target="_blank" rel="noreferrer" className="flex items-center justify-center gap-2 px-3 py-3 text-sm font-medium text-gray-700 transition-all bg-white border border-gray-200 rounded-xl hover:border-gray-300 hover:bg-red-50 hover:shadow-md"><Twitter className="w-4 h-4" /><span>Twitter</span></a>
+                              <a href={shareUrls.linkedin} target="_blank" rel="noreferrer" className="flex items-center justify-center gap-2 px-3 py-3 text-sm font-medium text-gray-700 transition-all bg-white border border-gray-200 rounded-xl hover:border-gray-300 hover:bg-red-50 hover:shadow-md"><Linkedin className="w-4 h-4" /><span>LinkedIn</span></a>
+                              <a href={shareUrls.telegram} target="_blank" rel="noreferrer" className="flex items-center justify-center gap-2 px-3 py-3 text-sm font-medium text-gray-700 transition-all bg-white border border-gray-200 rounded-xl hover:border-gray-300 hover:bg-red-50 hover:shadow-md"><Send className="w-4 h-4" /><span>Telegram</span></a>
                             </div>
                           </div>
                         </div>
@@ -900,6 +737,57 @@ const ProfilePage = () => {
           </div>
         </div>
       </div>
+
+      {/* SAVE CONFIRMATION MODAL */}
+      {showSaveModal && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/50 backdrop-blur-sm">
+          <motion.div
+            initial={{ opacity: 0, scale: 0.95 }}
+            animate={{ opacity: 1, scale: 1 }}
+            exit={{ opacity: 0, scale: 0.95 }}
+            className="relative w-full max-w-md bg-white rounded-2xl shadow-2xl overflow-hidden"
+          >
+            <div className="absolute top-0 right-0 pt-4 pr-4">
+              <button
+                onClick={() => setShowSaveModal(false)}
+                className="text-gray-400 hover:text-gray-600 transition"
+              >
+                <X className="w-5 h-5" />
+              </button>
+            </div>
+            <div className="p-6 pt-8">
+              <h3 className="text-xl font-bold text-center text-gray-800">Profile Updated!</h3>
+              <p className="mt-2 text-sm text-center text-gray-500">Your details have been saved successfully.</p>
+
+              <div className="mt-6 space-y-3 bg-gray-50 rounded-xl p-4">
+                <div className="flex justify-between text-sm">
+                  <span className="font-medium text-gray-600">Name:</span>
+                  <span className="text-gray-800">{savedDetails.name}</span>
+                </div>
+                <div className="flex justify-between text-sm">
+                  <span className="font-medium text-gray-600">Phone:</span>
+                  <span className="text-gray-800">{savedDetails.phoneNumber || "—"}</span>
+                </div>
+                <div className="flex justify-between text-sm">
+                  <span className="font-medium text-gray-600">Date of Birth:</span>
+                  <span className="text-gray-800">{savedDetails.dateOfBirth || "—"}</span>
+                </div>
+                <div className="flex justify-between text-sm">
+                  <span className="font-medium text-gray-600">Gender:</span>
+                  <span className="text-gray-800 capitalize">{savedDetails.gender || "—"}</span>
+                </div>
+              </div>
+
+              <button
+                onClick={() => setShowSaveModal(false)}
+                className="w-full mt-6 px-4 py-2.5 text-sm font-semibold text-white bg-gradient-to-r from-red-900 to-red-800 rounded-xl hover:shadow-lg transition"
+              >
+                Done
+              </button>
+            </div>
+          </motion.div>
+        </div>
+      )}
     </div>
   );
 };
