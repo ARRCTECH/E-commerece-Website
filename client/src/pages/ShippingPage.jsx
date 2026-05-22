@@ -166,11 +166,11 @@ const ShippingPage = () => {
           <div className="flex flex-col items-center justify-center gap-4 sm:flex-row">
             <div className="flex items-center gap-2 text-gray-600">
               <Phone className="w-5 h-5 text-red-500" />
-              <span>+91 88301 55383</span>
+              <span>+91 8830155383</span>
             </div>
             <div className="flex items-center gap-2 text-gray-600">
               <Mail className="w-5 h-5 text-red-500" />
-              <span>support@factorysale.com</span>
+              <span>factorysaleusadata@gmail.com</span>
             </div>
           </div>
         </div>

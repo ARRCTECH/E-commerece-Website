@@ -32,6 +32,7 @@ const getCategories = async (req, res) => {
 
     const categories = await Category.find(query)
       .populate("subcategories")
+      .populate("parentCategory", "_id name slug")
       .sort({ sortOrder: 1, createdAt: -1 });
 
     res.status(200).json({ categories });
@@ -50,7 +51,7 @@ const getCategoryBySlug = async (req, res) => {
 
     const category = await Category.findOne({ slug, isActive: true })
       .populate("subcategories")
-      .populate("parentCategory");
+      .populate("parentCategory", "_id name slug");
 
     if (!category) {
       return res.status(404).json({ message: "Category not found" });
@@ -69,6 +70,7 @@ const getCategoryBySlug = async (req, res) => {
 const createCategory = async (req, res) => {
   try {
     const { name, description, parentCategory, showOnHomepage, sortOrder } = req.body;
+    console.log("category body",req.body);
 
     if (!name || typeof name !== "string" || name.trim() === "") {
       return res.status(400).json({ message: "Category name is required and must be a string." });
@@ -132,7 +134,9 @@ const createCategory = async (req, res) => {
     // Update parent category if exists
     if (parentCategory) {
       await Category.findByIdAndUpdate(parentCategory, { $push: { subcategories: category._id } });
+      console.log(`✅ Added category ${category._id} to parent category ${parentCategory}`); 
     }
+    console.log("Created category:", category);
 
     res.status(201).json({
       message: "Category created successfully",

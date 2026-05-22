@@ -17,22 +17,23 @@ const FeaturedCategories = () => {
 
   if (isLoading) return <LoadingSpinner />;
 
-  const featured =
-    categories?.filter((c) => c.showOnHomepage)?.slice(0, 8) || [];
+  // Filter only parent categories (parentCategory is null) and showOnHomepage is true
+  const allFeatured = categories?.filter((c) => c.showOnHomepage && !c.parentCategory) || [];
+  const featured = allFeatured.slice(0, 8);
 
-  // mobile 4 cards per page
+  // mobile 2 cards per page
   const chunkedCategories = [];
-  for (let i = 0; i < featured.length; i += 4) {
-    chunkedCategories.push(featured.slice(i, i + 4));
+  for (let i = 0; i < featured.length; i += 2) {
+    chunkedCategories.push(featured.slice(i, i + 2));
   }
 
   return (
-    <section className="relative z-5 py-12 sm:py-20 bg-[#faf9f7]">
+    <section className="z-5 py-8 sm:py-12 bg-[#faf9f7]">
       <div className="relative w-full mx-auto" style={{ maxWidth: "1800px" }}>
         <div className="px-4 sm:px-6 md:px-8 lg:px-12 xl:px-16 2xl:px-20">
 
           {/* Header */}
-          <div className="flex flex-col md:flex-row md:items-end md:justify-between gap-6  sm:mb-10 border-b border-neutral-300/50 pb-8">
+          <div className="flex flex-col md:flex-row md:items-end md:justify-between gap-6 mb-8 sm:mb-12 border-b border-neutral-300/50 pb-8">
             <div className="flex flex-col items-start text-left max-w-2xl">
               <div className="flex items-center gap-2 mb-4">
                 <span className="w-8 h-px bg-red-500/60" />
@@ -66,9 +67,9 @@ const FeaturedCategories = () => {
             </Link>
           </div>
 
-          {/* Mobile horizontal 2x2 slider */}
-          <div className="sm:hidden overflow-x-auto snap-x snap-mandatory scrollbar-hide">
-            <div className="flex gap-4">
+          {/* Mobile horizontal slider - 2 cards per page */}
+          <div className="sm:hidden overflow-x-auto snap-x snap-mandatory scrollbar-hide pb-4">
+            <div className="flex gap-4 px-1">
               {chunkedCategories.map((group, pageIndex) => (
                 <div
                   key={pageIndex}
@@ -78,7 +79,7 @@ const FeaturedCategories = () => {
                     <CategoryCard
                       key={c._id}
                       category={c}
-                      index={pageIndex * 4 + i}
+                      index={pageIndex * 2 + i}
                     />
                   ))}
                 </div>
@@ -86,16 +87,8 @@ const FeaturedCategories = () => {
             </div>
           </div>
 
-          {/* Desktop */}
-          <div
-            className="hidden sm:grid gap-5 lg:gap-6"
-            style={{
-              gridTemplateColumns: `repeat(${Math.min(
-                featured.length || 1,
-                6
-              )}, minmax(0, 1fr))`,
-            }}
-          >
+          {/* Desktop Grid - Responsive columns */}
+          <div className="hidden sm:grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 2xl:grid-cols-6 gap-5 lg:gap-6">
             {featured.map((c, i) => (
               <CategoryCard key={c._id} category={c} index={i} />
             ))}
@@ -108,39 +101,38 @@ const FeaturedCategories = () => {
 
 const CategoryCard = ({ category, index }) => (
   <Link to={`/products?category=${category.slug}`} className="group block">
-    <div className="relative overflow-hidden rounded-2xl bg-neutral-100 transition-all duration-500">
-      <div className="relative w-full aspect-[3/4] overflow-hidden">
-
+    <div className="relative overflow-hidden rounded-2xl bg-neutral-100 transition-all duration-500 hover:shadow-xl group-hover:-translate-y-1">
+      <div className="relative w-full aspect-[2/3] sm:aspect-[3/4] md:aspect-[2/3] overflow-hidden">
         <img
           src={
             category.image?.url ||
             "/placeholder.svg?height=600&width=450&query=category image"
           }
           alt={category.image?.alt || category.name}
-          className="object-cover object-center w-full h-full"
+          className="object-cover object-center w-full h-full transition-transform duration-700 group-hover:scale-105"
         />
 
-        <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-black/20 to-transparent opacity-90" />
+        <div className="absolute inset-0 bg-gradient-to-t from-black/90 via-black/40 to-transparent" />
 
         <div className="absolute top-4 left-4 flex items-center gap-2 z-10">
-          <span className="text-white/40 text-xs font-light tabular-nums">
+          <span className="text-white/50 text-xs font-light tabular-nums">
             {String(index + 1).padStart(2, "0")}
           </span>
           <span className="h-px w-5 bg-white/40" />
         </div>
 
-        <div className="absolute inset-x-0 bottom-0 p-4 z-10">
-          <p className="text-[9px] tracking-[0.35em] uppercase text-white/60 font-light mb-2">
+        <div className="absolute inset-x-0 bottom-0 p-4 sm:p-5 z-10">
+          <p className="text-[9px] sm:text-[10px] tracking-[0.35em] uppercase text-white/70 font-light mb-2 sm:mb-3">
             Explore
           </p>
 
           <div className="flex items-end justify-between gap-3">
-            <h3 className="text-sm font-light text-white tracking-wide leading-tight">
+            <h3 className="text-sm sm:text-base md:text-lg font-light text-white tracking-wide leading-tight">
               {category.name}
             </h3>
 
-            <span className="flex h-8 w-8 flex-shrink-0 items-center justify-center rounded-full bg-white/95 text-neutral-900 shadow-md">
-              <ArrowUpRight className="h-3.5 w-3.5" strokeWidth={1.8} />
+            <span className="flex h-8 w-8 sm:h-9 sm:w-9 flex-shrink-0 items-center justify-center rounded-full bg-white/95 text-neutral-900 shadow-md transition-all duration-300 group-hover:scale-110 group-hover:bg-red-500 group-hover:text-white">
+              <ArrowUpRight className="h-3.5 w-3.5 sm:h-4 sm:w-4" strokeWidth={1.8} />
             </span>
           </div>
         </div>

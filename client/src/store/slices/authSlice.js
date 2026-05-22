@@ -453,7 +453,6 @@ export const loginWithEmail = createAsyncThunk(
   },
 );
 
-// Phone Authentication Thunks
 // export const sendPhoneOTP = createAsyncThunk("auth/sendPhoneOTP", async (phoneNumber, { rejectWithValue }) => {
 //   try {
 //     // First, prepare the backend for OTP

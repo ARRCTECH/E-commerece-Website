@@ -39,11 +39,10 @@ const Navbar = () => {
   const { suggestions = [], recentSearches = [], suggestionsLoading = false } = useSelector((state) => state.search || {});
   const cartTotalQuantity = useSelector(selectCartTotalQuantity);
   const wishlistCount = useSelector(selectWishlistCount);
-  const [debouncedSearchQuery] = useDebounce(searchQuery, 300); // used for suggestions
-  const [debouncedNavigateQuery] = useDebounce(searchQuery, 500); // used for navigation
+  const [debouncedSearchQuery] = useDebounce(searchQuery, 300);
+  const [debouncedNavigateQuery] = useDebounce(searchQuery, 500);
   const [showMobileSearch, setShowMobileSearch] = useState(true);
 
-  // Placeholder rotation
   const placeholders = [
     "Search for Oversize T-shirt",
     "Search for Hoodie",
@@ -53,7 +52,6 @@ const Navbar = () => {
   ];
   const [placeholderIndex, setPlaceholderIndex] = useState(0);
 
-  // Scroll effect: hide mobile search on scroll
   useEffect(() => {
     const handleScroll = () => {
       const isScrolled = window.scrollY > 30;
@@ -68,7 +66,6 @@ const Navbar = () => {
     return () => window.removeEventListener("scroll", handleScroll);
   }, []);
 
-  // Rotate placeholder text
   useEffect(() => {
     const interval = setInterval(() => {
       setPlaceholderIndex((prev) => (prev + 1) % placeholders.length);
@@ -76,7 +73,6 @@ const Navbar = () => {
     return () => clearInterval(interval);
   }, []);
 
-  // Fetch cart & wishlist when logged in
   useEffect(() => {
     if (token && user) {
       dispatch(fetchCart());
@@ -84,12 +80,10 @@ const Navbar = () => {
     }
   }, [user, token, dispatch]);
 
-  // Fetch categories
   useEffect(() => {
     dispatch(fetchCategories({ showOnHomepage: false }));
   }, [dispatch]);
 
-  // Fetch search suggestions with debounce and abort controller
   useEffect(() => {
     if (abortControllerRef.current) {
       abortControllerRef.current.abort();
@@ -112,19 +106,15 @@ const Navbar = () => {
     };
   }, [debouncedSearchQuery, searchFocused, dispatch]);
 
-  // LIVE SEARCH: Navigate on debounced query change
   useEffect(() => {
     const trimmed = debouncedNavigateQuery.trim();
     if (trimmed) {
-      // Navigate to products page with search param
       navigate(`/products?search=${encodeURIComponent(trimmed)}`);
     } else if (debouncedNavigateQuery === "" && location.pathname === "/products") {
-      // If search is cleared and we are on products page, remove search param
       navigate("/products");
     }
   }, [debouncedNavigateQuery, navigate, location.pathname]);
 
-  // Click outside for search dropdown
   useEffect(() => {
     const handleClickOutsideSearch = (event) => {
       if (searchRef.current && !searchRef.current.contains(event.target)) {
@@ -136,7 +126,6 @@ const Navbar = () => {
     return () => document.removeEventListener("mousedown", handleClickOutsideSearch);
   }, []);
 
-  // Click outside for user menu
   useEffect(() => {
     const handleClickOutsideUserMenu = (event) => {
       if (userMenuRef.current && !userMenuRef.current.contains(event.target)) {
@@ -147,12 +136,17 @@ const Navbar = () => {
     return () => document.removeEventListener("mousedown", handleClickOutsideUserMenu);
   }, []);
 
-  const navigateToCategory = useCallback((categorySlug = "") => {
-    const base = "/products?";
-    navigate(categorySlug ? `${base}category=${categorySlug}` : base);
+  // ✅ UPDATED: Navigate with isSubcategory flag
+  const navigateToCategory = useCallback((categorySlug, isSubcategory = false) => {
+    if (isSubcategory) {
+      // Subcategories - use subcategory parameter
+      navigate(`/products?subcategory=${categorySlug}`);
+    } else {
+      // Main categories - use category parameter
+      navigate(`/products?category=${categorySlug}`);
+    }
   }, [navigate]);
 
-  // Handle suggestion click - saves search term and navigates immediately
   const handleSuggestionClick = useCallback((suggestion) => {
     setSearchQuery(suggestion);
     dispatch(addRecentSearch(suggestion));
@@ -161,7 +155,6 @@ const Navbar = () => {
     setSearchFocused(false);
   }, [dispatch, navigate]);
 
-  // Handle recent search click
   const handleRecentSearchClick = useCallback((recentSearch) => {
     setSearchQuery(recentSearch);
     dispatch(addRecentSearch(recentSearch));
@@ -178,17 +171,16 @@ const Navbar = () => {
     toast.success("Logged out successfully");
   }, [dispatch, navigate]);
 
-  // Mobile categories logic
   const desiredMobileCategoryNames = ["Oversized", "New Arrival", "Minimalist", "Regular"];
   const categoriesForMobileScroll = [];
-  
+
   desiredMobileCategoryNames.forEach((name) => {
     const foundCat = categories.find((cat) => cat.name === name);
     if (foundCat && !["anime-t-shirt", "ksauni-tshirts-styles"].includes(foundCat.slug)) {
       categoriesForMobileScroll.push(foundCat);
     }
   });
-  
+
   if (categoriesForMobileScroll.length < 5 && categories.length > 0) {
     const existingNames = new Set(categoriesForMobileScroll.map((cat) => cat.name));
     for (const cat of categories) {
@@ -207,7 +199,6 @@ const Navbar = () => {
   return (
     <>
       <div className="fixed top-0 left-0 right-0 z-50">
-        {/* ROW 1: Navbar with Logo, Search, Icons */}
         <motion.div
           initial={{ y: -100, opacity: 0 }}
           animate={{ y: 0, opacity: 1 }}
@@ -215,12 +206,10 @@ const Navbar = () => {
           className={`transition-all duration-300 ${scrolled
             ? "bg-white/95 backdrop-blur-xl border-b border-red-500/30 shadow-2xl shadow-red-500/10"
             : "bg-white border-b border-gray-200"
-          }`}
+            }`}
         >
           <div className="max-w-7xl mx-auto px-4 lg:px-6">
-            {/* Main Row: Logo + Search + Icons */}
             <div className="flex items-center justify-between py-3 gap-4">
-              {/* LEFT - Logo & Mobile Menu Button */}
               <div className="flex items-center gap-2">
                 <button
                   onClick={() => setIsMenuOpen(!isMenuOpen)}
@@ -234,7 +223,6 @@ const Navbar = () => {
                 </div>
               </div>
 
-              {/* Desktop Search Bar */}
               <div className="relative hidden md:block flex-1 max-w-xl" ref={searchRef}>
                 <div className="relative">
                   <Search size={18} className={`absolute left-4 top-1/2 -translate-y-1/2 transition-colors ${searchFocused ? 'text-red-500' : 'text-gray-400'}`} />
@@ -310,7 +298,6 @@ const Navbar = () => {
                 </AnimatePresence>
               </div>
 
-              {/* Mobile Search Icon (appears when scrolled) */}
               {scrolled && !showMobileSearch && (
                 <div
                   onClick={() => setShowMobileSearch(true)}
@@ -320,9 +307,7 @@ const Navbar = () => {
                 </div>
               )}
 
-              {/* Desktop Icons: Wishlist, Cart, User Menu */}
               <div className="flex items-center gap-2 md:gap-4">
-                {/* Wishlist */}
                 <div onClick={() => navigate("/wishlist")} className="relative p-2 rounded-full text-gray-600 cursor-pointer hover:text-red-500 hover:bg-red-50 transition group">
                   <Heart size={22} />
                   {wishlistCount > 0 && (
@@ -332,7 +317,6 @@ const Navbar = () => {
                   )}
                 </div>
 
-                {/* Cart */}
                 <div onClick={() => navigate("/cart")} className="relative p-2 rounded-full text-gray-600 cursor-pointer hover:text-red-500 hover:bg-red-50 transition group">
                   <ShoppingBag size={22} />
                   {cartTotalQuantity > 0 && (
@@ -342,7 +326,6 @@ const Navbar = () => {
                   )}
                 </div>
 
-                {/* User Menu */}
                 <div className="relative hidden md:block" ref={userMenuRef}>
                   <button
                     onClick={() => {
@@ -377,13 +360,11 @@ const Navbar = () => {
                           <div className="absolute inset-0 rounded-2xl bg-gradient-to-r from-red-500 via-orange-500 to-red-500 opacity-75 blur-sm"></div>
                           <div className="absolute inset-0 rounded-2xl bg-gradient-to-r from-red-500 via-orange-500 to-red-500 opacity-100"></div>
                           <div className="relative bg-white rounded-2xl m-[1px] overflow-hidden">
-                            {/* User Info */}
                             <div className="pt-3 px-4 pb-3 border-b border-gray-100">
                               <h3 className="text-base font-bold text-gray-800">{user?.name}</h3>
                               <p className="text-xs text-gray-500 mt-0.5">{user?.email}</p>
                             </div>
 
-                            {/* Menu Items */}
                             <div className="p-2">
                               <button onClick={() => { navigate("/profile"); setShowUserMenu(false); }} className="flex items-center gap-3 w-full px-3 py-2.5 text-sm text-gray-700 rounded-xl hover:bg-red-50 hover:text-red-600 transition group">
                                 <div className="w-8 h-8 rounded-lg bg-gray-100 group-hover:bg-red-100 flex items-center justify-center transition">
@@ -435,7 +416,6 @@ const Navbar = () => {
               </div>
             </div>
 
-            {/* Mobile Search Bar */}
             <AnimatePresence>
               {showMobileSearch && !isProductDetailPage && (
                 <motion.div
@@ -511,21 +491,46 @@ const Navbar = () => {
 
         {/* Desktop Categories Bar */}
         {!isCartPage && (
-          <div className="bg-gradient-to-r from-gray-900 via-gray-800 to-gray-900 border-b border-red-500/30 shadow-lg">
+          <div className="bg-gradient-to-r from-gray-900 via-gray-800 to-gray-900 border-b border-red-500/30 shadow-lg relative z-40">
             <div className="max-w-7xl mx-auto px-4 lg:px-6">
-              <div className="hidden md:flex items-center justify-center gap-8 py-3 overflow-x-auto">
+              <div className="hidden md:flex items-center flex-wrap gap-10 py-3">
                 {categories
-                  .filter(cat => !["anime-t-shirt", "ksauni-tshirts-styles"].includes(cat.slug))
-                  .map((cat) => (
-                    <button
-                      key={cat._id}
-                      onClick={() => navigateToCategory(cat.slug)}
-                      className="relative text-sm font-medium text-gray-200 hover:text-red-400 transition-colors py-1.5 group whitespace-nowrap"
-                    >
-                      {cat.name}
-                      <span className="absolute bottom-0 left-0 w-0 h-0.5 bg-gradient-to-r from-red-500 to-red-600 group-hover:w-full transition-all duration-300 rounded-full" />
-                    </button>
-                  ))}
+                  .filter(cat => !cat.parentCategory && !["anime-t-shirt", "ksauni-tshirts-styles"].includes(cat.slug))
+                  .map((cat) => {
+                    const subCats = categories.filter(sub => sub.parentCategory?._id?.toString() === cat._id?.toString() || sub.parentCategory?.toString() === cat._id?.toString());
+
+                    return (
+                      <div key={cat._id} className="relative group">
+                        <button
+                          onClick={() => navigateToCategory(cat.slug, false)}
+                          className="relative text-sm font-medium text-gray-200 hover:text-red-400 transition-colors py-1.5 group-hover:text-red-400 whitespace-nowrap"
+                        >
+                          {cat.name}
+                          <span className="absolute bottom-0 left-0 w-0 h-0.5 bg-gradient-to-r from-red-500 to-red-600 group-hover:w-full transition-all duration-300 rounded-full" />
+                        </button>
+
+                        {/* Subcategories Dropdown */}
+                        {subCats.length > 0 && (
+                          <div className="absolute left-1/2 -translate-x-1/2 top-full pt-2 opacity-0 invisible group-hover:opacity-100 group-hover:visible transition-all duration-200 z-50"
+                            style={{ minWidth: '180px' }}>
+                            <div className="bg-white rounded-xl shadow-xl border border-gray-100 overflow-hidden">
+                              <div className="py-2">
+                                {subCats.map((subCat) => (
+                                  <button
+                                    key={subCat._id}
+                                    onClick={() => navigateToCategory(subCat.slug, true)}  // ✅ isSubcategory = true
+                                    className="block w-full text-left px-5 py-2.5 text-sm text-gray-700 hover:bg-red-50 hover:text-red-600 transition-colors whitespace-nowrap"
+                                  >
+                                    {subCat.name}
+                                  </button>
+                                ))}
+                              </div>
+                            </div>
+                          </div>
+                        )}
+                      </div>
+                    );
+                  })}
               </div>
             </div>
           </div>
@@ -546,7 +551,7 @@ const Navbar = () => {
                   {categoriesForMobileScroll.map((cat) => (
                     <div
                       key={cat._id}
-                      onClick={() => navigateToCategory(cat.slug)}
+                      onClick={() => navigateToCategory(cat.slug, false)}
                       className="flex flex-col items-center flex-shrink-0 cursor-pointer group"
                     >
                       <div className="w-14 h-14 rounded-full bg-gray-800 border-2 border-red-500/30 group-hover:border-red-500 overflow-hidden shadow-md transition-all">
@@ -593,10 +598,8 @@ const Navbar = () => {
         </AnimatePresence>
       </div>
 
-      {/* Spacer for fixed nav */}
       <div className="h-[72px] md:h-[80px] lg:h-[88px]" />
 
-      {/* Mobile Bottom Bar */}
       {!isProductDetailPage && !isCartPage && (
         <div className="fixed bottom-0 left-0 right-0 z-40 bg-white/95 backdrop-blur-xl border-t border-gray-200 shadow-lg md:hidden">
           <div className="flex justify-around py-2">

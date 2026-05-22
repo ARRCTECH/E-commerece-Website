@@ -170,7 +170,7 @@ router.get("/health", (req, res) => {
 })
 
 // Protected routes
-router.use(protect)
+// router.use(protect)
 router.get("/profile", getProfile)
 router.put("/profile", validateProfileUpdate, handleValidationErrors, updateProfile)
 router.post("/upload-avatar", upload.single("avatar"), uploadAvatar)

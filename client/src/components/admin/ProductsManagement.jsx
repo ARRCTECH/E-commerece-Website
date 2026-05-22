@@ -10,7 +10,8 @@ import { fetchCategories as fetchCategoriesAction } from "../../store/slices/cat
 const ProductsManagement = () => {
   const dispatch = useDispatch()
   const [products, setProducts] = useState([])
-  const [categories, setCategories] = useState([])
+  const [categories, setCategories] = useState([])  // All categories from API
+  const [subcategories, setSubcategories] = useState([])
   const [loading, setLoading] = useState(false)
   const [showModal, setShowModal] = useState(false)
   const [editingProduct, setEditingProduct] = useState(null)
@@ -28,10 +29,8 @@ const ProductsManagement = () => {
     total: 0,
   })
 
-  // 🆕 Prevent double submit
   const [isSubmitting, setIsSubmitting] = useState(false)
 
-  // 🆕 Bulk Config State
   const [bulkConfig, setBulkConfig] = useState({
     piecesPerSize: 1,
     minColorsToSelect: 1,
@@ -62,10 +61,34 @@ const ProductsManagement = () => {
   const [images, setImages] = useState([])
   const [videos, setVideos] = useState([])
 
+  // ✅ Main Categories: parentCategory is null
+  const mainCategories = categories.filter(cat => !cat.parentCategory)
+
+  // ✅ Filter subcategories based on selected category
+  const getSubcategories = (parentId) => {
+    if (!parentId) return []
+    return categories.filter(cat => 
+      cat.parentCategory && (
+        cat.parentCategory === parentId ||
+        cat.parentCategory?._id === parentId ||
+        cat.parentCategory?.toString() === parentId.toString()
+      )
+    )
+  }
+
   useEffect(() => {
     fetchProducts()
     fetchCategories()
   }, [filters, searchTerm, pagination.current])
+
+  // ✅ Update subcategories when category changes
+  useEffect(() => {
+    if (formData.category) {
+      setSubcategories(getSubcategories(formData.category))
+    } else {
+      setSubcategories([])
+    }
+  }, [formData.category, categories])
 
   const fetchProducts = async () => {
     try {
@@ -98,7 +121,6 @@ const ProductsManagement = () => {
   const handleSubmit = async (e) => {
     e.preventDefault()
 
-    // ✅ Prevent double submit
     if (isSubmitting) {
       console.log("Already submitting, please wait...")
       return
@@ -110,9 +132,11 @@ const ProductsManagement = () => {
       setLoading(true)
       const formDataToSend = new FormData()
 
-      // Append common fields with proper handling
       Object.keys(formData).forEach((key) => {
         if (editingProduct && key === "category") {
+          return
+        }
+        if (editingProduct && key === "subcategory") {
           return
         }
         if (key === "sizes" || key === "colors" || key === "tags") {
@@ -120,14 +144,12 @@ const ProductsManagement = () => {
         } else if (key === "dimensions") {
           formDataToSend.append(key, JSON.stringify(formData[key]))
         } else if (key === "price") {
-          // ✅ Ensure price is single value
           let priceValue = formData.price
           if (Array.isArray(priceValue)) {
             priceValue = priceValue[0]
           }
           formDataToSend.append(key, priceValue)
         } else if (key === "originalPrice") {
-          // ✅ Ensure originalPrice is single value
           let originalPriceValue = formData.originalPrice
           if (Array.isArray(originalPriceValue)) {
             originalPriceValue = originalPriceValue[0]
@@ -138,11 +160,9 @@ const ProductsManagement = () => {
         }
       })
 
-      // 🆕 Append bulk fields
       formDataToSend.append("isBulkProduct", productType === "bulk")
       if (productType === "bulk") {
         formDataToSend.append("bulkConfig", JSON.stringify(bulkConfig))
-        // For bulk products, use pricePerSet
         formDataToSend.append("price", bulkConfig.pricePerSet)
         formDataToSend.append("originalPrice", bulkConfig.originalPricePerSet)
       }
@@ -253,6 +273,7 @@ const ProductsManagement = () => {
     setImages([])
     setVideos([])
     setEditingProduct(null)
+    setSubcategories([])
   }
 
   const openEditModal = (product) => {
@@ -261,7 +282,6 @@ const ProductsManagement = () => {
 
     setProductType(isBulk ? "bulk" : "regular")
 
-    // ✅ Ensure price and originalPrice are single values
     let priceValue = product.price
     let originalPriceValue = product.originalPrice
 
@@ -281,7 +301,7 @@ const ProductsManagement = () => {
       description: product.description || "",
       price: priceValue || "",
       originalPrice: originalPriceValue || "",
-      category: product.category?._id || "",
+      category: product.category?._id || product.category || "",
       subcategory: product.subcategory || "",
       sizes: product.sizes || [],
       colors: product.colors || [],
@@ -290,6 +310,12 @@ const ProductsManagement = () => {
       weight: product.weight || "",
       dimensions: product.dimensions || { length: "", width: "", height: "" },
     })
+
+    // Set subcategories for the selected category
+    if (product.category?._id || product.category) {
+      const parentId = product.category?._id || product.category
+      setSubcategories(getSubcategories(parentId))
+    }
 
     if (isBulk && product.bulkConfig) {
       setBulkConfig({
@@ -534,7 +560,8 @@ const ProductsManagement = () => {
             className="px-4 py-2 border border-gray-300 rounded-lg"
           >
             <option value="">All Categories</option>
-            {categories.map((category) => (
+            {/* ✅ Only Main Categories in filter dropdown */}
+            {mainCategories.map((category) => (
               <option key={category._id} value={category._id}>{category.name}</option>
             ))}
           </select>
@@ -723,11 +750,45 @@ const ProductsManagement = () => {
                   </div>
                   <div>
                     <label className="block mb-1 text-sm font-medium text-gray-700">Category</label>
-                    <select value={formData.category} onChange={(e) => setFormData({ ...formData, category: e.target.value })} className="w-full px-3 py-2 border rounded-md" required disabled={editingProduct}>
+                    <select 
+                      value={formData.category} 
+                      onChange={(e) => {
+                        setFormData({ ...formData, category: e.target.value, subcategory: "" })
+                      }} 
+                      className="w-full px-3 py-2 border rounded-md" 
+                      required 
+                      disabled={editingProduct}
+                    >
                       <option value="">Select Category</option>
-                      {categories.map((category) => (<option key={category._id} value={category._id}>{category.name}</option>))}
+                      {/* ✅ Only Main Categories in form dropdown */}
+                      {mainCategories.map((category) => (
+                        <option key={category._id} value={category._id}>{category.name}</option>
+                      ))}
                     </select>
                     {editingProduct && <p className="mt-1 text-sm text-gray-500">Category cannot be changed when updating</p>}
+                  </div>
+
+                  {/* Subcategory Field */}
+                  <div>
+                    <label className="block mb-1 text-sm font-medium text-gray-700">Subcategory</label>
+                    <select 
+                      value={formData.subcategory} 
+                      onChange={(e) => setFormData({ ...formData, subcategory: e.target.value })} 
+                      className="w-full px-3 py-2 border rounded-md"
+                      disabled={!formData.category || editingProduct}
+                    >
+                      <option value="">Select Subcategory (Optional)</option>
+                      {/* ✅ Only Subcategories of selected Main Category */}
+                      {subcategories.map((subcategory) => (
+                        <option key={subcategory._id} value={subcategory._id}>{subcategory.name}</option>
+                      ))}
+                    </select>
+                    {editingProduct && formData.subcategory && (
+                      <p className="mt-1 text-sm text-gray-500">Subcategory cannot be changed when updating</p>
+                    )}
+                    {!formData.category && !editingProduct && (
+                      <p className="mt-1 text-sm text-gray-500">Select a category first</p>
+                    )}
                   </div>
 
                   {/* Price fields - Different for bulk */}

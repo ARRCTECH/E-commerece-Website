@@ -135,6 +135,11 @@ const MyOrdersPage = () => {
     return status === "confirmed" || status === "processing" || status === "placed";
   };
 
+  const canDownloadInvoice = (order) => {
+    const status = order?.status?.toLowerCase();
+    return status === "delivered" || status === "shipped" || status === "confirmed";
+  };
+
   const handleCancelOrder = () => {
     if (!selectedOrder || !cancelReason.trim()) return;
     dispatch(
@@ -395,11 +400,14 @@ const MyOrdersPage = () => {
                         {order?.items?.slice(0, 3).map((item, itemIndex) => (
                           <div key={itemIndex} className="relative group/image">
                             <img
-                              src={
-                                item?.product?.images?.[0]?.url ||
-                                item?.image ||
-                                `https://placehold.co/64x64/f3f4f6/9ca3af?text=${encodeURIComponent(item?.name?.charAt(0) || "P")}`
-                              }
+                              src={`https://placehold.co/64x64/f3f4f6/9ca3af?text=${(() => {
+                                try {
+                                  const firstChar = item?.name?.charAt(0) || "P";
+                                  return encodeURIComponent(firstChar);
+                                } catch (e) {
+                                  return "P";
+                                }
+                              })()}`}
                               alt={item?.name || "Product"}
                               className="h-16 w-16 rounded-xl border-2 border-gray-100 object-cover bg-gray-50 shadow-md transition-all duration-300 group-hover/image:scale-105 group-hover/image:shadow-lg"
                               loading="lazy"
