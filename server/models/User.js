@@ -36,12 +36,12 @@ const cartItemSchema = new mongoose.Schema({
     type: Number,
     default: 0,
   },
-
   addedAt: {
     type: Date,
     default: Date.now,
   },
 });
+
 const addressSchema = new mongoose.Schema({
   type: {
     type: String,
@@ -78,6 +78,7 @@ const addressSchema = new mongoose.Schema({
     default: false,
   },
 });
+
 const tempOrderItemSchema = new mongoose.Schema({
   product: { type: mongoose.Schema.Types.ObjectId, ref: "Product" },
   name: { type: String, required: false },
@@ -117,7 +118,7 @@ const tempOrderDataSchema = new mongoose.Schema({
     phoneNumber: { type: String, required: false },
   },
   pricing: pricingSchema,
-  coupon: { type: Object }, // Can be detailed if needed
+  coupon: { type: Object },
   paymentInfo: paymentInfoSchema,
   status: { type: String, default: "pending" },
   createdAt: { type: Date, default: Date.now },
@@ -139,14 +140,15 @@ const tempOrderDataSchema = new mongoose.Schema({
     }, default: () => ({ awbStatus: "PENDING" })
   },
 });
+
 const referralDetailsSchema = new mongoose.Schema({
   name: { type: String, default: null },
   expiryDate: { type: Date, default: null },
-  amount: { type: Number, default: 0 },        
+  amount: { type: Number, default: 0 },
   type: { type: String, enum: ["percentage", "fixed"], default: "percentage" },
   firstOrderStatus: { type: Boolean, default: false },
   creditStatus: { type: Boolean, default: false },
-  referredAt: { type: Date, default: Date.now },  
+  referredAt: { type: Date, default: Date.now },
 });
 
 const userSchema = new mongoose.Schema(
@@ -157,18 +159,22 @@ const userSchema = new mongoose.Schema(
       sparse: true,
       index: true,
     },
+    phoneNumber: {
+      type: String,
+      unique: true,
+    },
     expireReferralDate: {
       type: Date,
       default: null
     },
-    referredBy:{
-      type:String,
-      default:null
+    referredBy: {
+      type: String,
+      default: null
     },
     referredTo: {
       type: Map,
       of: referralDetailsSchema,
-      default: () => ({}), 
+      default: () => ({}),
     },
     myreferralCode: {
       type: String,
@@ -200,20 +206,6 @@ const userSchema = new mongoose.Schema(
         ref: "Product",
       },
     ],
-    phoneNumber: {
-      type: String,
-      unique: true,
-      sparse: true,
-      validate: {
-        validator: (phone) => {
-          if (phone) {
-            return /^\+[1-9]\d{1,14}$/.test(phone);
-          }
-          return true;
-        },
-        message: "Invalid phone number format",
-      },
-    },
     authMethod: {
       type: String,
       enum: ["email", "phone", "google", "facebook"],

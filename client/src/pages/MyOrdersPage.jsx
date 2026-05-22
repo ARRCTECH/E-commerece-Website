@@ -1,4 +1,4 @@
-// src/pages/MyOrdersPage.jsx - Premium Modern Design with Download Invoice
+// src/pages/MyOrdersPage.jsx - with 5 predefined reason options + Other
 import { useEffect, useState } from "react";
 import { useSelector, useDispatch } from "react-redux";
 import { useNavigate } from "react-router-dom";
@@ -7,11 +7,11 @@ import {
   Package, Eye, X, Truck, CheckCircle, Clock, AlertCircle,
   Layers, Palette, CreditCard, Wallet, Banknote, AlertTriangle,
   ShoppingBag, MapPin, Calendar, ChevronLeft, ChevronRight,
-  Sparkles, TrendingUp, Shield, Star, Gift, Award, Download, FileText
+  Sparkles, TrendingUp, Shield, Star, Gift, Award, RotateCcw
 } from "lucide-react";
 import { fetchUserOrders, cancelOrder, clearError } from "../store/slices/orderSlice";
 import LoadingSpinner from "../components/LoadingSpinner";
-import InvoiceDownloadButton from "../pages/InvoiceDownloadButton"; // ✅ Import Invoice Button
+import axios from "axios";
 import toast from "react-hot-toast";
 
 // Premium Modal Component
@@ -45,8 +45,25 @@ const MyOrdersPage = () => {
   const [selectedOrder, setSelectedOrder] = useState(null);
   const [showCancelModal, setShowCancelModal] = useState(false);
   const [showTrackingModal, setShowTrackingModal] = useState(false);
+  const [showReturnModal, setShowReturnModal] = useState(false);
   const [cancelReason, setCancelReason] = useState("");
+  
+  // Return Modal States (updated)
+  const [selectedPredefinedReason, setSelectedPredefinedReason] = useState(""); // One of 5 options
+  const [isOtherReason, setIsOtherReason] = useState(false);
+  const [otherReasonText, setOtherReasonText] = useState("");
+  const [returnLoading, setReturnLoading] = useState(false);
+  
   const [currentPage, setCurrentPage] = useState(1);
+
+  // 5 predefined reasons
+  const returnReasonOptions = [
+    { value: "wrong_product", label: "Wrong product received" },
+    { value: "damaged", label: "Product damaged / defective" },
+    { value: "size_issue", label: "Size / fit issue" },
+    { value: "changed_mind", label: "Changed my mind" },
+    { value: "late_delivery", label: "Late delivery" }
+  ];
 
   useEffect(() => {
     if (isAuthenticated) {
@@ -137,6 +154,51 @@ const MyOrdersPage = () => {
         setCancelReason("");
       }
     });
+  };
+
+  // Updated return handler: combines predefined reason (if not other) or other text
+  const handleReturnOrder = async () => {
+    let finalReason = "";
+    if (isOtherReason) {
+      finalReason = otherReasonText.trim();
+    } else {
+      finalReason = selectedPredefinedReason ? 
+        returnReasonOptions.find(opt => opt.value === selectedPredefinedReason)?.label || selectedPredefinedReason 
+        : "";
+    }
+    // Reason is optional – empty string allowed
+    
+    setReturnLoading(true);
+    try {
+      const token = localStorage.getItem("authToken");
+      if (!token) {
+        toast.error("Authentication missing. Please login again.");
+        return;
+      }
+      const response = await axios.post(
+        `${import.meta.env.VITE_API_URL}/return/returnvaluesave`,
+        { orderId: selectedOrder._id, reason: finalReason },
+        { headers: { Authorization: `Bearer ${token}` } }
+      );
+      if (response.data.success) {
+        toast.success("Return request saved successfully!");
+        setShowReturnModal(false);
+        // Reset states
+        setSelectedPredefinedReason("");
+        setIsOtherReason(false);
+        setOtherReasonText("");
+        setSelectedOrder(null);
+        // Refresh orders
+        dispatch(fetchUserOrders({ page: currentPage, limit: 10 }));
+      } else {
+        toast.error(response.data.message || "Return request failed");
+      }
+    } catch (error) {
+      console.error("Return error:", error);
+      toast.error(error.response?.data?.message || "Something went wrong");
+    } finally {
+      setReturnLoading(false);
+    }
   };
 
   const getBulkItemDisplay = (item) => {
@@ -258,6 +320,7 @@ const MyOrdersPage = () => {
                 const paymentMethod = getPaymentMethodDisplay(order);
                 const pendingAmount = getPendingAmount(order);
                 const isPartial = paymentMethod.text === "Partial COD";
+                const isDelivered = order.status?.toLowerCase() === "delivered";
 
                 return (
                   <motion.div
@@ -268,7 +331,7 @@ const MyOrdersPage = () => {
                     whileHover={{ y: -2 }}
                     className="group overflow-hidden rounded-2xl bg-white border border-gray-100 shadow-lg hover:shadow-2xl transition-all duration-300"
                   >
-                    {/* Order Header - Premium */}
+                    {/* Order Header */}
                     <div className="border-b border-gray-100 bg-gradient-to-r from-gray-50/50 to-white px-5 py-4">
                       <div className="flex flex-wrap items-center justify-between gap-3">
                         <div className="flex items-center gap-3">
@@ -309,7 +372,7 @@ const MyOrdersPage = () => {
                       </div>
                     </div>
 
-                    {/* Partial COD Pending Alert - Premium */}
+                    {/* Partial COD Pending Alert */}
                     {isPartial && pendingAmount > 0 && order.status?.toLowerCase() !== "delivered" && order.status?.toLowerCase() !== "cancelled" && (
                       <div className="border-b border-red-100 bg-gradient-to-r from-red-50 to-red-100/50 px-5 py-3">
                         <div className="flex flex-wrap items-center justify-between gap-2">
@@ -331,9 +394,8 @@ const MyOrdersPage = () => {
                       </div>
                     )}
 
-                    {/* Order Items Preview - Premium */}
+                    {/* Order Items Preview */}
                     <div className="px-5 py-4">
-                      {/* Items Images with Premium Badges */}
                       <div className="mb-3 flex flex-wrap gap-2">
                         {order?.items?.slice(0, 3).map((item, itemIndex) => (
                           <div key={itemIndex} className="relative group/image">
@@ -367,7 +429,6 @@ const MyOrdersPage = () => {
                         )}
                       </div>
 
-                      {/* Items Details - Premium */}
                       <div className="mb-3 space-y-1.5">
                         {order?.items?.slice(0, 2).map((item, idx) => (
                           <div key={idx} className="flex flex-wrap justify-between gap-2 text-sm">
@@ -410,7 +471,6 @@ const MyOrdersPage = () => {
                         )}
                       </div>
 
-                      {/* Shipping Info - Premium */}
                       <div className="mb-4 flex items-center gap-2 text-xs text-gray-500 bg-gray-50 rounded-lg px-3 py-1.5">
                         <MapPin className="w-3.5 h-3.5 text-red-500" />
                         <span className="truncate">
@@ -418,7 +478,6 @@ const MyOrdersPage = () => {
                         </span>
                       </div>
 
-                      {/* Action Buttons - Premium Red Design with Download Invoice */}
                       <div className="flex flex-wrap gap-2">
                         <button
                           onClick={() => navigate(`/order/${order._id}`)}
@@ -449,13 +508,17 @@ const MyOrdersPage = () => {
                             Cancel Order
                           </button>
                         )}
-                        {/* ✅ Download Invoice Button - Using the same component as OrderDetailsPage */}
-                        {canDownloadInvoice(order) && (
-                          <InvoiceDownloadButton
-                            order={order}
-                            variant="button"
-                            className=" items-center gap-1.5 px-4 py-2 rounded-xl border-2 border-emerald-200 bg-white text-emerald-600 font-semibold text-sm hover:bg-emerald-50 hover:border-emerald-300 transition-all duration-300"
-                          />
+                        {isDelivered && (
+                          <button
+                            onClick={() => {
+                              setSelectedOrder(order);
+                              setShowReturnModal(true);
+                            }}
+                            className="inline-flex items-center gap-1.5 px-4 py-2 rounded-xl border-2 border-emerald-200 bg-white text-emerald-600 font-semibold text-sm hover:bg-emerald-50 hover:border-emerald-300 transition-all duration-300"
+                          >
+                            <RotateCcw className="w-3.5 h-3.5" />
+                            Return
+                          </button>
                         )}
                       </div>
                     </div>
@@ -465,7 +528,7 @@ const MyOrdersPage = () => {
             </div>
           )}
 
-          {/* Premium Pagination */}
+          {/* Pagination */}
           {pagination?.totalPages > 1 && (
             <motion.div
               initial={{ opacity: 0 }}
@@ -519,7 +582,7 @@ const MyOrdersPage = () => {
         </motion.div>
       </div>
 
-      {/* Cancel Order Modal - Premium */}
+      {/* Cancel Order Modal */}
       <AnimatePresence>
         {showCancelModal && selectedOrder && (
           <Modal onClose={() => setShowCancelModal(false)}>
@@ -563,7 +626,7 @@ const MyOrdersPage = () => {
         )}
       </AnimatePresence>
 
-      {/* Tracking Modal - Premium */}
+      {/* Tracking Modal */}
       <AnimatePresence>
         {showTrackingModal && selectedOrder && (
           <Modal onClose={() => setShowTrackingModal(false)}>
@@ -575,8 +638,6 @@ const MyOrdersPage = () => {
                 <h3 className="text-xl font-bold text-gray-900">
                   Order #{selectedOrder.orderNumber}
                 </h3>
-
-                {/* Status & Payment Badges */}
                 <div className="mt-3 flex flex-wrap justify-center gap-2">
                   <span className={`inline-flex items-center gap-1.5 rounded-full border px-3 py-1 text-xs font-semibold ${getStatusColor(selectedOrder.status)}`}>
                     {getStatusIcon(selectedOrder.status)}
@@ -587,8 +648,6 @@ const MyOrdersPage = () => {
                     {getPaymentMethodDisplay(selectedOrder).text}
                   </span>
                 </div>
-
-                {/* Partial COD Pending */}
                 {selectedOrder?.partialCod?.enabled && selectedOrder.status?.toLowerCase() !== "delivered" && selectedOrder.status?.toLowerCase() !== "cancelled" && (
                   <div className="mt-4 rounded-xl bg-gradient-to-r from-red-50 to-red-100 border border-red-200 p-3 text-left">
                     <div className="flex items-center justify-between">
@@ -601,59 +660,45 @@ const MyOrdersPage = () => {
                     </div>
                   </div>
                 )}
-
-                {/* Tracking Message - Premium */}
                 <div className="mt-4 rounded-xl bg-gradient-to-br from-gray-50 to-white p-4 border border-gray-100">
                   {selectedOrder.status?.toLowerCase() === "delivered" ? (
-                    <>
-                      <div className="flex flex-col items-center">
-                        <div className="p-2 rounded-full bg-emerald-100 mb-2">
-                          <CheckCircle className="w-8 h-8 text-emerald-600" />
-                        </div>
-                        <p className="text-base font-bold text-gray-800">Order Delivered!</p>
-                        {selectedOrder.deliveredAt && (
-                          <p className="mt-1 text-xs text-gray-500">
-                            {new Date(selectedOrder.deliveredAt).toLocaleDateString()}
-                          </p>
-                        )}
+                    <div className="flex flex-col items-center">
+                      <div className="p-2 rounded-full bg-emerald-100 mb-2">
+                        <CheckCircle className="w-8 h-8 text-emerald-600" />
                       </div>
-                    </>
+                      <p className="text-base font-bold text-gray-800">Order Delivered!</p>
+                      {selectedOrder.deliveredAt && (
+                        <p className="mt-1 text-xs text-gray-500">{new Date(selectedOrder.deliveredAt).toLocaleDateString()}</p>
+                      )}
+                    </div>
                   ) : selectedOrder.status?.toLowerCase() === "cancelled" ? (
-                    <>
-                      <div className="flex flex-col items-center">
-                        <div className="p-2 rounded-full bg-gray-100 mb-2">
-                          <X className="w-8 h-8 text-gray-500" />
-                        </div>
-                        <p className="text-base font-bold text-gray-800">Order Cancelled</p>
-                        {selectedOrder.cancelReason && (
-                          <p className="mt-1 text-xs text-gray-500 text-center">{selectedOrder.cancelReason}</p>
-                        )}
+                    <div className="flex flex-col items-center">
+                      <div className="p-2 rounded-full bg-gray-100 mb-2">
+                        <X className="w-8 h-8 text-gray-500" />
                       </div>
-                    </>
+                      <p className="text-base font-bold text-gray-800">Order Cancelled</p>
+                      {selectedOrder.cancelReason && (
+                        <p className="mt-1 text-xs text-gray-500 text-center">{selectedOrder.cancelReason}</p>
+                      )}
+                    </div>
                   ) : selectedOrder.status?.toLowerCase() === "shipped" ? (
-                    <>
-                      <div className="flex flex-col items-center">
-                        <div className="p-2 rounded-full bg-red-100 mb-2 animate-pulse">
-                          <Truck className="w-8 h-8 text-red-600" />
-                        </div>
-                        <p className="text-base font-bold text-gray-800">On The Way!</p>
-                        <p className="mt-1 text-xs text-gray-500">Your order is out for delivery</p>
+                    <div className="flex flex-col items-center">
+                      <div className="p-2 rounded-full bg-red-100 mb-2 animate-pulse">
+                        <Truck className="w-8 h-8 text-red-600" />
                       </div>
-                    </>
+                      <p className="text-base font-bold text-gray-800">On The Way!</p>
+                      <p className="mt-1 text-xs text-gray-500">Your order is out for delivery</p>
+                    </div>
                   ) : (
-                    <>
-                      <div className="flex flex-col items-center">
-                        <div className="p-2 rounded-full bg-amber-100 mb-2">
-                          <Clock className="w-8 h-8 text-amber-600" />
-                        </div>
-                        <p className="text-base font-bold text-gray-800">Processing Your Order</p>
-                        <p className="mt-1 text-xs text-gray-500">We'll update you once shipped</p>
+                    <div className="flex flex-col items-center">
+                      <div className="p-2 rounded-full bg-amber-100 mb-2">
+                        <Clock className="w-8 h-8 text-amber-600" />
                       </div>
-                    </>
+                      <p className="text-base font-bold text-gray-800">Processing Your Order</p>
+                      <p className="mt-1 text-xs text-gray-500">We'll update you once shipped</p>
+                    </div>
                   )}
                 </div>
-
-                {/* Items Summary */}
                 <div className="mt-4 text-left">
                   <p className="text-xs font-bold text-gray-700 uppercase tracking-wide mb-2">Order Items</p>
                   <div className="max-h-28 overflow-y-auto space-y-1.5 pr-1 custom-scrollbar">
@@ -674,12 +719,105 @@ const MyOrdersPage = () => {
                     )}
                   </div>
                 </div>
-
                 <button
                   onClick={() => setShowTrackingModal(false)}
                   className="mt-5 w-full rounded-xl bg-gradient-to-r from-red-600 to-red-500 px-4 py-2.5 text-sm font-semibold text-white shadow-lg hover:shadow-xl hover:scale-[1.02] transition-all duration-300"
                 >
                   Close
+                </button>
+              </div>
+            </div>
+          </Modal>
+        )}
+      </AnimatePresence>
+
+      {/* Return Order Modal - with 5 predefined options + Other */}
+      <AnimatePresence>
+        {showReturnModal && selectedOrder && (
+          <Modal onClose={() => setShowReturnModal(false)}>
+            <div className="p-6">
+              <div className="mb-4 flex items-center gap-3">
+                <div className="p-2 rounded-xl bg-gradient-to-br from-emerald-100 to-emerald-50">
+                  <RotateCcw className="w-5 h-5 text-emerald-600" />
+                </div>
+                <h3 className="text-xl font-bold text-gray-900">Return Order</h3>
+              </div>
+              <p className="mb-4 text-sm text-gray-600">
+                Request a return for order <span className="font-bold text-emerald-600">#{selectedOrder?.orderNumber}</span>.
+              </p>
+              
+              <div className="mb-5">
+                <label className="mb-1.5 block text-xs font-semibold text-gray-700 uppercase tracking-wide">
+                  Return Reason (Optional)
+                </label>
+                
+                {/* Predefined reason dropdown */}
+                <select
+                  value={selectedPredefinedReason}
+                  onChange={(e) => {
+                    setSelectedPredefinedReason(e.target.value);
+                    if (e.target.value) setIsOtherReason(false);
+                  }}
+                  disabled={isOtherReason}
+                  className="w-full rounded-xl border-2 border-gray-200 px-3 py-2.5 text-sm text-gray-700 focus:border-emerald-500 focus:outline-none focus:ring-2 focus:ring-emerald-500/30 transition-all mb-3"
+                >
+                  <option value="">-- Select a reason (optional) --</option>
+                  {returnReasonOptions.map(option => (
+                    <option key={option.value} value={option.value}>
+                      {option.label}
+                    </option>
+                  ))}
+                </select>
+
+                {/* "Other" reason checkbox */}
+                <div className="mt-2">
+                  <label className="inline-flex items-center gap-2 cursor-pointer">
+                    <input
+                      type="checkbox"
+                      checked={isOtherReason}
+                      onChange={(e) => {
+                        setIsOtherReason(e.target.checked);
+                        if (e.target.checked) setSelectedPredefinedReason("");
+                      }}
+                      className="rounded border-gray-300 text-emerald-600 focus:ring-emerald-500"
+                    />
+                    <span className="text-sm text-gray-700">Other reason (specify below)</span>
+                  </label>
+                </div>
+                
+                {isOtherReason && (
+                  <input
+                    type="text"
+                    value={otherReasonText}
+                    onChange={(e) => setOtherReasonText(e.target.value)}
+                    placeholder="Please specify your reason (optional)"
+                    className="mt-2 w-full rounded-xl border-2 border-gray-200 px-3 py-2 text-sm text-gray-700 focus:border-emerald-500 focus:outline-none focus:ring-2 focus:ring-emerald-500/30"
+                  />
+                )}
+                <p className="mt-1 text-xs text-gray-400">
+                  * Reason is not required – you can submit without any reason.
+                </p>
+              </div>
+              
+              <div className="flex gap-3">
+                <button
+                  onClick={() => {
+                    setShowReturnModal(false);
+                    setSelectedPredefinedReason("");
+                    setIsOtherReason(false);
+                    setOtherReasonText("");
+                    setSelectedOrder(null);
+                  }}
+                  className="flex-1 rounded-xl border-2 border-gray-200 bg-white px-4 py-2.5 text-sm font-semibold text-gray-600 hover:bg-gray-50 transition-all"
+                >
+                  Cancel
+                </button>
+                <button
+                  onClick={handleReturnOrder}
+                  disabled={returnLoading}
+                  className="flex-1 rounded-xl bg-gradient-to-r from-emerald-600 to-emerald-500 px-4 py-2.5 text-sm font-semibold text-white shadow-lg hover:shadow-xl hover:scale-[1.02] disabled:opacity-50 disabled:cursor-not-allowed transition-all duration-300"
+                >
+                  {returnLoading ? "Processing..." : "Confirm Return"}
                 </button>
               </div>
             </div>

@@ -269,7 +269,7 @@ const OrdersManagement = () => {
                 <th className="px-6 py-4 text-xs font-bold text-left text-gray-700 uppercase tracking-wider">Status</th>
                 <th className="px-6 py-4 text-xs font-bold text-left text-gray-700 uppercase tracking-wider">Total</th>
                 <th className="px-6 py-4 text-xs font-bold text-right text-gray-700 uppercase tracking-wider">Actions</th>
-               </tr>
+              </tr>
             </thead>
             <tbody className="divide-y divide-gray-100">
               {ordersLoading ? (

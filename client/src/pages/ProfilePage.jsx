@@ -3,36 +3,11 @@ import { useDispatch, useSelector } from "react-redux";
 import { motion, AnimatePresence } from "framer-motion";
 import axios from "axios";
 import {
-  User,
-  Camera,
-  Package,
-  Heart,
-  UserPlus,
-  Mail,
-  MessageCircle,
-  Facebook,
-  Twitter,
-  Linkedin,
-  Send,
-  Copy,
-  Shield,
-  Plus,
-  Edit2,
-  Trash2,
-  MapPin,
-  Phone,
-  Calendar,
-  Award,
-  TrendingUp,
-  Sparkles,
-  ChevronRight,
-  CheckCircle,
-  Clock,
-  Menu,
-  X,
-  Download,
+  User, Camera, Package, UserPlus, Mail, MessageCircle,
+  Facebook, Twitter, Linkedin, Send, Copy, Shield, Edit2,
+  ChevronRight, Sparkles, X
 } from "lucide-react";
-import { updateProfile, changePassword, uploadAvatar, getProfile } from "../store/slices/authSlice";
+import { changePassword, uploadAvatar, getProfile } from "../store/slices/authSlice";
 import { fetchUserOrders } from "../store/slices/orderSlice";
 import { fetchWishlist } from "../store/slices/wishlistSlice";
 import toast from "react-hot-toast";
@@ -46,55 +21,95 @@ const ProfilePage = () => {
   const { orders = [] } = useSelector((state) => state.orders);
   const { items: wishlistItems = [] } = useSelector((state) => state.wishlist);
 
+  // UI State
   const [activeTab, setActiveTab] = useState("profile");
   const [isEditing, setIsEditing] = useState(false);
   const [originalProfile, setOriginalProfile] = useState(null);
-  const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
-  const [profileData, setProfileData] = useState({
-    name: "",
-    email: "",
-    phone: "",
-    dateOfBirth: "",
-    gender: "",
-    addresses: [],
-    myreferralCode: "",
-    referredBy: "",
-    expireReferralDate: "",
-  });
-
+  const [isUpdatingProfile, setIsUpdatingProfile] = useState(false);
   const [showPasswordForm, setShowPasswordForm] = useState(false);
   const [passwordData, setPasswordData] = useState({
     currentPassword: "",
     newPassword: "",
     confirmPassword: "",
   });
-
-  const [showAddressForm, setShowAddressForm] = useState(false);
-  const [editingAddress, setEditingAddress] = useState(null);
-  const [isAddressSaving, setIsAddressSaving] = useState(false);
-  const [newAddress, setNewAddress] = useState({
-    type: "home",
-    fullName: "",
-    phone: "",
-    addressLine1: "",
-    addressLine2: "",
-    city: "",
-    state: "",
-    pincode: "",
-    isDefault: false,
-  });
-
-  const [dataforreferral, setDataforreferral] = useState(null);
+  const [referralData, setReferralData] = useState(null);
   const [totalEarning, setTotalEarning] = useState(0);
 
-  // ✅ Check if invoice can be downloaded
-  const canDownloadInvoice = (order) => {
-    const status = order?.status?.toLowerCase();
-    return status === "delivered" || status === "shipped" || status === "confirmed";
-  };
+  // Modal state for save confirmation
+  const [showSaveModal, setShowSaveModal] = useState(false);
+  const [savedDetails, setSavedDetails] = useState({
+    name: "",
+    phoneNumber: "",
+    dateOfBirth: "",
+    gender: "",
+  });
 
-  // --- Helper functions (memoized) ---
-  const getTotalEarning = useCallback(async () => {
+  // Validation errors (only gender remains)
+  const [validationErrors, setValidationErrors] = useState({
+    gender: "",
+  });
+
+  // Form State (derived from Redux user only)
+  const [profileForm, setProfileForm] = useState({
+    name: "",
+    email: "",
+    phoneNumber: "",
+    dateOfBirth: "",
+    gender: "",
+    addresses: [],
+    myreferralCode: "",
+    referredBy: null,
+    expireReferralDate: null,
+  });
+
+  // Sync form state with Redux user
+  useEffect(() => {
+    if (user) {
+      setProfileForm({
+        name: user.name || "",
+        email: user.email || "",
+        phoneNumber: user.phoneNumber || user.phone || "",
+        dateOfBirth: user.dateOfBirth ? format(new Date(user.dateOfBirth), "yyyy-MM-dd") : "",
+        gender: user.gender || "",
+        addresses: user.addresses || [],
+        myreferralCode: user.myreferralCode || "",
+        referredBy: user.referredBy || null,
+        expireReferralDate: user.expireReferralDate || null,
+      });
+    }
+  }, [user]);
+
+  // Load saved tab from localStorage
+  useEffect(() => {
+    const savedTab = localStorage.getItem("activeButton");
+    if (savedTab && ["profile", "orders", "security", "referral"].includes(savedTab)) {
+      setActiveTab(savedTab);
+    }
+  }, []);
+
+  // Fetch orders, wishlist, and referral data
+  useEffect(() => {
+    if (user?._id) {
+      dispatch(fetchUserOrders({ limit: 5 }));
+      dispatch(fetchWishlist());
+      fetchReferralData();
+      fetchTotalEarning();
+    }
+  }, [user?._id, dispatch]);
+
+  const fetchReferralData = useCallback(async () => {
+    if (!user?._id) return;
+    try {
+      const res = await axios.post(`${import.meta.env.VITE_API_URL}/referral/fetchReferral`, {
+        userId: user._id,
+      });
+      setReferralData(res.data.data);
+    } catch (error) {
+      console.error("Error fetching referral details:", error.response?.data || error.message);
+    }
+  }, [user?._id]);
+
+  const fetchTotalEarning = useCallback(async () => {
     if (!user?._id) return;
     try {
       const res = await axios.post(`${import.meta.env.VITE_API_URL}/referral-total-earning`, {
@@ -106,110 +121,137 @@ const ProfilePage = () => {
     }
   }, [user?._id]);
 
-  const getReferralDetails = useCallback(async () => {
-    if (!user?._id) return;
-    try {
-      const res = await axios.post(`${import.meta.env.VITE_API_URL}/referral/fetchReferral`, {
-        userId: user._id,
-      });
-      setDataforreferral(res.data.data);
-    } catch (error) {
-      console.error("Error fetching referral details:", error.response?.data || error.message);
-    }
-  }, [user?._id]);
-
-  // --- Effects ---
-  useEffect(() => {
-    const savedTab = localStorage.getItem("activeButton");
-    if (savedTab && ["profile", "orders", "security", "referral"].includes(savedTab)) {
-      setActiveTab(savedTab);
-    }
-  }, []);
-
-  useEffect(() => {
-    if (user) {
-      setProfileData({
-        name: user.name || "",
-        email: user.email || "",
-        phone: user.phone || "",
-        dateOfBirth: user.dateOfBirth ? format(new Date(user.dateOfBirth), "yyyy-MM-dd") : "",
-        gender: user.gender || "",
-        addresses: user.addresses || [],
-        myreferralCode: user.myreferralCode || "",
-        referredBy: user.referredBy || null,
-        expireReferralDate: user.expireReferralDate || null,
-      });
-    }
-  }, [user]);
-
-  useEffect(() => {
-    if (user?._id) {
-      getReferralDetails();
-      getTotalEarning();
-    }
-  }, [user?._id, getReferralDetails, getTotalEarning]);
-
-  useEffect(() => {
-    if (user) {
-      dispatch(fetchUserOrders({ limit: 5 }));
-      dispatch(fetchWishlist());
-      dispatch(getProfile());
-    }
-  }, [dispatch, user]);
-
-  // Close mobile menu when window resizes to desktop
-  useEffect(() => {
-    const handleResize = () => {
-      if (window.innerWidth >= 1024 && mobileMenuOpen) {
-        setMobileMenuOpen(false);
-      }
-    };
-    window.addEventListener('resize', handleResize);
-    return () => window.removeEventListener('resize', handleResize);
-  }, [mobileMenuOpen]);
-
-  // --- Handlers ---
   const handleTabChange = (tabId) => {
     setActiveTab(tabId);
     localStorage.setItem("activeButton", tabId);
-    setMobileMenuOpen(false);
   };
 
- const handleProfileUpdate = async (e) => {
-  e.preventDefault();
-  
-  // ✅ Debug: Check what data is being sent
-  console.log("📤 Sending profile data:", {
-    name: profileData.name,
-    phone: profileData.phone,
-    dateOfBirth: profileData.dateOfBirth,
-    gender: profileData.gender,
-    addresses: profileData.addresses
-  });
-  
-  try {
-    const result = await dispatch(updateProfile(profileData)).unwrap();
-    console.log("✅ Update response:", result);
-    toast.success("Profile updated successfully!");
-    setIsEditing(false);
-    setOriginalProfile(null);
-  } catch (error) {
-    console.error("❌ Update error:", error);
-    toast.error(error.message || "Update failed");
-  }
-};
-
   const startEditing = () => {
-    setOriginalProfile({ ...profileData });
+    setOriginalProfile({ ...profileForm });
     setIsEditing(true);
+    // Reset validation errors when starting edit
+    setValidationErrors({ gender: "" });
   };
 
   const cancelEditing = () => {
     if (originalProfile) {
-      setProfileData(originalProfile);
+      setProfileForm(originalProfile);
     }
     setIsEditing(false);
     setOriginalProfile(null);
+    setValidationErrors({ gender: "" });
+  };
+
+  const [details, setDetails] = useState({
+    name: "",
+    phoneNumber: "",
+    dateOfBirth: "",
+    gender: "",
+  });
+
+  const fetchDetails = async () => {
+    const token = localStorage.getItem("authToken");
+    if (!token) {
+      toast.error("Authentication token missing. Please login again.");
+      return;
+    }
+    try {
+      const response = await axios.get(
+        `${import.meta.env.VITE_API_URL}/auth/profile`,
+        { headers: { Authorization: `Bearer ${token}` } }
+      );
+      setDetails({
+        name: response.data.user.name,
+        phoneNumber: response.data.user.phoneNumber,
+        dateOfBirth: response.data.user.dateOfBirth
+          ? format(new Date(response.data.user.dateOfBirth), "yyyy-MM-dd")
+          : "",
+        gender: response.data.user.gender
+      });
+    } catch (error) {
+      console.error("API error:", error);
+      toast.error("Failed to load profile. Please try again.");
+    }
+  };
+
+  useEffect(() => {
+    fetchDetails();
+  }, []);
+
+  // No phone validation – only gender is required
+  const validateGender = (gender) => {
+    if (!gender) return "Please select your gender";
+    return "";
+  };
+
+  const handleDetailsChange = (field, value) => {
+    setDetails(prev => ({ ...prev, [field]: value }));
+    // Clear gender error when user starts typing
+    if (field === 'gender') setValidationErrors(prev => ({ ...prev, gender: "" }));
+  };
+
+  // Profile update – phone number sent as raw input
+  const handleProfileUpdate = async (e) => {
+    e.preventDefault();
+
+    // Validate only gender
+    const genderError = validateGender(details.gender);
+    if (genderError) {
+      setValidationErrors({ gender: genderError });
+      return;
+    }
+
+    setIsUpdatingProfile(true);
+    try {
+      const token = localStorage.getItem("authToken");
+      if (!token) {
+        toast.error("Authentication token missing. Please login again.");
+        return;
+      }
+
+      const payload = {
+        name: details.name,
+        dateOfBirth: details.dateOfBirth,
+        gender: details.gender,
+        phoneNumber: details.phoneNumber, // sent as is – no formatting
+      };
+
+      const response = await axios.put(
+        `${import.meta.env.VITE_API_URL}/auth/profile`,
+        payload,
+        { headers: { Authorization: `Bearer ${token}` } }
+      );
+
+      // Update local state with response data
+      setDetails(prev => ({
+        ...prev,
+        name: response.data.name || payload.name,
+        phoneNumber: response.data.phoneNumber || payload.phoneNumber,
+        dateOfBirth: response.data.dateOfBirth || payload.dateOfBirth,
+        gender: response.data.gender || payload.gender,
+      }));
+
+      // Refresh Redux store
+      await dispatch(getProfile()).unwrap();
+
+      // Prepare details for the modal
+      setSavedDetails({
+        name: response.data.name || payload.name,
+        phoneNumber: response.data.phoneNumber || payload.phoneNumber,
+        dateOfBirth: response.data.dateOfBirth || payload.dateOfBirth,
+        gender: response.data.gender || payload.gender,
+      });
+
+      setShowSaveModal(true);
+      setIsEditing(false);
+      setOriginalProfile(null);
+      setValidationErrors({ gender: "" });
+    } catch (error) {
+      console.error("Profile update error:", error);
+      toast.error(error.response?.data?.message || "Update failed");
+    } finally {
+      setIsUpdatingProfile(false);
+    }
   };
 
   const handleAvatarUpload = async (e) => {
@@ -241,84 +283,16 @@ const ProfilePage = () => {
       return;
     }
     try {
-      await dispatch(
-        changePassword({
-          currentPassword: passwordData.currentPassword,
-          newPassword: passwordData.newPassword,
-        })
-      ).unwrap();
+      await dispatch(changePassword({
+        currentPassword: passwordData.currentPassword,
+        newPassword: passwordData.newPassword,
+      })).unwrap();
       toast.success("Password changed successfully!");
       setShowPasswordForm(false);
       setPasswordData({ currentPassword: "", newPassword: "", confirmPassword: "" });
     } catch (error) {
       toast.error(error.message);
     }
-  };
-
-  const resetAddressForm = () => {
-    setNewAddress({
-      type: "home",
-      fullName: "",
-      phone: "",
-      addressLine1: "",
-      addressLine2: "",
-      city: "",
-      state: "",
-      pincode: "",
-      isDefault: false,
-    });
-    setEditingAddress(null);
-    setShowAddressForm(false);
-  };
-
-  const handleAddOrUpdateAddress = async (e) => {
-    e.preventDefault();
-    setIsAddressSaving(true);
-    try {
-      let updatedAddresses = [...profileData.addresses];
-      let newAddr;
-      if (editingAddress) {
-        updatedAddresses = updatedAddresses.map((addr) =>
-          addr._id === editingAddress._id ? { ...newAddress, _id: addr._id } : addr
-        );
-        toast.success("Address updated successfully!");
-      } else {
-        newAddr = { ...newAddress, _id: Date.now().toString() };
-        updatedAddresses.push(newAddr);
-        toast.success("Address added successfully!");
-      }
-      if (newAddress.isDefault) {
-        updatedAddresses = updatedAddresses.map((addr) => ({
-          ...addr,
-          isDefault: addr._id === (editingAddress?._id || newAddr._id),
-        }));
-      }
-      await dispatch(updateProfile({ ...profileData, addresses: updatedAddresses })).unwrap();
-      setProfileData((prev) => ({ ...prev, addresses: updatedAddresses }));
-      resetAddressForm();
-    } catch (error) {
-      toast.error(error.message);
-    } finally {
-      setIsAddressSaving(false);
-    }
-  };
-
-  const handleDeleteAddress = async (addressId) => {
-    if (!window.confirm("Are you sure you want to delete this address?")) return;
-    try {
-      const updatedAddresses = profileData.addresses.filter((addr) => addr._id !== addressId);
-      await dispatch(updateProfile({ ...profileData, addresses: updatedAddresses })).unwrap();
-      setProfileData((prev) => ({ ...prev, addresses: updatedAddresses }));
-      toast.success("Address deleted");
-    } catch (error) {
-      toast.error(error.message);
-    }
-  };
-
-  const startEditAddress = (address) => {
-    setEditingAddress(address);
-    setNewAddress({ ...address });
-    setShowAddressForm(true);
   };
 
   const copyToClipboard = () => {
@@ -331,9 +305,7 @@ const ProfilePage = () => {
   const shareText = "Join now using my referral link and get exciting rewards! 🚀";
   const shareUrls = {
     whatsapp: `https://wa.me/?text=${encodeURIComponent(`${shareText} ${referralLink}`)}`,
-    email: `mailto:?subject=${encodeURIComponent("Join with my referral link")}&body=${encodeURIComponent(
-      `${shareText}\n\n${referralLink}`
-    )}`,
+    email: `mailto:?subject=${encodeURIComponent("Join with my referral link")}&body=${encodeURIComponent(`${shareText}\n\n${referralLink}`)}`,
     facebook: `https://www.facebook.com/sharer/sharer.php?u=${encodeURIComponent(referralLink)}`,
     twitter: `https://twitter.com/intent/tweet?text=${encodeURIComponent(`${shareText} ${referralLink}`)}`,
     linkedin: `https://www.linkedin.com/sharing/share-offsite/?url=${encodeURIComponent(referralLink)}`,
@@ -358,14 +330,13 @@ const ProfilePage = () => {
     <div className="min-h-screen bg-gradient-to-br from-red-50 via-white to-red-50/80">
       <div className="container px-3 sm:px-4 py-4 sm:py-6 md:py-8 lg:py-12 mx-auto">
         <div className="max-w-6xl mx-auto">
-          {/* Premium Profile Header - Responsive */}
-          <div className="relative mb-4 sm:mb-6 md:mb-8 overflow-hidden bg-white rounded-xl sm:rounded-2xl shadow-lg">
-            <div className="absolute top-0 right-0 w-40 h-40 sm:w-64 sm:h-64 md:w-80 md:h-80 bg-gradient-to-br from-red-500/10 to-rose-500/5 rounded-full -mt-20 -mr-20 sm:-mt-40 sm:-mr-40 blur-3xl" />
-            <div className="absolute bottom-0 left-0 w-40 h-40 sm:w-64 sm:h-64 md:w-80 md:h-80 bg-gradient-to-tr from-amber-500/5 to-red-500/5 rounded-full -mb-20 -ml-20 sm:-mb-40 sm:-ml-40 blur-3xl" />
-
-            <div className="relative p-4 sm:p-6 md:p-8">
-              <div className="flex flex-col items-center gap-4 sm:gap-6 md:flex-row md:items-start">
-                {/* Avatar - Responsive sizes */}
+          {/* Profile Header */}
+          <div className="relative mb-8 overflow-hidden bg-white rounded-2xl shadow-xl">
+            <div className="absolute top-0 right-0 w-80 h-80 bg-gradient-to-br from-red-500/10 to-rose-500/5 rounded-full -mt-40 -mr-40 blur-3xl" />
+            <div className="absolute bottom-0 left-0 w-80 h-80 bg-gradient-to-tr from-amber-500/5 to-red-500/5 rounded-full -mb-40 -ml-40 blur-3xl" />
+            <div className="relative p-6 sm:p-8">
+              <div className="flex flex-col items-center gap-6 md:flex-row md:items-start">
+                {/* Avatar */}
                 <div className="relative">
                   <div className="absolute inset-0 rounded-full bg-gradient-to-br from-red-500 to-rose-600 blur-md opacity-60" />
                   <div className="relative flex items-center justify-center w-24 h-24 sm:w-28 sm:h-28 md:w-32 md:h-32 overflow-hidden rounded-full ring-4 ring-white shadow-xl bg-gradient-to-br from-red-100 to-red-200">
@@ -394,80 +365,43 @@ const ProfilePage = () => {
                   </p>
                 </div>
 
-                {/* Stats - Responsive */}
-                <div className="flex gap-2 sm:gap-3">
-                  <div className="px-3 sm:px-5 py-2 sm:py-3 text-center bg-white rounded-lg sm:rounded-xl shadow-md border border-gray-100">
-                    <div className="text-xl sm:text-2xl font-bold text-transparent bg-clip-text bg-gradient-to-r from-red-600 to-rose-600">{orders.length}</div>
-                    <div className="text-[10px] sm:text-xs font-medium text-gray-500">Orders</div>
+                {/* Stats */}
+                <div className="px-5 py-3 text-center bg-white rounded-xl shadow-md border border-gray-100">
+                  <div className="text-2xl font-bold text-transparent bg-clip-text bg-gradient-to-r from-red-600 to-rose-600">
+                    {orders.length}
                   </div>
+                  <div className="text-xs font-medium text-gray-500">Orders</div>
                 </div>
               </div>
             </div>
           </div>
 
-          <div className="grid gap-4 sm:gap-6 lg:grid-cols-4 lg:gap-8">
-            {/* Mobile Menu Button */}
-            <div className="lg:hidden sticky top-0 z-20 mb-3">
-              <button
-                onClick={() => setMobileMenuOpen(!mobileMenuOpen)}
-                className="w-full flex items-center justify-between px-4 py-3 bg-white rounded-xl shadow-md border border-gray-200"
-              >
-                <div className="flex items-center gap-3">
-                  {ActiveIcon && (
-                    <div className="p-1.5 rounded-lg bg-red-50">
-                      <ActiveIcon className="w-5 h-5 text-red-600" />
-                    </div>
-                  )}
-                  <span className="font-semibold text-gray-700">
-                    {tabs.find(tab => tab.id === activeTab)?.label || "Profile"}
-                  </span>
-                </div>
-                {mobileMenuOpen ? <X className="w-5 h-5 text-gray-500" /> : <Menu className="w-5 h-5 text-gray-500" />}
-              </button>
-            </div>
-
-            {/* Sidebar - Desktop always visible, Mobile as drawer */}
-            <div className={`
-              lg:col-span-1
-              ${mobileMenuOpen ? 'fixed inset-0 z-50 bg-black/50 lg:relative lg:bg-transparent' : 'hidden lg:block'}
-            `}>
-              <div className={`
-                fixed top-0 left-0 h-full w-72 bg-white shadow-2xl z-50 transform transition-transform duration-300 ease-in-out
-                lg:relative lg:translate-x-0 lg:w-auto lg:shadow-none lg:bg-transparent
-                ${mobileMenuOpen ? 'translate-x-0' : '-translate-x-full lg:translate-x-0'}
-              `}>
-                <div className="p-4 border-b border-gray-100 flex justify-between items-center lg:hidden">
-                  <h2 className="text-lg font-bold text-gray-800">Menu</h2>
-                  <button onClick={() => setMobileMenuOpen(false)} className="p-2 rounded-full hover:bg-gray-100">
-                    <X className="w-5 h-5" />
-                  </button>
-                </div>
-                <div className="p-2 lg:p-0">
-                  <div className="sticky top-4 bg-white rounded-2xl shadow-xl border border-gray-100 overflow-hidden">
-                    <div className="p-2">
-                      <nav className="flex flex-col gap-1">
-                        {tabs.map((tab) => {
-                          const Icon = tab.icon;
-                          const isActive = activeTab === tab.id;
-                          return (
-                            <button
-                              key={tab.id}
-                              onClick={() => handleTabChange(tab.id)}
-                              className={`w-full flex items-center gap-3 px-3 sm:px-4 py-2.5 sm:py-3 rounded-xl text-left text-sm font-medium transition-all duration-300 ${
-                                isActive
-                                  ? "bg-gradient-to-r from-red-900 to-red-800 text-white shadow-lg"
-                                  : "text-gray-600 hover:bg-red-50 hover:text-gray-700"
-                              }`}
-                            >
-                              <Icon className={`w-4 h-4 sm:w-5 sm:h-5 ${isActive ? "text-white" : "text-gray-400"}`} />
-                              <span className="text-xs sm:text-sm">{tab.label}</span>
-                              {isActive && <ChevronRight className="w-3 h-3 sm:w-4 sm:h-4 ml-auto" />}
-                            </button>
-                          );
-                        })}
-                      </nav>
-                    </div>
-                  </div>
+          <div className="grid gap-6 lg:grid-cols-4 lg:gap-8">
+            {/* Sidebar */}
+            <div className="lg:col-span-1">
+              <div className="sticky top-4 bg-white rounded-2xl shadow-xl border border-gray-100 overflow-hidden">
+                <div className="p-2">
+                  <nav className="flex gap-1 overflow-x-auto lg:flex-col lg:space-y-1 lg:overflow-visible scrollbar-hide">
+                    {tabs.map((tab) => {
+                      const Icon = tab.icon;
+                      const isActive = activeTab === tab.id;
+                      return (
+                        <button
+                          key={tab.id}
+                          onClick={() => handleTabChange(tab.id)}
+                          className={`w-full flex-shrink-0 flex items-center gap-3 px-4 py-3 rounded-xl text-left text-sm font-medium transition-all duration-300 ${
+                            isActive
+                              ? "bg-gradient-to-r from-red-900 to-red-800 text-white shadow-lg"
+                              : "text-gray-600 hover:bg-red-50 hover:text-gray-700"
+                          }`}
+                        >
+                          <Icon className={`w-5 h-5 ${isActive ? "text-white" : "text-gray-400"}`} />
+                          <span>{tab.label}</span>
+                          {isActive && <ChevronRight className="w-4 h-4 ml-auto" />}
+                        </button>
+                      );
+                    })}
+                  </nav>
                 </div>
               </div>
               {/* Backdrop for mobile */}
@@ -513,54 +447,49 @@ const ProfilePage = () => {
                               <label className="block mb-1.5 sm:mb-2 text-xs sm:text-sm font-semibold text-gray-700">Full Name</label>
                               <input
                                 type="text"
-                                value={profileData.name}
-                                onChange={(e) => setProfileData({ ...profileData, name: e.target.value })}
-                                disabled={!isEditing}
-                                className="w-full px-3 sm:px-4 py-2 sm:py-2.5 text-sm text-gray-700 bg-white border border-gray-200 rounded-xl transition-all focus:outline-none focus:ring-2 focus:ring-red-900/30 focus:border-gray-900 disabled:bg-red-50 disabled:text-gray-500"
+                                value={details.name}
+                                onChange={(e) => handleDetailsChange("name", e.target.value)}
+                                disabled={!isEditing || isUpdatingProfile}
+                                className="w-full px-4 py-2.5 text-gray-700 bg-white border border-gray-200 rounded-xl transition-all focus:outline-none focus:ring-2 focus:ring-red-900/30 focus:border-gray-900 disabled:bg-red-50 disabled:text-gray-500"
                               />
                             </div>
                             <div>
                               <label className="block mb-1.5 sm:mb-2 text-xs sm:text-sm font-semibold text-gray-700">Email Address</label>
                               <input
                                 type="email"
-                                value={profileData.email}
+                                value={profileForm.email}
                                 disabled
                                 className="w-full px-3 sm:px-4 py-2 sm:py-2.5 text-sm text-gray-500 bg-red-50 border border-gray-200 rounded-xl"
                               />
                             </div>
                             <div>
-                              <label className="block mb-1.5 sm:mb-2 text-xs sm:text-sm font-semibold text-gray-700">Phone Number</label>
-                              <input
-                                type="tel"
-                                value={profileData.phone}
-                                onChange={(e) => setProfileData({ ...profileData, phone: e.target.value })}
-                                disabled={!isEditing}
-                                className="w-full px-3 sm:px-4 py-2 sm:py-2.5 text-sm text-gray-700 bg-white border border-gray-200 rounded-xl transition-all focus:outline-none focus:ring-2 focus:ring-red-900/30 focus:border-gray-900 disabled:bg-red-50 disabled:text-gray-500"
-                              />
-                            </div>
-                            <div>
-                              <label className="block mb-1.5 sm:mb-2 text-xs sm:text-sm font-semibold text-gray-700">Date of Birth</label>
+                              <label className="block mb-2 text-sm font-semibold text-gray-700">Date of Birth</label>
                               <input
                                 type="date"
-                                value={profileData.dateOfBirth}
-                                onChange={(e) => setProfileData({ ...profileData, dateOfBirth: e.target.value })}
-                                disabled={!isEditing}
-                                className="w-full px-3 sm:px-4 py-2 sm:py-2.5 text-sm text-gray-700 bg-white border border-gray-200 rounded-xl transition-all focus:outline-none focus:ring-2 focus:ring-red-900/30 focus:border-gray-900 disabled:bg-red-50 disabled:text-gray-500"
+                                value={details.dateOfBirth}
+                                onChange={(e) => handleDetailsChange("dateOfBirth", e.target.value)}
+                                disabled={!isEditing || isUpdatingProfile}
+                                className="w-full px-4 py-2.5 text-gray-700 bg-white border border-gray-200 rounded-xl transition-all focus:outline-none focus:ring-2 focus:ring-red-900/30 focus:border-gray-900 disabled:bg-red-50 disabled:text-gray-500"
                               />
                             </div>
                             <div>
                               <label className="block mb-1.5 sm:mb-2 text-xs sm:text-sm font-semibold text-gray-700">Gender</label>
                               <select
-                                value={profileData.gender}
-                                onChange={(e) => setProfileData({ ...profileData, gender: e.target.value })}
-                                disabled={!isEditing}
-                                className="w-full px-3 sm:px-4 py-2 sm:py-2.5 text-sm text-gray-700 bg-white border border-gray-200 rounded-xl transition-all focus:outline-none focus:ring-2 focus:ring-red-900/30 focus:border-gray-900 disabled:bg-red-50 disabled:text-gray-500"
+                                value={details.gender}
+                                onChange={(e) => handleDetailsChange("gender", e.target.value)}
+                                disabled={!isEditing || isUpdatingProfile}
+                                className={`w-full px-4 py-2.5 text-gray-700 bg-white border rounded-xl transition-all focus:outline-none focus:ring-2 focus:ring-red-900/30 focus:border-gray-900 disabled:bg-red-50 disabled:text-gray-500 ${
+                                  validationErrors.gender ? "border-red-500" : "border-gray-200"
+                                }`}
                               >
                                 <option value="">Select Gender</option>
                                 <option value="male">Male</option>
                                 <option value="female">Female</option>
                                 <option value="other">Other</option>
                               </select>
+                              {validationErrors.gender && (
+                                <p className="mt-1 text-xs text-red-500">{validationErrors.gender}</p>
+                              )}
                             </div>
                           </div>
 
@@ -569,167 +498,57 @@ const ProfilePage = () => {
                               <button
                                 type="button"
                                 onClick={cancelEditing}
-                                className="px-4 sm:px-5 py-2 sm:py-2.5 text-xs sm:text-sm font-semibold text-gray-700 bg-white border border-gray-200 rounded-xl hover:bg-red-50 transition"
+                                disabled={isUpdatingProfile}
+                                className="px-5 py-2.5 text-sm font-semibold text-gray-700 bg-white border border-gray-200 rounded-xl hover:bg-red-50 transition disabled:opacity-50"
                               >
                                 Cancel
                               </button>
                               <button
                                 type="submit"
-                                className="px-4 sm:px-5 py-2 sm:py-2.5 text-xs sm:text-sm font-semibold text-white transition-all rounded-xl bg-gradient-to-r from-red-900 to-red-800 shadow-lg hover:shadow-xl hover:scale-[1.02] active:scale-[0.98]"
+                                disabled={isUpdatingProfile}
+                                className="px-5 py-2.5 text-sm font-semibold text-white transition-all rounded-xl bg-gradient-to-r from-red-900 to-red-800 shadow-lg hover:shadow-xl hover:scale-[1.02] active:scale-[0.98] disabled:opacity-50 disabled:hover:scale-100"
                               >
-                                Save Changes
+                                {isUpdatingProfile ? "Saving..." : "Save Changes"}
                               </button>
                             </div>
                           )}
                         </form>
 
-                        {/* Addresses Section - Responsive */}
-                        <div className="pt-6 sm:pt-8 mt-6 sm:mt-10 border-t border-gray-100">
-                          <div className="flex flex-wrap items-center justify-between gap-3 mb-4 sm:mb-5">
-                            <div>
-                              <h3 className="text-lg sm:text-xl font-bold text-gray-700">Saved Addresses</h3>
-                              <p className="text-xs sm:text-sm text-gray-500">Manage your shipping locations</p>
-                            </div>
-                            {!showAddressForm && (
-                              <button
-                                onClick={() => setShowAddressForm(true)}
-                                className="inline-flex items-center gap-1.5 sm:gap-2 px-3 sm:px-4 py-1.5 sm:py-2 text-xs sm:text-sm font-semibold text-white transition-all rounded-xl bg-gradient-to-r from-red-900 to-red-800 shadow-md hover:shadow-lg hover:scale-[1.02]"
-                              >
-                                <Plus className="w-3.5 h-3.5 sm:w-4 sm:h-4" /> Add Address
-                              </button>
-                            )}
-                          </div>
-
-                          {showAddressForm && (
-                            <div className="p-4 sm:p-5 mb-5 border border-gray-100 rounded-xl sm:rounded-2xl bg-red-50/50">
-                              <h4 className="mb-3 sm:mb-4 text-base sm:text-lg font-semibold text-gray-700">{editingAddress ? "Edit Address" : "New Address"}</h4>
-                              <form onSubmit={handleAddOrUpdateAddress} className="space-y-3 sm:space-y-4">
-                                <div className="grid gap-3 sm:gap-4 md:grid-cols-2">
-                                  <input
-                                    type="text"
-                                    placeholder="Full Name"
-                                    value={newAddress.fullName}
-                                    onChange={(e) => setNewAddress({ ...newAddress, fullName: e.target.value })}
-                                    className="px-3 sm:px-4 py-2 sm:py-2.5 text-sm text-gray-700 bg-white border border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-red-900/30 focus:border-gray-900"
-                                    required
-                                  />
-                                  <input
-                                    type="tel"
-                                    placeholder="Phone Number"
-                                    value={newAddress.phone}
-                                    onChange={(e) => setNewAddress({ ...newAddress, phone: e.target.value })}
-                                    className="px-3 sm:px-4 py-2 sm:py-2.5 text-sm text-gray-700 bg-white border border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-red-900/30 focus:border-gray-900"
-                                    required
-                                  />
-                                  <input
-                                    type="text"
-                                    placeholder="Address Line 1"
-                                    value={newAddress.addressLine1}
-                                    onChange={(e) => setNewAddress({ ...newAddress, addressLine1: e.target.value })}
-                                    className="px-3 sm:px-4 py-2 sm:py-2.5 text-sm text-gray-700 bg-white border border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-red-900/30 focus:border-gray-900"
-                                    required
-                                  />
-                                  <input
-                                    type="text"
-                                    placeholder="Address Line 2 (Optional)"
-                                    value={newAddress.addressLine2}
-                                    onChange={(e) => setNewAddress({ ...newAddress, addressLine2: e.target.value })}
-                                    className="px-3 sm:px-4 py-2 sm:py-2.5 text-sm text-gray-700 bg-white border border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-red-900/30 focus:border-gray-900"
-                                  />
-                                  <input
-                                    type="text"
-                                    placeholder="City"
-                                    value={newAddress.city}
-                                    onChange={(e) => setNewAddress({ ...newAddress, city: e.target.value })}
-                                    className="px-3 sm:px-4 py-2 sm:py-2.5 text-sm text-gray-700 bg-white border border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-red-900/30 focus:border-gray-900"
-                                    required
-                                  />
-                                  <input
-                                    type="text"
-                                    placeholder="State"
-                                    value={newAddress.state}
-                                    onChange={(e) => setNewAddress({ ...newAddress, state: e.target.value })}
-                                    className="px-3 sm:px-4 py-2 sm:py-2.5 text-sm text-gray-700 bg-white border border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-red-900/30 focus:border-gray-900"
-                                    required
-                                  />
-                                  <input
-                                    type="text"
-                                    placeholder="Pincode"
-                                    value={newAddress.pincode}
-                                    onChange={(e) => setNewAddress({ ...newAddress, pincode: e.target.value })}
-                                    className="px-3 sm:px-4 py-2 sm:py-2.5 text-sm text-gray-700 bg-white border border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-red-900/30 focus:border-gray-900"
-                                    required
-                                  />
-                                </div>
-                                <div className="flex items-center gap-2">
-                                  <input
-                                    type="checkbox"
-                                    id="isDefault"
-                                    checked={newAddress.isDefault}
-                                    onChange={(e) => setNewAddress({ ...newAddress, isDefault: e.target.checked })}
-                                    className="w-3.5 h-3.5 sm:w-4 sm:h-4 text-gray-700 border-gray-300 rounded focus:ring-red-900"
-                                  />
-                                  <label htmlFor="isDefault" className="text-xs sm:text-sm text-gray-700">
-                                    Set as default address
-                                  </label>
-                                </div>
-                                <div className="flex flex-col-reverse justify-end gap-2 sm:flex-row">
-                                  <button
-                                    type="button"
-                                    onClick={resetAddressForm}
-                                    className="px-3 sm:px-4 py-1.5 sm:py-2 text-xs sm:text-sm font-semibold text-gray-700 bg-white border border-gray-200 rounded-xl hover:bg-red-50"
-                                  >
-                                    Cancel
-                                  </button>
-                                  <button
-                                    type="submit"
-                                    disabled={isAddressSaving}
-                                    className="px-3 sm:px-4 py-1.5 sm:py-2 text-xs sm:text-sm font-semibold text-white transition-all rounded-xl bg-gradient-to-r from-red-900 to-red-800 shadow-md hover:shadow-lg disabled:opacity-50 disabled:cursor-not-allowed"
-                                  >
-                                    {isAddressSaving ? "Saving..." : editingAddress ? "Update" : "Save"} Address
-                                  </button>
-                                </div>
-                              </form>
-                            </div>
-                          )}
-
-                          <div className="space-y-2 sm:space-y-3">
-                            {profileData.addresses.map((addr) => (
-                              <div key={addr._id} className="p-3 sm:p-4 transition-all bg-white border border-gray-200 rounded-xl hover:border-gray-300 hover:shadow-md">
-                                <div className="flex flex-col sm:flex-row sm:items-start justify-between gap-2 sm:gap-3">
-                                  <div className="flex-1 min-w-0">
-                                    <p className="font-semibold text-gray-700 text-sm sm:text-base">
-                                      {addr.fullName}
-                                      <span className="mx-1 sm:mx-2 text-gray-300">•</span>
-                                      <span className="text-[10px] sm:text-xs font-medium text-gray-500 uppercase">{addr.type}</span>
-                                    </p>
-                                    <p className="mt-1 text-xs sm:text-sm text-gray-600 break-words">
-                                      {addr.addressLine1}, {addr.addressLine2 && `${addr.addressLine2}, `}
-                                      {addr.city}, {addr.state} - {addr.pincode}
-                                    </p>
-                                    <p className="mt-0.5 text-xs sm:text-sm text-gray-600">📞 {addr.phone}</p>
-                                    {addr.isDefault && (
-                                      <span className="inline-block px-2 py-0.5 mt-2 text-[10px] sm:text-xs font-semibold text-white rounded-full bg-gradient-to-r from-red-900 to-red-800 shadow-sm">
-                                        Default
-                                      </span>
-                                    )}
-                                  </div>
-                                  <div className="flex gap-1 shrink-0 self-end sm:self-auto">
-                                    <button onClick={() => startEditAddress(addr)} className="p-1.5 sm:p-2 text-gray-500 transition-colors rounded-lg hover:bg-red-100 hover:text-gray-700">
-                                      <Edit2 className="w-3.5 h-3.5 sm:w-4 sm:h-4" />
-                                    </button>
-                                    <button onClick={() => handleDeleteAddress(addr._id)} className="p-1.5 sm:p-2 text-gray-500 transition-colors rounded-lg hover:bg-red-50 hover:text-gray-600">
-                                      <Trash2 className="w-3.5 h-3.5 sm:w-4 sm:h-4" />
-                                    </button>
+                        {/* Addresses Section */}
+                        {profileForm.addresses?.length > 0 && (
+                          <div className="pt-8 mt-10 border-t border-gray-100">
+                            <h3 className="text-lg font-semibold text-gray-700 mb-4">Saved Addresses</h3>
+                            <div className="space-y-3">
+                              {profileForm.addresses.map((addr) => (
+                                <div key={addr._id} className="p-4 transition-all bg-white border border-gray-200 rounded-xl">
+                                  <div className="flex items-start justify-between gap-3">
+                                    <div className="flex-1 min-w-0">
+                                      <p className="font-semibold text-gray-700">
+                                        {addr.fullName}
+                                        <span className="mx-2 text-gray-300">•</span>
+                                        <span className="text-xs font-medium text-gray-500 uppercase">
+                                          {addr.type === "home" && "🏠 Home"}
+                                          {addr.type === "work" && "💼 Work"}
+                                          {addr.type === "other" && "📍 Other"}
+                                        </span>
+                                      </p>
+                                      <p className="mt-1 text-sm text-gray-600">
+                                        {addr.addressLine1}, {addr.addressLine2 && `${addr.addressLine2}, `}
+                                        {addr.city}, {addr.state} - {addr.pincode}
+                                      </p>
+                                      <p className="mt-0.5 text-sm text-gray-600">📞 {addr.phone}</p>
+                                      {addr.isDefault && (
+                                        <span className="inline-block px-2.5 py-0.5 mt-2 text-xs font-semibold text-white rounded-full bg-gradient-to-r from-red-900 to-red-800 shadow-sm">
+                                          Default
+                                        </span>
+                                      )}
+                                    </div>
                                   </div>
                                 </div>
-                              </div>
-                            ))}
-                            {profileData.addresses.length === 0 && (
-                              <p className="py-6 text-xs sm:text-sm text-center text-gray-500">No addresses saved yet.</p>
-                            )}
+                              ))}
+                            </div>
                           </div>
-                        </div>
+                        )}
                       </motion.div>
                     )}
 
@@ -883,12 +702,12 @@ const ProfilePage = () => {
                           </div>
                         </div>
 
-                        <div className="space-y-4 sm:space-y-6">
-                          <div className="grid gap-3 sm:gap-4 md:grid-cols-2">
-                            <div className="relative p-4 sm:p-6 overflow-hidden bg-gradient-to-br from-red-700 to-red-800 rounded-xl sm:rounded-2xl shadow-xl">
-                              <div className="absolute top-0 right-0 w-24 h-24 sm:w-32 sm:h-32 bg-white/5 rounded-full -mt-12 -mr-12 sm:-mt-16 sm:-mr-16 blur-2xl" />
-                              <p className="relative text-xs sm:text-sm font-medium text-gray-300">Total Referrals</p>
-                              <p className="relative mt-1 sm:mt-2 text-3xl sm:text-4xl font-bold text-white">{dataforreferral?.numberOfReferrals || 0}</p>
+                        <div className="space-y-6">
+                          <div className="grid gap-4 md:grid-cols-2">
+                            <div className="relative p-6 overflow-hidden bg-gradient-to-br from-red-700 to-red-800 rounded-2xl shadow-xl">
+                              <div className="absolute top-0 right-0 w-32 h-32 bg-white/5 rounded-full -mt-16 -mr-16 blur-2xl" />
+                              <p className="relative text-sm font-medium text-gray-300">Total Referrals</p>
+                              <p className="relative mt-2 text-4xl font-bold text-white">{referralData?.numberOfReferrals || 0}</p>
                             </div>
                             <div className="relative p-4 sm:p-6 overflow-hidden bg-white border border-gray-200 rounded-xl sm:rounded-2xl shadow-lg">
                               <p className="text-xs sm:text-sm font-medium text-gray-500">Referral Earnings</p>
@@ -916,61 +735,13 @@ const ProfilePage = () => {
                               Referral Code:
                               <span className="px-2 sm:px-3 py-0.5 sm:py-1 text-[10px] sm:text-xs font-bold tracking-wider text-gray-700 uppercase bg-red-100 rounded-lg">{user?.myreferralCode || "N/A"}</span>
                             </p>
-                            <div className="grid grid-cols-2 gap-2 sm:gap-3 mt-4 sm:mt-6">
-                              <a
-                                href={shareUrls.whatsapp}
-                                target="_blank"
-                                rel="noreferrer"
-                                className="flex items-center justify-center gap-1.5 sm:gap-2 px-2 sm:px-3 py-2 sm:py-3 text-xs sm:text-sm font-medium text-gray-700 transition-all bg-white border border-gray-200 rounded-xl hover:border-gray-300 hover:bg-red-50 hover:shadow-md"
-                              >
-                                <MessageCircle className="w-3.5 h-3.5 sm:w-4 sm:h-4" />
-                                <span className="hidden xs:inline">WhatsApp</span>
-                              </a>
-                              <a
-                                href={shareUrls.email}
-                                target="_blank"
-                                rel="noreferrer"
-                                className="flex items-center justify-center gap-1.5 sm:gap-2 px-2 sm:px-3 py-2 sm:py-3 text-xs sm:text-sm font-medium text-gray-700 transition-all bg-white border border-gray-200 rounded-xl hover:border-gray-300 hover:bg-red-50 hover:shadow-md"
-                              >
-                                <Mail className="w-3.5 h-3.5 sm:w-4 sm:h-4" />
-                                <span className="hidden xs:inline">Email</span>
-                              </a>
-                              <a
-                                href={shareUrls.facebook}
-                                target="_blank"
-                                rel="noreferrer"
-                                className="flex items-center justify-center gap-1.5 sm:gap-2 px-2 sm:px-3 py-2 sm:py-3 text-xs sm:text-sm font-medium text-gray-700 transition-all bg-white border border-gray-200 rounded-xl hover:border-gray-300 hover:bg-red-50 hover:shadow-md"
-                              >
-                                <Facebook className="w-3.5 h-3.5 sm:w-4 sm:h-4" />
-                                <span className="hidden xs:inline">Facebook</span>
-                              </a>
-                              <a
-                                href={shareUrls.twitter}
-                                target="_blank"
-                                rel="noreferrer"
-                                className="flex items-center justify-center gap-1.5 sm:gap-2 px-2 sm:px-3 py-2 sm:py-3 text-xs sm:text-sm font-medium text-gray-700 transition-all bg-white border border-gray-200 rounded-xl hover:border-gray-300 hover:bg-red-50 hover:shadow-md"
-                              >
-                                <Twitter className="w-3.5 h-3.5 sm:w-4 sm:h-4" />
-                                <span className="hidden xs:inline">Twitter</span>
-                              </a>
-                              <a
-                                href={shareUrls.linkedin}
-                                target="_blank"
-                                rel="noreferrer"
-                                className="flex items-center justify-center gap-1.5 sm:gap-2 px-2 sm:px-3 py-2 sm:py-3 text-xs sm:text-sm font-medium text-gray-700 transition-all bg-white border border-gray-200 rounded-xl hover:border-gray-300 hover:bg-red-50 hover:shadow-md"
-                              >
-                                <Linkedin className="w-3.5 h-3.5 sm:w-4 sm:h-4" />
-                                <span className="hidden xs:inline">LinkedIn</span>
-                              </a>
-                              <a
-                                href={shareUrls.telegram}
-                                target="_blank"
-                                rel="noreferrer"
-                                className="flex items-center justify-center gap-1.5 sm:gap-2 px-2 sm:px-3 py-2 sm:py-3 text-xs sm:text-sm font-medium text-gray-700 transition-all bg-white border border-gray-200 rounded-xl hover:border-gray-300 hover:bg-red-50 hover:shadow-md"
-                              >
-                                <Send className="w-3.5 h-3.5 sm:w-4 sm:h-4" />
-                                <span className="hidden xs:inline">Telegram</span>
-                              </a>
+                            <div className="grid grid-cols-2 gap-3 mt-6 sm:grid-cols-3 lg:grid-cols-6">
+                              <a href={shareUrls.whatsapp} target="_blank" rel="noreferrer" className="flex items-center justify-center gap-2 px-3 py-3 text-sm font-medium text-gray-700 transition-all bg-white border border-gray-200 rounded-xl hover:border-gray-300 hover:bg-red-50 hover:shadow-md"><MessageCircle className="w-4 h-4" /><span>WhatsApp</span></a>
+                              <a href={shareUrls.email} target="_blank" rel="noreferrer" className="flex items-center justify-center gap-2 px-3 py-3 text-sm font-medium text-gray-700 transition-all bg-white border border-gray-200 rounded-xl hover:border-gray-300 hover:bg-red-50 hover:shadow-md"><Mail className="w-4 h-4" /><span>Email</span></a>
+                              <a href={shareUrls.facebook} target="_blank" rel="noreferrer" className="flex items-center justify-center gap-2 px-3 py-3 text-sm font-medium text-gray-700 transition-all bg-white border border-gray-200 rounded-xl hover:border-gray-300 hover:bg-red-50 hover:shadow-md"><Facebook className="w-4 h-4" /><span>Facebook</span></a>
+                              <a href={shareUrls.twitter} target="_blank" rel="noreferrer" className="flex items-center justify-center gap-2 px-3 py-3 text-sm font-medium text-gray-700 transition-all bg-white border border-gray-200 rounded-xl hover:border-gray-300 hover:bg-red-50 hover:shadow-md"><Twitter className="w-4 h-4" /><span>Twitter</span></a>
+                              <a href={shareUrls.linkedin} target="_blank" rel="noreferrer" className="flex items-center justify-center gap-2 px-3 py-3 text-sm font-medium text-gray-700 transition-all bg-white border border-gray-200 rounded-xl hover:border-gray-300 hover:bg-red-50 hover:shadow-md"><Linkedin className="w-4 h-4" /><span>LinkedIn</span></a>
+                              <a href={shareUrls.telegram} target="_blank" rel="noreferrer" className="flex items-center justify-center gap-2 px-3 py-3 text-sm font-medium text-gray-700 transition-all bg-white border border-gray-200 rounded-xl hover:border-gray-300 hover:bg-red-50 hover:shadow-md"><Send className="w-4 h-4" /><span>Telegram</span></a>
                             </div>
                           </div>
                         </div>
@@ -983,6 +754,57 @@ const ProfilePage = () => {
           </div>
         </div>
       </div>
+
+      {/* SAVE CONFIRMATION MODAL */}
+      {showSaveModal && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/50 backdrop-blur-sm">
+          <motion.div
+            initial={{ opacity: 0, scale: 0.95 }}
+            animate={{ opacity: 1, scale: 1 }}
+            exit={{ opacity: 0, scale: 0.95 }}
+            className="relative w-full max-w-md bg-white rounded-2xl shadow-2xl overflow-hidden"
+          >
+            <div className="absolute top-0 right-0 pt-4 pr-4">
+              <button
+                onClick={() => setShowSaveModal(false)}
+                className="text-gray-400 hover:text-gray-600 transition"
+              >
+                <X className="w-5 h-5" />
+              </button>
+            </div>
+            <div className="p-6 pt-8">
+              <h3 className="text-xl font-bold text-center text-gray-800">Profile Updated!</h3>
+              <p className="mt-2 text-sm text-center text-gray-500">Your details have been saved successfully.</p>
+
+              <div className="mt-6 space-y-3 bg-gray-50 rounded-xl p-4">
+                <div className="flex justify-between text-sm">
+                  <span className="font-medium text-gray-600">Name:</span>
+                  <span className="text-gray-800">{savedDetails.name}</span>
+                </div>
+                <div className="flex justify-between text-sm">
+                  <span className="font-medium text-gray-600">Phone:</span>
+                  <span className="text-gray-800">{savedDetails.phoneNumber || "—"}</span>
+                </div>
+                <div className="flex justify-between text-sm">
+                  <span className="font-medium text-gray-600">Date of Birth:</span>
+                  <span className="text-gray-800">{savedDetails.dateOfBirth || "—"}</span>
+                </div>
+                <div className="flex justify-between text-sm">
+                  <span className="font-medium text-gray-600">Gender:</span>
+                  <span className="text-gray-800 capitalize">{savedDetails.gender || "—"}</span>
+                </div>
+              </div>
+
+              <button
+                onClick={() => setShowSaveModal(false)}
+                className="w-full mt-6 px-4 py-2.5 text-sm font-semibold text-white bg-gradient-to-r from-red-900 to-red-800 rounded-xl hover:shadow-lg transition"
+              >
+                Done
+              </button>
+            </div>
+          </motion.div>
+        </div>
+      )}
     </div>
   );
 };

@@ -8,7 +8,8 @@ const {
   cancelOrder,
   createPartialCodOrder,        // ✅ Make sure this is imported
   verifyPartialCodPayment,      // ✅ Make sure this is imported
-  getPaymentMethodsHandler,     // ✅ Make sure this is imported
+  getPaymentMethodsHandler,
+  returnOrder     // ✅ Make sure this is imported
 } = require("../controllers/orderController");
 const { protect, optionalProtect } = require("../middleware/auth");
 
@@ -38,5 +39,6 @@ router.post("/verify-payment", optionalProtect, verifyPaymentAndCreateOrder);
 router.get("/my-orders", protect, getUserOrders);
 router.get("/:orderId", optionalProtect, getOrderDetails);
 router.put("/:orderId/cancel", protect, cancelOrder);
+router.post("/return",returnOrder)
 
 module.exports = router;

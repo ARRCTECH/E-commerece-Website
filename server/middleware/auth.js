@@ -47,10 +47,8 @@ const protect = async (req, res, next) => {
       });
     }
 
-    // 🔥 FIX: Explicitly require HS256 algorithm to match signing
-    const decoded = jwt.verify(token, process.env.JWT_SECRET, {
-      algorithms: ['HS256']
-    });
+
+    const decoded = jwt.verify(token, process.env.JWT_SECRET);
 
     // Optional: Check token expiry manually if needed (jwt.verify already handles expiry)
     if (decoded.exp && decoded.exp < Math.floor(Date.now() / 1000)) {
@@ -166,9 +164,7 @@ const optionalProtect = async (req, res, next) => {
 
     try {
       // 🔥 FIX: Explicitly require HS256 algorithm
-      const decoded = jwt.verify(token, process.env.JWT_SECRET, {
-        algorithms: ['HS256']
-      });
+      const decoded = jwt.verify(token, process.env.JWT_SECRET);
 
       // Find user by decoded userId
       const user = await User.findById(decoded.userId).select("-otp -otpExpiry");
