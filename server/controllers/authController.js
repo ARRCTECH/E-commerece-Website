@@ -689,6 +689,75 @@ const updateProfile = async (req, res) => {
   }
 };
 
+const getProfileDetails = async (req, res) =>{
+  try {
+    const userId=req.user.userId
+    const user = await User.findById(userId);
+    if (!user) return res.status(404).json({ success: false, message: "User not found" });
+
+    return res.status(200).json({
+      success: true,
+      user: {
+        name: user.name,
+        phoneNumber: user?.phoneNumber || null,
+        dateOfBirth: user?.dateOfBirth || null,
+        gender: user?.gender || null,
+      },
+    });
+  } catch (error) {
+    console.error("Get profile error:", error);
+    return res.status(500).json({ success: false, message: "Failed to get profile" });
+  }
+}
+const updateProfileDetails=async (req,res)=>{
+  try {
+    const { name, dateOfBirth, gender, phoneNumber } = req.body;
+    const user = await User.findById(req.user.userId);
+    if (!user) return res.status(404).json({ success: false, message: "User not found" });
+
+    if (name) user.name = name.trim();
+    if (dateOfBirth) user.dateOfBirth = new Date(dateOfBirth);
+    if (gender) user.gender = gender;
+    if (phoneNumber) user.phoneNumber = phoneNumber;
+    await user.save();
+
+    if (name && name !== user.name) {
+      try {
+        await admin.auth().updateUser(user.firebaseUid, { displayName: name.trim() });
+      } catch (err) {
+        console.error("Firebase update error:", err);
+      }
+    }
+
+    return res.status(200).json({
+      success: true,
+      message: "Profile updated",
+      user: {
+        _id: user._id,
+        firebaseUid: user.firebaseUid,
+        name: user.name,
+        email: user.email,
+        phoneNumber: user.phoneNumber,
+        role: user.role,
+        authMethod: user.authMethod,
+        isVerified: user.isVerified,
+        avatar: user.avatar,
+        dateOfBirth: user.dateOfBirth,
+        gender: user.gender,
+        addresses: user.addresses,
+        createdAt: user.createdAt,
+        lastLogin: user.lastLogin,
+        myreferralCode: user.myreferralCode,
+        referredBy: user.referredBy,
+      },
+    });
+  } catch (error) {
+    console.error("Update profile error:", error);
+    return res.status(500).json({ success: false, message: "Failed to update profile" });
+  }
+}
+
+
 const uploadAvatar = async (req, res) => {
   try {
     if (!req.file) return res.status(400).json({ success: false, message: "No file uploaded" });
@@ -753,4 +822,6 @@ module.exports = {
   deleteAccount,
   sendPhoneOTP,
   verifyPhoneOTP,
+  updateProfileDetails,
+  getProfileDetails
 };

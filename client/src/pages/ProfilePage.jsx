@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback } from "react";
+import { useState, useEffect, useCallback, useRef } from "react";
 import { useDispatch, useSelector } from "react-redux";
 import { motion, AnimatePresence } from "framer-motion";
 import axios from "axios";
@@ -7,7 +7,7 @@ import {
   Facebook, Twitter, Linkedin, Send, Copy, Shield, Edit2,
   ChevronRight, Sparkles, X
 } from "lucide-react";
-import { changePassword, uploadAvatar, getProfile } from "../store/slices/authSlice";
+import { changePassword, uploadAvatar } from "../store/slices/authSlice";
 import { fetchUserOrders } from "../store/slices/orderSlice";
 import { fetchWishlist } from "../store/slices/wishlistSlice";
 import toast from "react-hot-toast";
@@ -16,7 +16,7 @@ import Preloader from "../components/Preloader";
 
 const ProfilePage = () => {
   const dispatch = useDispatch();
-  const { user, isLoading } = useSelector((state) => state.auth);
+  const { user, isLoading: authLoading } = useSelector((state) => state.auth);
   const { orders = [] } = useSelector((state) => state.orders);
   const { items: wishlistItems = [] } = useSelector((state) => state.wishlist);
 
@@ -25,6 +25,7 @@ const ProfilePage = () => {
   const [isEditing, setIsEditing] = useState(false);
   const [originalProfile, setOriginalProfile] = useState(null);
   const [isUpdatingProfile, setIsUpdatingProfile] = useState(false);
+  const [isLoadingProfile, setIsLoadingProfile] = useState(true);
   const [showPasswordForm, setShowPasswordForm] = useState(false);
   const [passwordData, setPasswordData] = useState({
     currentPassword: "",
@@ -43,40 +44,24 @@ const ProfilePage = () => {
     gender: "",
   });
 
-  // Validation errors (only gender remains)
+  // Validation errors (only gender)
   const [validationErrors, setValidationErrors] = useState({
     gender: "",
   });
 
-  // Form State (derived from Redux user only)
-  const [profileForm, setProfileForm] = useState({
+  // Profile data from API (name, phone, dob, gender)
+  const [profileData, setProfileData] = useState({
     name: "",
-    email: "",
     phoneNumber: "",
     dateOfBirth: "",
     gender: "",
-    addresses: [],
-    myreferralCode: "",
-    referredBy: null,
-    expireReferralDate: null,
   });
 
-  // Sync form state with Redux user
-  useEffect(() => {
-    if (user) {
-      setProfileForm({
-        name: user.name || "",
-        email: user.email || "",
-        phoneNumber: user.phoneNumber || user.phone || "",
-        dateOfBirth: user.dateOfBirth ? format(new Date(user.dateOfBirth), "yyyy-MM-dd") : "",
-        gender: user.gender || "",
-        addresses: user.addresses || [],
-        myreferralCode: user.myreferralCode || "",
-        referredBy: user.referredBy || null,
-        expireReferralDate: user.expireReferralDate || null,
-      });
-    }
-  }, [user]);
+  // Addresses (could come from API or Redux)
+  const [addresses, setAddresses] = useState([]);
+
+  // Ref to prevent multiple fetches on mount
+  const hasFetchedProfile = useRef(false);
 
   // Load saved tab from localStorage
   useEffect(() => {
@@ -86,7 +71,81 @@ const ProfilePage = () => {
     }
   }, []);
 
-  // Fetch orders, wishlist, and referral data
+  // Fetch profile details from new API
+  const fetchProfileDetails = useCallback(async () => {
+    const token = localStorage.getItem("authToken");
+    
+    // If no token, fallback to Redux user data
+    if (!token) {
+      console.warn("No auth token found, using Redux user data as fallback");
+      if (user) {
+        setProfileData({
+          name: user.name || "",
+          phoneNumber: user.phoneNumber || user.phone || "",
+          dateOfBirth: user.dateOfBirth ? format(new Date(user.dateOfBirth), "yyyy-MM-dd") : "",
+          gender: user.gender || "",
+        });
+        if (user.addresses) setAddresses(user.addresses);
+      }
+      setIsLoadingProfile(false);
+      return;
+    }
+
+    try {
+      const response = await axios.get(
+        `${import.meta.env.VITE_API_URL}/auth/getprofiledetails`,
+        { headers: { Authorization: `Bearer ${token}` } }
+      );
+
+      console.log("Profile API response:", response.data); // Debug
+
+      // Handle different response structures
+      let userData = response.data;
+      if (response.data.user) userData = response.data.user;
+      if (response.data.data) userData = response.data.data;
+
+      if (!userData || Object.keys(userData).length === 0) {
+        throw new Error("No user data received from API");
+      }
+
+      setProfileData({
+        name: userData.name || "",
+        phoneNumber: userData.phoneNumber || userData.phone || "",
+        dateOfBirth: userData.dateOfBirth
+          ? format(new Date(userData.dateOfBirth), "yyyy-MM-dd")
+          : "",
+        gender: userData.gender || "",
+      });
+
+      if (userData.addresses) setAddresses(userData.addresses);
+    } catch (error) {
+      console.error("Error fetching profile details:", error.response?.data || error.message);
+      toast.error(error.response?.data?.message || "Failed to load profile details");
+      
+      // Fallback to Redux user data if available
+      if (user) {
+        setProfileData({
+          name: user.name || "",
+          phoneNumber: user.phoneNumber || user.phone || "",
+          dateOfBirth: user.dateOfBirth ? format(new Date(user.dateOfBirth), "yyyy-MM-dd") : "",
+          gender: user.gender || "",
+        });
+        if (user.addresses) setAddresses(user.addresses);
+      }
+    } finally {
+      setIsLoadingProfile(false);
+    }
+  }, [user]); // user is needed for fallback
+
+  // Load profile details only once on mount
+  useEffect(() => {
+    if (!hasFetchedProfile.current) {
+      hasFetchedProfile.current = true;
+      fetchProfileDetails();
+    }
+  }, [fetchProfileDetails]);
+
+  // Fetch orders, wishlist, referral data
   useEffect(() => {
     if (user?._id) {
       dispatch(fetchUserOrders({ limit: 5 }));
@@ -96,6 +155,7 @@ const ProfilePage = () => {
     }
   }, [user?._id, dispatch]);
 
+  // Fetch referral data
   const fetchReferralData = useCallback(async () => {
     if (!user?._id) return;
     try {
@@ -120,81 +180,47 @@ const ProfilePage = () => {
     }
   }, [user?._id]);
 
+  // Helper: convert date to ISO string for API
+  const formatDateForAPI = (dateString) => {
+    if (!dateString) return null;
+    const date = new Date(dateString);
+    return date.toISOString();
+  };
+
   const handleTabChange = (tabId) => {
     setActiveTab(tabId);
     localStorage.setItem("activeButton", tabId);
   };
 
   const startEditing = () => {
-    setOriginalProfile({ ...profileForm });
+    setOriginalProfile({ ...profileData });
     setIsEditing(true);
-    // Reset validation errors when starting edit
     setValidationErrors({ gender: "" });
   };
 
   const cancelEditing = () => {
     if (originalProfile) {
-      setProfileForm(originalProfile);
+      setProfileData(originalProfile);
     }
     setIsEditing(false);
     setOriginalProfile(null);
     setValidationErrors({ gender: "" });
   };
 
-  const [details, setDetails] = useState({
-    name: "",
-    phoneNumber: "",
-    dateOfBirth: "",
-    gender: "",
-  });
-
-  const fetchDetails = async () => {
-    const token = localStorage.getItem("authToken");
-    if (!token) {
-      toast.error("Authentication token missing. Please login again.");
-      return;
-    }
-    try {
-      const response = await axios.get(
-        `${import.meta.env.VITE_API_URL}/auth/profile`,
-        { headers: { Authorization: `Bearer ${token}` } }
-      );
-      setDetails({
-        name: response.data.user.name,
-        phoneNumber: response.data.user.phoneNumber,
-        dateOfBirth: response.data.user.dateOfBirth
-          ? format(new Date(response.data.user.dateOfBirth), "yyyy-MM-dd")
-          : "",
-        gender: response.data.user.gender
-      });
-    } catch (error) {
-      console.error("API error:", error);
-      toast.error("Failed to load profile. Please try again.");
-    }
-  };
-
-  useEffect(() => {
-    fetchDetails();
-  }, []);
-
-  // No phone validation – only gender is required
   const validateGender = (gender) => {
     if (!gender) return "Please select your gender";
     return "";
   };
 
-  const handleDetailsChange = (field, value) => {
-    setDetails(prev => ({ ...prev, [field]: value }));
-    // Clear gender error when user starts typing
+  const handleProfileChange = (field, value) => {
+    setProfileData(prev => ({ ...prev, [field]: value }));
     if (field === 'gender') setValidationErrors(prev => ({ ...prev, gender: "" }));
   };
 
-  // Profile update – phone number sent as raw input
   const handleProfileUpdate = async (e) => {
     e.preventDefault();
 
-    // Validate only gender
-    const genderError = validateGender(details.gender);
+    const genderError = validateGender(profileData.gender);
     if (genderError) {
       setValidationErrors({ gender: genderError });
       return;
@@ -209,37 +235,47 @@ const ProfilePage = () => {
       }
 
       const payload = {
-        name: details.name,
-        dateOfBirth: details.dateOfBirth,
-        gender: details.gender,
-        phoneNumber: details.phoneNumber, // sent as is – no formatting
+        name: profileData.name,
+        dateOfBirth: formatDateForAPI(profileData.dateOfBirth),
+        gender: profileData.gender,
+        phoneNumber: profileData.phoneNumber,
       };
 
       const response = await axios.put(
-        `${import.meta.env.VITE_API_URL}/auth/profile`,
+        `${import.meta.env.VITE_API_URL}/auth/updateprofiledetails`,
         payload,
         { headers: { Authorization: `Bearer ${token}` } }
       );
 
+      console.log("Update response:", response.data);
+
+      // Parse updated data from response
+      let updatedData = response.data;
+      if (response.data.user) updatedData = response.data.user;
+      if (response.data.data) updatedData = response.data.data;
+
       // Update local state with response data
-      setDetails(prev => ({
-        ...prev,
-        name: response.data.name || payload.name,
-        phoneNumber: response.data.phoneNumber || payload.phoneNumber,
-        dateOfBirth: response.data.dateOfBirth || payload.dateOfBirth,
-        gender: response.data.gender || payload.gender,
-      }));
-
-      // Refresh Redux store
-      await dispatch(getProfile()).unwrap();
-
-      // Prepare details for the modal
-      setSavedDetails({
-        name: response.data.name || payload.name,
-        phoneNumber: response.data.phoneNumber || payload.phoneNumber,
-        dateOfBirth: response.data.dateOfBirth || payload.dateOfBirth,
-        gender: response.data.gender || payload.gender,
+      setProfileData({
+        name: updatedData.name || profileData.name,
+        phoneNumber: updatedData.phoneNumber || profileData.phoneNumber,
+        dateOfBirth: updatedData.dateOfBirth
+          ? format(new Date(updatedData.dateOfBirth), "yyyy-MM-dd")
+          : profileData.dateOfBirth,
+        gender: updatedData.gender || profileData.gender,
       });
+
+      // Prepare details for modal
+      setSavedDetails({
+        name: updatedData.name || profileData.name,
+        phoneNumber: updatedData.phoneNumber || profileData.phoneNumber,
+        dateOfBirth: updatedData.dateOfBirth
+          ? format(new Date(updatedData.dateOfBirth), "yyyy-MM-dd")
+          : profileData.dateOfBirth,
+        gender: updatedData.gender || profileData.gender,
+      });
+
+      // Re-fetch latest profile data to ensure consistency
+      await fetchProfileDetails();
 
       setShowSaveModal(true);
       setIsEditing(false);
@@ -318,7 +354,7 @@ const ProfilePage = () => {
     { id: "referral", label: "Referral", icon: UserPlus },
   ];
 
-  if (isLoading) {
+  if (authLoading || isLoadingProfile) {
     return <Preloader message="Loading profile..." />;
   }
 
@@ -438,8 +474,8 @@ const ProfilePage = () => {
                               <label className="block mb-2 text-sm font-semibold text-gray-700">Full Name</label>
                               <input
                                 type="text"
-                                value={details.name}
-                                onChange={(e) => handleDetailsChange("name", e.target.value)}
+                                value={profileData.name}
+                                onChange={(e) => handleProfileChange("name", e.target.value)}
                                 disabled={!isEditing || isUpdatingProfile}
                                 className="w-full px-4 py-2.5 text-gray-700 bg-white border border-gray-200 rounded-xl transition-all focus:outline-none focus:ring-2 focus:ring-red-900/30 focus:border-gray-900 disabled:bg-red-50 disabled:text-gray-500"
                               />
@@ -448,17 +484,27 @@ const ProfilePage = () => {
                               <label className="block mb-2 text-sm font-semibold text-gray-700">Email Address</label>
                               <input
                                 type="email"
-                                value={profileForm.email}
+                                value={user?.email || ""}
                                 disabled
                                 className="w-full px-4 py-2.5 text-gray-500 bg-red-50 border border-gray-200 rounded-xl"
+                              />
+                            </div>
+                            <div>
+                              <label className="block mb-2 text-sm font-semibold text-gray-700">Phone Number</label>
+                              <input
+                                type="tel"
+                                value={profileData.phoneNumber}
+                                onChange={(e) => handleProfileChange("phoneNumber", e.target.value)}
+                                disabled={!isEditing || isUpdatingProfile}
+                                className="w-full px-4 py-2.5 text-gray-700 bg-white border border-gray-200 rounded-xl transition-all focus:outline-none focus:ring-2 focus:ring-red-900/30 focus:border-gray-900 disabled:bg-red-50 disabled:text-gray-500"
                               />
                             </div>
                             <div>
                               <label className="block mb-2 text-sm font-semibold text-gray-700">Date of Birth</label>
                               <input
                                 type="date"
-                                value={details.dateOfBirth}
-                                onChange={(e) => handleDetailsChange("dateOfBirth", e.target.value)}
+                                value={profileData.dateOfBirth}
+                                onChange={(e) => handleProfileChange("dateOfBirth", e.target.value)}
                                 disabled={!isEditing || isUpdatingProfile}
                                 className="w-full px-4 py-2.5 text-gray-700 bg-white border border-gray-200 rounded-xl transition-all focus:outline-none focus:ring-2 focus:ring-red-900/30 focus:border-gray-900 disabled:bg-red-50 disabled:text-gray-500"
                               />
@@ -466,8 +512,8 @@ const ProfilePage = () => {
                             <div>
                               <label className="block mb-2 text-sm font-semibold text-gray-700">Gender</label>
                               <select
-                                value={details.gender}
-                                onChange={(e) => handleDetailsChange("gender", e.target.value)}
+                                value={profileData.gender}
+                                onChange={(e) => handleProfileChange("gender", e.target.value)}
                                 disabled={!isEditing || isUpdatingProfile}
                                 className={`w-full px-4 py-2.5 text-gray-700 bg-white border rounded-xl transition-all focus:outline-none focus:ring-2 focus:ring-red-900/30 focus:border-gray-900 disabled:bg-red-50 disabled:text-gray-500 ${
                                   validationErrors.gender ? "border-red-500" : "border-gray-200"
@@ -506,11 +552,11 @@ const ProfilePage = () => {
                         </form>
 
                         {/* Addresses Section */}
-                        {profileForm.addresses?.length > 0 && (
+                        {addresses.length > 0 && (
                           <div className="pt-8 mt-10 border-t border-gray-100">
                             <h3 className="text-lg font-semibold text-gray-700 mb-4">Saved Addresses</h3>
                             <div className="space-y-3">
-                              {profileForm.addresses.map((addr) => (
+                              {addresses.map((addr) => (
                                 <div key={addr._id} className="p-4 transition-all bg-white border border-gray-200 rounded-xl">
                                   <div className="flex items-start justify-between gap-3">
                                     <div className="flex-1 min-w-0">

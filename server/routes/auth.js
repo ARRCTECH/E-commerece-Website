@@ -12,7 +12,10 @@ const {
   // Phone OTP functions using Firebase
   sendPhoneOTP,
   verifyPhoneOTP,
-  googleSignIn, // Add this import
+  googleSignIn,
+  updateProfileDetails,
+  getProfileDetails
+  
 } = require("../controllers/authController")
 const { firebaseAuth, authorize } = require("../middleware/firebaseAuth")
 const { protect } = require("../middleware/auth")
@@ -168,15 +171,16 @@ router.get("/health", (req, res) => {
     },
   })
 })
-
 // Protected routes
-// router.use(protect)
+router.use(protect)
 router.get("/profile", getProfile)
 router.put("/profile", validateProfileUpdate, handleValidationErrors, updateProfile)
 router.post("/upload-avatar", upload.single("avatar"), uploadAvatar)
 router.post("/logout", logout)
 router.delete("/account", deleteAccount)
 router.get("/profile/:id", getProfile)
+router.get("/getprofiledetails",getProfileDetails)
+router.put("/updateprofiledetails",updateProfileDetails)
 
 // Admin only routes
 router.get("/admin/users", authorize("admin"), async (req, res) => {
