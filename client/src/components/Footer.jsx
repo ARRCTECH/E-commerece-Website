@@ -260,7 +260,7 @@ const Footer = () => {
           </div>
         </div>
 
-        {/* Bottom Bar */}
+        {/* Bottom Bar – credit now highlighted */}
         <div className="mt-6 flex flex-col items-center justify-between gap-4 border-t border-white/10 pt-6 sm:flex-row">
           <p className="text-[10px] uppercase tracking-[0.2em] text-neutral-500">
             © {new Date().getFullYear()} Factory Sale · All rights reserved
@@ -274,13 +274,16 @@ const Footer = () => {
               Made with <span className="text-rose-500 animate-pulse">♥</span> in India
             </span>
             <span className="h-3 w-px bg-white/15 hidden sm:inline-block" />
+
+            {/* HIGHLIGHTED CREDIT LINK */}
             <a
               href="https://arrctechie.in"
               target="_blank"
               rel="noopener noreferrer"
-              className="transition hover:text-white inline-flex items-center gap-1"
+              className="group relative inline-flex items-center gap-1 rounded-full bg-gradient-to-r from-rose-500/20 to-amber-500/20 px-2.5 py-0.5 text-[10px] font-semibold tracking-wide text-rose-300 transition-all duration-300 hover:from-rose-500 hover:to-amber-500 hover:text-white hover:shadow-md hover:shadow-rose-500/30"
             >
-              Developed by <span className="font-medium text-rose-400">Arrc Techie</span>
+              <span className="relative z-10">Developed by Arrc Techie</span>
+              <span className="absolute inset-0 rounded-full bg-gradient-to-r from-rose-500 to-amber-500 opacity-0 blur-md transition-opacity duration-300 group-hover:opacity-40" />
             </a>
           </div>
         </div>
