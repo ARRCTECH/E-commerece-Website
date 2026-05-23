@@ -29,6 +29,8 @@ import {
   Home,
   Receipt,
   ShieldCheck,
+  RotateCcw,          // new icon for return
+  RefreshCw,          // alternative
 } from "lucide-react";
 import { fetchOrderDetails, clearError } from "../store/slices/orderSlice";
 import LoadingSpinner from "../components/LoadingSpinner";
@@ -76,6 +78,37 @@ const OrderDetailsPage = () => {
     }
     return (item.price || 0) * (item.quantity || 1);
   };
+
+  // ---------- RETURN STATUS HELPERS ----------
+  const getReturnStatus = (item) => {
+    // Assuming each item may have a `returnRequest` object or we check a `returns` array.
+    // Example structure: item.returnRequest = { status, reason, requestedAt, refundStatus }
+    if (item.returnRequest) return item.returnRequest;
+    if (order?.returns) {
+      const found = order.returns.find(r => r.itemId === item._id || r.productId === item.product?._id);
+      if (found) return found;
+    }
+    return null;
+  };
+
+  const returnStatusConfig = {
+    requested: { label: "Return Requested", color: "amber", icon: RotateCcw },
+    approved: { label: "Return Approved", color: "emerald", icon: RefreshCw },
+    rejected: { label: "Return Rejected", color: "rose", icon: X },
+    picked_up: { label: "Pickup Completed", color: "violet", icon: Truck },
+    refunded: { label: "Refunded", color: "emerald", icon: CheckCircle },
+  };
+
+  const getReturnBadgeClass = (status) => {
+    const map = {
+      amber: "bg-amber-50 text-amber-700 ring-amber-200",
+      emerald: "bg-emerald-50 text-emerald-700 ring-emerald-200",
+      rose: "bg-rose-50 text-rose-700 ring-rose-200",
+      violet: "bg-violet-50 text-violet-700 ring-violet-200",
+    };
+    return map[returnStatusConfig[status]?.color] || "bg-neutral-100 text-neutral-700 ring-neutral-200";
+  };
+  // -----------------------------------------
 
   const statusMap = {
     confirmed: { label: "Order Confirmed", icon: CheckCircle, color: "emerald" },
@@ -224,7 +257,7 @@ const OrderDetailsPage = () => {
               </div>
             </div>
 
-            {/* Partial COD - Fixed syntax */}
+            {/* Partial COD */}
             {order.partialCod?.enabled && (
               <div className="mt-6 flex items-start gap-3 rounded-2xl border border-blue-100 bg-blue-50/70 p-4">
                 <Info className="mt-0.5 h-5 w-5 flex-shrink-0 text-blue-600" />
@@ -259,6 +292,8 @@ const OrderDetailsPage = () => {
                 { id: "items", label: "Items", icon: ShoppingBag },
                 { id: "address", label: "Shipping & Payment", icon: MapPin },
                 { id: "tracking", label: "Tracking", icon: Truck },
+                // NEW: Returns tab (optional, but keeps things organised)
+                { id: "returns", label: "Returns", icon: RotateCcw },
               ].map((tab) => {
                 const Icon = tab.icon;
                 const active = activeSection === tab.id;
@@ -289,7 +324,7 @@ const OrderDetailsPage = () => {
                 exit={{ opacity: 0, y: -10 }}
                 transition={{ duration: 0.2 }}
               >
-                {/* ITEMS */}
+                {/* ITEMS (with return status badges) */}
                 {activeSection === "items" && (
                   <div className="space-y-8">
                     <div>
@@ -301,99 +336,125 @@ const OrderDetailsPage = () => {
 
                     {order.items?.length > 0 ? (
                       <div className="space-y-3">
-                        {order.items.map((item, idx) => (
-                          <motion.div
-                            key={idx}
-                            initial={{ opacity: 0, x: -10 }}
-                            animate={{ opacity: 1, x: 0 }}
-                            transition={{ delay: idx * 0.05 }}
-                            className="group relative flex gap-4 rounded-2xl border border-neutral-200/70 bg-white p-4 transition-all hover:border-red-200 hover:shadow-md sm:p-5"
-                          >
-                            {item.isBulkProduct && (
-                              <div className="absolute -right-1.5 -top-1.5 z-10 rounded-full bg-gradient-to-r from-red-600 to-rose-600 px-2 py-0.5 text-[10px] font-bold text-white shadow-md">
-                                BULK
+                        {order.items.map((item, idx) => {
+                          const returnData = getReturnStatus(item);
+                          const returnStatus = returnData?.status;
+                          const ReturnIcon = returnStatus ? returnStatusConfig[returnStatus]?.icon : null;
+                          return (
+                            <motion.div
+                              key={idx}
+                              initial={{ opacity: 0, x: -10 }}
+                              animate={{ opacity: 1, x: 0 }}
+                              transition={{ delay: idx * 0.05 }}
+                              className="group relative flex gap-4 rounded-2xl border border-neutral-200/70 bg-white p-4 transition-all hover:border-red-200 hover:shadow-md sm:p-5"
+                            >
+                              {item.isBulkProduct && (
+                                <div className="absolute -right-1.5 -top-1.5 z-10 rounded-full bg-gradient-to-r from-red-600 to-rose-600 px-2 py-0.5 text-[10px] font-bold text-white shadow-md">
+                                  BULK
+                                </div>
+                              )}
+
+                              <div className="relative h-20 w-20 flex-shrink-0 overflow-hidden rounded-xl bg-neutral-100 sm:h-24 sm:w-24">
+                                <img
+                                  src={
+                                    item?.product?.images?.[0]?.url ||
+                                    "https://placehold.co/120x120/f5f5f5/999?text=No+Image"
+                                  }
+                                  alt={item?.name || "Product"}
+                                  className="h-full w-full object-cover transition-transform duration-300 group-hover:scale-110"
+                                  onError={(e) => {
+                                    e.target.onerror = null;
+                                    e.target.src = "https://placehold.co/120x120/f5f5f5/999?text=No+Image";
+                                  }}
+                                />
                               </div>
-                            )}
 
-                            <div className="relative h-20 w-20 flex-shrink-0 overflow-hidden rounded-xl bg-neutral-100 sm:h-24 sm:w-24">
-                              <img
-                                src={
-                                  item?.product?.images?.[0]?.url ||
-                                  "https://placehold.co/120x120/f5f5f5/999?text=No+Image"
-                                }
-                                alt={item?.name || "Product"}
-                                className="h-full w-full object-cover transition-transform duration-300 group-hover:scale-110"
-                                onError={(e) => {
-                                  e.target.onerror = null;
-                                  e.target.src = "https://placehold.co/120x120/f5f5f5/999?text=No+Image";
-                                }}
-                              />
-                            </div>
+                              <div className="flex flex-1 flex-col justify-between min-w-0">
+                                <div>
+                                  <h4 className="truncate text-sm font-semibold text-neutral-900 sm:text-base">
+                                    {item?.name || "N/A"}
+                                  </h4>
 
-                            <div className="flex flex-1 flex-col justify-between min-w-0">
-                              <div>
-                                <h4 className="truncate text-sm font-semibold text-neutral-900 sm:text-base">
-                                  {item?.name || "N/A"}
-                                </h4>
+                                  <div className="mt-2 flex flex-wrap gap-1.5">
+                                    {item.isBulkProduct ? (
+                                      <>
+                                        <span className="inline-flex items-center gap-1 rounded-md bg-neutral-100 px-2 py-0.5 text-xs text-neutral-700">
+                                          <Layers className="h-3 w-3" />
+                                          {getBulkItemDisplay(item)}
+                                        </span>
+                                        {item.selectedColors?.length > 0 && (
+                                          <span className="inline-flex items-center gap-1 rounded-md bg-neutral-100 px-2 py-0.5 text-xs text-neutral-700">
+                                            <Palette className="h-3 w-3" />
+                                            {item.selectedColors.join(", ")}
+                                          </span>
+                                        )}
+                                      </>
+                                    ) : (
+                                      <>
+                                        <span className="inline-flex items-center gap-1 rounded-md bg-neutral-100 px-2 py-0.5 text-xs text-neutral-700">
+                                          Qty: {item?.quantity || 0}
+                                        </span>
+                                        {item?.size && (
+                                          <span className="inline-flex items-center gap-1 rounded-md bg-neutral-100 px-2 py-0.5 text-xs text-neutral-700">
+                                            <Ruler className="h-3 w-3" />
+                                            {item.size}
+                                          </span>
+                                        )}
+                                        {item?.color && (
+                                          <span className="inline-flex items-center gap-1 rounded-md bg-neutral-100 px-2 py-0.5 text-xs text-neutral-700">
+                                            <Palette className="h-3 w-3" />
+                                            {item.color}
+                                          </span>
+                                        )}
+                                      </>
+                                    )}
+                                  </div>
 
-                                <div className="mt-2 flex flex-wrap gap-1.5">
-                                  {item.isBulkProduct ? (
-                                    <>
-                                      <span className="inline-flex items-center gap-1 rounded-md bg-neutral-100 px-2 py-0.5 text-xs text-neutral-700">
-                                        <Layers className="h-3 w-3" />
-                                        {getBulkItemDisplay(item)}
+                                  <p className="mt-2 text-xs text-neutral-500">{getItemPrice(item)}</p>
+
+                                  {/* RETURN STATUS BADGE */}
+                                  {returnStatus && (
+                                    <div className="mt-2">
+                                      <span
+                                        className={`inline-flex items-center gap-1 rounded-full px-2.5 py-1 text-xs font-semibold ring-1 ${getReturnBadgeClass(returnStatus)}`}
+                                      >
+                                        {ReturnIcon && <ReturnIcon className="h-3 w-3" />}
+                                        {returnStatusConfig[returnStatus]?.label || returnStatus}
                                       </span>
-                                      {item.selectedColors?.length > 0 && (
-                                        <span className="inline-flex items-center gap-1 rounded-md bg-neutral-100 px-2 py-0.5 text-xs text-neutral-700">
-                                          <Palette className="h-3 w-3" />
-                                          {item.selectedColors.join(", ")}
-                                        </span>
+                                      {returnData?.reason && (
+                                        <p className="mt-1 text-xs text-neutral-500">
+                                          Reason: {returnData.reason}
+                                        </p>
                                       )}
-                                    </>
-                                  ) : (
-                                    <>
-                                      <span className="inline-flex items-center gap-1 rounded-md bg-neutral-100 px-2 py-0.5 text-xs text-neutral-700">
-                                        Qty: {item?.quantity || 0}
-                                      </span>
-                                      {item?.size && (
-                                        <span className="inline-flex items-center gap-1 rounded-md bg-neutral-100 px-2 py-0.5 text-xs text-neutral-700">
-                                          <Ruler className="h-3 w-3" />
-                                          {item.size}
-                                        </span>
+                                      {returnData?.refundStatus && (
+                                        <p className="mt-0.5 text-xs text-neutral-500">
+                                          Refund: {returnData.refundStatus}
+                                        </p>
                                       )}
-                                      {item?.color && (
-                                        <span className="inline-flex items-center gap-1 rounded-md bg-neutral-100 px-2 py-0.5 text-xs text-neutral-700">
-                                          <Palette className="h-3 w-3" />
-                                          {item.color}
-                                        </span>
-                                      )}
-                                    </>
+                                    </div>
                                   )}
                                 </div>
-
-                                <p className="mt-2 text-xs text-neutral-500">{getItemPrice(item)}</p>
                               </div>
-                            </div>
 
-                            <div className="flex flex-col items-end justify-center">
-                              <span className="text-lg font-bold text-neutral-900 sm:text-xl">
-                                ₹{getItemTotal(item)}
-                              </span>
-                            </div>
-                          </motion.div>
-                        ))}
+                              <div className="flex flex-col items-end justify-center">
+                                <span className="text-lg font-bold text-neutral-900 sm:text-xl">
+                                  ₹{getItemTotal(item)}
+                                </span>
+                              </div>
+                            </motion.div>
+                          );
+                        })}
                       </div>
                     ) : (
                       <p className="py-12 text-center text-sm text-neutral-500">No items found.</p>
                     )}
 
-                    {/* Pricing */}
+                    {/* Pricing Summary (unchanged) */}
                     <div className="rounded-2xl border border-neutral-200/70 bg-gradient-to-br from-neutral-50 to-white p-6">
                       <h3 className="mb-5 flex items-center gap-2 text-base font-bold text-neutral-900">
                         <Receipt className="h-5 w-5 text-red-600" />
                         Pricing Summary
                       </h3>
-
                       <div className="space-y-3 text-sm">
                         <div className="flex justify-between text-neutral-600">
                           <span>Subtotal</span>
@@ -453,7 +514,7 @@ const OrderDetailsPage = () => {
                   </div>
                 )}
 
-                {/* ADDRESS */}
+                {/* ADDRESS (unchanged) */}
                 {activeSection === "address" && (
                   <div className="grid gap-5 lg:grid-cols-2">
                     <div className="rounded-2xl border border-neutral-200/70 bg-white p-6">
@@ -499,7 +560,6 @@ const OrderDetailsPage = () => {
 
                     {/* Invoice and Payment Section */}
                     <div className="space-y-5">
-                      {/* Invoice Download */}
                       <div className="rounded-2xl border border-neutral-200/70 bg-white p-6">
                         <div className="mb-5 flex items-center gap-3">
                           <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-red-50">
@@ -510,7 +570,6 @@ const OrderDetailsPage = () => {
                         <InvoiceDownloadButton order={order} />
                       </div>
 
-                      {/* Payment Information */}
                       <div className="rounded-2xl border border-neutral-200/70 bg-white p-6">
                         <div className="mb-5 flex items-center gap-3">
                           <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-red-50">
@@ -518,7 +577,6 @@ const OrderDetailsPage = () => {
                           </div>
                           <h3 className="text-base font-bold text-neutral-900">Payment Information</h3>
                         </div>
-
                         <div className="space-y-3 text-sm">
                           <div className="flex items-start justify-between gap-4 border-b border-neutral-100 pb-3">
                             <span className="text-xs font-medium uppercase tracking-wide text-neutral-500">Method</span>
@@ -558,7 +616,6 @@ const OrderDetailsPage = () => {
                               </span>
                             </div>
                           )}
-
                           {order.partialCod?.enabled && (
                             <div className="mt-4 rounded-xl border border-blue-100 bg-blue-50/60 p-4">
                               <p className="mb-2 text-xs font-bold uppercase tracking-wide text-blue-700">
@@ -580,15 +637,13 @@ const OrderDetailsPage = () => {
                   </div>
                 )}
 
-                {/* TRACKING */}
+                {/* TRACKING (unchanged) */}
                 {activeSection === "tracking" && (
                   <div className="space-y-6">
                     <div>
                       <h2 className="mb-1 text-lg font-bold text-neutral-900">Order Tracking</h2>
                       <p className="text-sm text-neutral-500">Follow your order journey</p>
                     </div>
-
-                    {/* Vertical timeline (mobile) / Horizontal (desktop) */}
                     <div className="rounded-2xl border border-neutral-200/70 bg-gradient-to-br from-neutral-50 to-white p-6 sm:p-8">
                       {(() => {
                         const steps = [
@@ -604,7 +659,6 @@ const OrderDetailsPage = () => {
                           delivered: 3,
                           cancelled: 0,
                         }[order.status?.toLowerCase()] ?? 0;
-
                         return (
                           <div className="flex flex-col gap-6 sm:flex-row sm:items-start sm:justify-between sm:gap-2">
                             {steps.map((step, i) => {
@@ -652,8 +706,6 @@ const OrderDetailsPage = () => {
                         );
                       })()}
                     </div>
-
-                    {/* Status Message */}
                     <div
                       className={`rounded-2xl border p-6 text-center ${
                         order.status === "delivered"
@@ -693,7 +745,6 @@ const OrderDetailsPage = () => {
                         </>
                       )}
                     </div>
-
                     {order.status !== "delivered" && order.status !== "cancelled" && (
                       <div className="flex items-center justify-center gap-2 rounded-2xl border border-red-100 bg-gradient-to-r from-red-50 to-rose-50 px-4 py-3 text-sm">
                         <Calendar className="h-4 w-4 text-red-600" />
@@ -705,6 +756,96 @@ const OrderDetailsPage = () => {
                             ).toLocaleDateString("en-IN", { day: "numeric", month: "long" })}
                           </strong>
                         </span>
+                      </div>
+                    )}
+                  </div>
+                )}
+
+                {/* NEW: RETURNS SECTION */}
+                {activeSection === "returns" && (
+                  <div className="space-y-6">
+                    <div>
+                      <h2 className="mb-1 text-lg font-bold text-neutral-900">Return Requests</h2>
+                      <p className="text-sm text-neutral-500">
+                        Track the status of any returns or replacements
+                      </p>
+                    </div>
+
+                    {order.items?.some(item => getReturnStatus(item)) ? (
+                      <div className="space-y-4">
+                        {order.items.map((item, idx) => {
+                          const returnData = getReturnStatus(item);
+                          if (!returnData) return null;
+                          const config = returnStatusConfig[returnData.status] || {
+                            label: returnData.status,
+                            color: "neutral",
+                            icon: Info,
+                          };
+                          const Icon = config.icon;
+                          return (
+                            <div key={idx} className="rounded-2xl border border-neutral-200/70 bg-white p-5 shadow-sm">
+                              <div className="flex flex-wrap items-start justify-between gap-3">
+                                <div className="flex gap-3">
+                                  <div className="h-12 w-12 flex-shrink-0 overflow-hidden rounded-lg bg-neutral-100">
+                                    <img
+                                      src={item.product?.images?.[0]?.url || "https://placehold.co/60x60/f5f5f5/999"}
+                                      alt={item.name}
+                                      className="h-full w-full object-cover"
+                                    />
+                                  </div>
+                                  <div>
+                                    <p className="font-semibold text-neutral-900">{item.name}</p>
+                                    <p className="text-xs text-neutral-500">
+                                      Qty: {item.quantity} &nbsp;|&nbsp; ₹{getItemTotal(item)}
+                                    </p>
+                                  </div>
+                                </div>
+                                <span
+                                  className={`inline-flex items-center gap-1 rounded-full px-3 py-1 text-xs font-semibold ring-1 ${getReturnBadgeClass(returnData.status)}`}
+                                >
+                                  <Icon className="h-3 w-3" />
+                                  {config.label}
+                                </span>
+                              </div>
+                              <div className="mt-4 grid grid-cols-1 gap-2 text-sm sm:grid-cols-2">
+                                {returnData.requestedAt && (
+                                  <div>
+                                    <span className="text-xs text-neutral-500">Requested on</span>
+                                    <p className="font-medium text-neutral-900">
+                                      {new Date(returnData.requestedAt).toLocaleDateString("en-IN")}
+                                    </p>
+                                  </div>
+                                )}
+                                {returnData.reason && (
+                                  <div>
+                                    <span className="text-xs text-neutral-500">Reason</span>
+                                    <p className="font-medium text-neutral-900">{returnData.reason}</p>
+                                  </div>
+                                )}
+                                {returnData.refundStatus && (
+                                  <div>
+                                    <span className="text-xs text-neutral-500">Refund status</span>
+                                    <p className="font-medium text-neutral-900">{returnData.refundStatus}</p>
+                                  </div>
+                                )}
+                                {returnData.resolution && (
+                                  <div className="sm:col-span-2">
+                                    <span className="text-xs text-neutral-500">Resolution details</span>
+                                    <p className="text-neutral-700">{returnData.resolution}</p>
+                                  </div>
+                                )}
+                              </div>
+                            </div>
+                          );
+                        })}
+                      </div>
+                    ) : (
+                      <div className="rounded-2xl border border-neutral-200/70 bg-white p-8 text-center">
+                        <RotateCcw className="mx-auto h-12 w-12 text-neutral-300" />
+                        <p className="mt-3 text-neutral-500">No returns have been requested for this order.</p>
+                        <p className="mt-1 text-sm text-neutral-400">
+                          If you need to return an item, please contact customer support.
+                        </p>
                       </div>
                     )}
                   </div>
