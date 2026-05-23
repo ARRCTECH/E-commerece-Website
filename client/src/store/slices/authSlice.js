@@ -807,15 +807,14 @@ export const deleteAccount = createAsyncThunk("auth/deleteAccount", async (_, { 
     return rejectWithValue(error.response?.data?.message || "Failed to delete account");
   }
 });
-
-export const getProfile = createAsyncThunk("auth/getProfile", async (_, { rejectWithValue }) => {
+export const getProfile = createAsyncThunk("auth/getProfile", async (_, { rejectWithValue, dispatch }) => {
   try {
     const response = await api.get("/auth/profile");
-    // Update local storage
     localStorage.setItem("user", JSON.stringify(response.data.user));
+    // Optionally dispatch an action to set user in Redux
+    dispatch(setUser(response.data.user));
     return response.data;
   } catch (error) {
-    console.error("Get profile error:", error);
     return rejectWithValue(error.response?.data?.message || "Failed to get profile");
   }
 });

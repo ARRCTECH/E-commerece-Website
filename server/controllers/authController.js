@@ -616,7 +616,7 @@ const forgotPassword = async (req, res) => {
 
 const getProfile = async (req, res) => {
   try {
-    const user = await User.findById(req.user.userId);
+    const user = await User.findById(req?.user?.userId);
     if (!user) return res.status(404).json({ success: false, message: "User not found" });
 
     return res.status(200).json({
@@ -645,11 +645,10 @@ const getProfile = async (req, res) => {
     return res.status(500).json({ success: false, message: "Failed to get profile" });
   }
 };
-
 const updateProfile = async (req, res) => {
   try {
     const { name, dateOfBirth, gender, addresses } = req.body;
-    const user = await User.findById(req.user.userId);
+    const user = await User.findById(req?.user?.userId);
     if (!user) return res.status(404).json({ success: false, message: "User not found" });
 
     if (name) user.name = name.trim();
@@ -696,7 +695,7 @@ const updateProfile = async (req, res) => {
 
 const getProfileDetails = async (req, res) => {
   try {
-    const userId = req.user.userId
+    const userId = req?.user?.userId
     const user = await User.findById(userId);
     if (!user) return res.status(404).json({ success: false, message: "User not found" });
 
@@ -717,7 +716,7 @@ const getProfileDetails = async (req, res) => {
 const updateProfileDetails = async (req, res) => {
   try {
     const { name, dateOfBirth, gender, phoneNumber } = req.body;
-    const user = await User.findById(req.user.userId);
+    const user = await User.findById(req?.user?.userId);
     if (!user) return res.status(404).json({ success: false, message: "User not found" });
 
     if (name) user.name = name.trim();
@@ -766,7 +765,7 @@ const updateProfileDetails = async (req, res) => {
 const uploadAvatar = async (req, res) => {
   try {
     if (!req.file) return res.status(400).json({ success: false, message: "No file uploaded" });
-    const user = await User.findById(req.user.userId);
+    const user = await User.findById(req?.user?.userId);
     if (!user) return res.status(404).json({ success: false, message: "User not found" });
 
     user.avatar = req.file.path;
@@ -801,8 +800,8 @@ const logout = async (req, res) => {
 
 const deleteAccount = async (req, res) => {
   try {
-    const userId = req.user.userId;
-    const firebaseUid = req.user.firebaseUid;
+    const userId = req?.user?.userId;
+    const firebaseUid = req?.user?.firebaseUid;
 
     await User.findByIdAndDelete(userId);
     await admin.auth().deleteUser(firebaseUid);
