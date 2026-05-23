@@ -12,7 +12,9 @@ export const PaymentModal = ({
   originalAmount,   // original amount (COD आणि Partial COD साठी)
   showPartialCod, 
   partialPercentage, 
-  isBulkProduct 
+  isBulkProduct,
+  discountAmount = 0,    // ✅ NEW: Coupon discount amount
+  couponCode = null      // ✅ NEW: Applied coupon code
 }) => {
   const [tab, setTab] = useState("online");
   if (!isOpen) return null;
@@ -23,6 +25,9 @@ export const PaymentModal = ({
   const codAmount = baseAmountForPartial - onlineAmount;
   const showCodTab = !showPartialCod;
   const showPartialCodTab = showPartialCod;
+  
+  // ✅ COD amount after coupon discount
+  const codDiscountedAmount = originalAmount ? originalAmount - discountAmount : amount;
   
   const handleTabChange = (newTab) => {
     console.log("🔵 PaymentModal - tab changed to:", newTab);
@@ -70,6 +75,11 @@ export const PaymentModal = ({
           {tab === "online" && (
             <>
               <p className="mb-4 text-center text-gray-600">Amount: ₹{amount}</p>
+              {couponCode && discountAmount > 0 && (
+                <p className="text-xs text-center text-green-600 mb-2">
+                  Coupon "{couponCode}" applied: -₹{discountAmount}
+                </p>
+              )}
               <button 
                 onClick={() => { console.log("🔵 PaymentModal - Online payment clicked, amount:", amount); onOnline(); }} 
                 className="flex items-center justify-center w-full py-2 text-white bg-red-600 rounded-lg hover:bg-red-700 transition-colors"
@@ -81,13 +91,27 @@ export const PaymentModal = ({
           
           {tab === "cod" && (
             <>
-              <p className="mb-2 text-center text-gray-600">Amount: ₹{originalAmount || amount} (Pay on delivery)</p>
-              <p className="text-xs text-center text-red-500 mb-3">*No online discount applicable on COD</p>
+              <p className="mb-2 text-center text-gray-600">
+                Amount: ₹{codDiscountedAmount} (Pay on delivery)
+              </p>
+              
+              {/* Show coupon savings if applied */}
+              {couponCode && discountAmount > 0 && (
+                <div className="text-center mb-2">
+                  <p className="text-xs text-green-600">
+                    Coupon "{couponCode}" applied: -₹{discountAmount}
+                  </p>
+                </div>
+              )}
+              
+              <p className="text-xs text-center text-red-500 mb-3">
+                *No online discount applicable on COD
+              </p>
               <button 
-                onClick={() => { console.log("🔵 PaymentModal - COD clicked, amount:", originalAmount || amount); onCOD(); }} 
+                onClick={() => { console.log("🔵 PaymentModal - COD clicked, amount:", codDiscountedAmount); onCOD(); }} 
                 className="w-full py-2 text-white bg-red-600 rounded-lg hover:bg-red-700 transition-colors"
               >
-                Confirm COD
+                Confirm COD • ₹{codDiscountedAmount}
               </button>
             </>
           )}

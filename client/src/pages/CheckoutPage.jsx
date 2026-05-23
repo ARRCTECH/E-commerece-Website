@@ -523,7 +523,7 @@ const CheckoutPage = () => {
     const originalAmount = calculateFinalPricing.originalSubtotal || calculateFinalPricing.subtotal;
     const onlineAmount = Math.round(originalAmount * partialPercentage / 100);
     const codAmount = originalAmount - onlineAmount;
-    
+
     const orderPayload = {
       items: getDisplayItems().map((item) => ({
         productId: item.product?._id,
@@ -960,6 +960,8 @@ const CheckoutPage = () => {
         showPartialCod={showPartialCodOption}
         partialPercentage={partialPercentage}
         isBulkProduct={isBulkBuyNow || displayItems.some((item) => item.isBulkProduct)}
+        discountAmount={appliedCoupon?.discountAmount || calculateFinalPricing.freediscount || 0}
+        couponCode={appliedCoupon?.code || (filterYCoupon[0]?.code) || null}
       />
 
       <CongratulationsModal
