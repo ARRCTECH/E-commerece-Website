@@ -5,7 +5,7 @@ import axios from "axios";
 import {
   User, Camera, Package, UserPlus, Mail, MessageCircle,
   Facebook, Twitter, Linkedin, Send, Copy, Shield, Edit2,
-  ChevronRight, Sparkles, X
+  ChevronRight, Sparkles, X, Menu
 } from "lucide-react";
 import { changePassword, uploadAvatar } from "../store/slices/authSlice";
 import { fetchUserOrders } from "../store/slices/orderSlice";
@@ -27,6 +27,7 @@ const ProfilePage = () => {
   const [isUpdatingProfile, setIsUpdatingProfile] = useState(false);
   const [isLoadingProfile, setIsLoadingProfile] = useState(true);
   const [showPasswordForm, setShowPasswordForm] = useState(false);
+  const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const [passwordData, setPasswordData] = useState({
     currentPassword: "",
     newPassword: "",
@@ -44,12 +45,12 @@ const ProfilePage = () => {
     gender: "",
   });
 
-  // Validation errors (only gender)
+  // Validation errors
   const [validationErrors, setValidationErrors] = useState({
     gender: "",
   });
 
-  // Profile data from API (name, phone, dob, gender)
+  // Profile data from API
   const [profileData, setProfileData] = useState({
     name: "",
     phoneNumber: "",
@@ -57,10 +58,7 @@ const ProfilePage = () => {
     gender: "",
   });
 
-  // Addresses (could come from API or Redux)
   const [addresses, setAddresses] = useState([]);
-
-  // Ref to prevent multiple fetches on mount
   const hasFetchedProfile = useRef(false);
 
   // Load saved tab from localStorage
@@ -71,13 +69,16 @@ const ProfilePage = () => {
     }
   }, []);
 
-  // Fetch profile details from new API
+  // Close mobile menu when tab changes
+  useEffect(() => {
+    setMobileMenuOpen(false);
+  }, [activeTab]);
+
+  // Fetch profile details from API
   const fetchProfileDetails = useCallback(async () => {
     const token = localStorage.getItem("authToken");
     
-    // If no token, fallback to Redux user data
     if (!token) {
-      console.warn("No auth token found, using Redux user data as fallback");
       if (user) {
         setProfileData({
           name: user.name || "",
@@ -97,16 +98,9 @@ const ProfilePage = () => {
         { headers: { Authorization: `Bearer ${token}` } }
       );
 
-      console.log("Profile API response:", response.data); // Debug
-
-      // Handle different response structures
       let userData = response.data;
       if (response.data.user) userData = response.data.user;
       if (response.data.data) userData = response.data.data;
-
-      if (!userData || Object.keys(userData).length === 0) {
-        throw new Error("No user data received from API");
-      }
 
       setProfileData({
         name: userData.name || "",
@@ -119,10 +113,8 @@ const ProfilePage = () => {
 
       if (userData.addresses) setAddresses(userData.addresses);
     } catch (error) {
-      console.error("Error fetching profile details:", error.response?.data || error.message);
+      console.error("Error fetching profile details:", error);
       toast.error(error.response?.data?.message || "Failed to load profile details");
-      
-      // Fallback to Redux user data if available
       if (user) {
         setProfileData({
           name: user.name || "",
@@ -130,14 +122,12 @@ const ProfilePage = () => {
           dateOfBirth: user.dateOfBirth ? format(new Date(user.dateOfBirth), "yyyy-MM-dd") : "",
           gender: user.gender || "",
         });
-        if (user.addresses) setAddresses(user.addresses);
       }
     } finally {
       setIsLoadingProfile(false);
     }
-  }, [user]); // user is needed for fallback
+  }, [user]);
 
-  // Load profile details only once on mount
   useEffect(() => {
     if (!hasFetchedProfile.current) {
       hasFetchedProfile.current = true;
@@ -145,7 +135,7 @@ const ProfilePage = () => {
     }
   }, [fetchProfileDetails]);
 
-  // Fetch orders, wishlist, referral data
+  // Fetch orders, wishlist, referral
   useEffect(() => {
     if (user?._id) {
       dispatch(fetchUserOrders({ limit: 5 }));
@@ -155,7 +145,6 @@ const ProfilePage = () => {
     }
   }, [user?._id, dispatch]);
 
-  // Fetch referral data
   const fetchReferralData = useCallback(async () => {
     if (!user?._id) return;
     try {
@@ -164,7 +153,7 @@ const ProfilePage = () => {
       });
       setReferralData(res.data.data);
     } catch (error) {
-      console.error("Error fetching referral details:", error.response?.data || error.message);
+      console.error("Error fetching referral details:", error);
     }
   }, [user?._id]);
 
@@ -180,7 +169,6 @@ const ProfilePage = () => {
     }
   }, [user?._id]);
 
-  // Helper: convert date to ISO string for API
   const formatDateForAPI = (dateString) => {
     if (!dateString) return null;
     const date = new Date(dateString);
@@ -247,14 +235,10 @@ const ProfilePage = () => {
         { headers: { Authorization: `Bearer ${token}` } }
       );
 
-      console.log("Update response:", response.data);
-
-      // Parse updated data from response
       let updatedData = response.data;
       if (response.data.user) updatedData = response.data.user;
       if (response.data.data) updatedData = response.data.data;
 
-      // Update local state with response data
       setProfileData({
         name: updatedData.name || profileData.name,
         phoneNumber: updatedData.phoneNumber || profileData.phoneNumber,
@@ -264,7 +248,6 @@ const ProfilePage = () => {
         gender: updatedData.gender || profileData.gender,
       });
 
-      // Prepare details for modal
       setSavedDetails({
         name: updatedData.name || profileData.name,
         phoneNumber: updatedData.phoneNumber || profileData.phoneNumber,
@@ -274,9 +257,7 @@ const ProfilePage = () => {
         gender: updatedData.gender || profileData.gender,
       });
 
-      // Re-fetch latest profile data to ensure consistency
       await fetchProfileDetails();
-
       setShowSaveModal(true);
       setIsEditing(false);
       setOriginalProfile(null);
@@ -360,46 +341,47 @@ const ProfilePage = () => {
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-red-50 via-white to-red-50/80">
-      <div className="container px-4 py-6 mx-auto sm:px-6 sm:py-10 lg:py-12">
+      <div className="container px-4 py-4 mx-auto sm:px-6 sm:py-8 lg:py-10">
         <div className="max-w-6xl mx-auto">
-          {/* Profile Header */}
-          <div className="relative mb-8 overflow-hidden bg-white rounded-2xl shadow-xl">
-            <div className="absolute top-0 right-0 w-80 h-80 bg-gradient-to-br from-red-500/10 to-rose-500/5 rounded-full -mt-40 -mr-40 blur-3xl" />
-            <div className="absolute bottom-0 left-0 w-80 h-80 bg-gradient-to-tr from-amber-500/5 to-red-500/5 rounded-full -mb-40 -ml-40 blur-3xl" />
-            <div className="relative p-6 sm:p-8">
-              <div className="flex flex-col items-center gap-6 md:flex-row md:items-start">
-                {/* Avatar */}
-                <div className="relative">
+          {/* Profile Header - Responsive */}
+          <div className="relative mb-6 overflow-hidden bg-white rounded-2xl shadow-xl sm:mb-8">
+            <div className="absolute top-0 right-0 w-64 h-64 bg-gradient-to-br from-red-500/10 to-rose-500/5 rounded-full -mt-32 -mr-32 blur-3xl" />
+            <div className="absolute bottom-0 left-0 w-64 h-64 bg-gradient-to-tr from-amber-500/5 to-red-500/5 rounded-full -mb-32 -ml-32 blur-3xl" />
+            
+            <div className="relative p-5 sm:p-6 md:p-8">
+              <div className="flex flex-col items-center gap-5 md:flex-row md:items-start">
+                {/* Avatar - Mobile optimized */}
+                <div className="relative flex-shrink-0">
                   <div className="absolute inset-0 rounded-full bg-gradient-to-br from-red-500 to-rose-600 blur-md opacity-60" />
-                  <div className="relative flex items-center justify-center w-28 h-28 overflow-hidden rounded-full ring-4 ring-white shadow-xl bg-gradient-to-br from-red-100 to-red-200 sm:w-32 sm:h-32">
+                  <div className="relative flex items-center justify-center w-24 h-24 overflow-hidden rounded-full ring-4 ring-white shadow-xl bg-gradient-to-br from-red-100 to-red-200 sm:w-28 sm:h-28 md:w-32 md:h-32">
                     {user?.avatar ? (
                       <img src={user.avatar} alt={user.name} className="object-cover w-full h-full" />
                     ) : (
-                      <User className="w-14 h-14 text-gray-400 sm:w-16 sm:h-16" />
+                      <User className="w-12 h-12 text-gray-400 sm:w-14 sm:h-14" />
                     )}
                   </div>
-                  <label className="absolute bottom-1 right-1 p-2 text-white transition-all rounded-full cursor-pointer shadow-lg bg-gradient-to-br from-red-500 to-rose-600 hover:scale-110 ring-2 ring-white">
-                    <Camera className="w-3.5 h-3.5" />
+                  <label className="absolute bottom-1 right-1 p-1.5 text-white transition-all rounded-full cursor-pointer shadow-lg bg-gradient-to-br from-red-500 to-rose-600 hover:scale-110 ring-2 ring-white sm:p-2">
+                    <Camera className="w-3 h-3 sm:w-3.5 sm:h-3.5" />
                     <input type="file" accept="image/*" onChange={handleAvatarUpload} className="hidden" />
                   </label>
                 </div>
 
-                {/* User Info */}
+                {/* User Info - Mobile center alignment */}
                 <div className="flex-1 text-center md:text-left">
-                  <div className="inline-flex items-center gap-2 px-3 py-1 mb-3 text-xs font-bold tracking-wider text-gray-700 uppercase bg-red-50 rounded-full border border-gray-100">
+                  <div className="inline-flex items-center gap-2 px-2.5 py-1 mb-2 text-xs font-bold tracking-wider text-gray-700 uppercase bg-red-50 rounded-full border border-gray-100 sm:mb-3">
                     <Sparkles className="w-3 h-3" />
-                    Premium Member
+                    <span>Premium Member</span>
                   </div>
-                  <h1 className="text-2xl font-bold text-gray-700 sm:text-3xl">{user?.name}</h1>
-                  <p className="mt-1 text-sm text-gray-500">{user?.email}</p>
+                  <h1 className="text-xl font-bold text-gray-800 sm:text-2xl md:text-3xl">{user?.name}</h1>
+                  <p className="mt-1 text-sm text-gray-500 break-all">{user?.email}</p>
                   <p className="mt-1 text-xs text-gray-400">
                     Member since {user?.createdAt ? format(new Date(user.createdAt), "MMMM yyyy") : "recently"}
                   </p>
                 </div>
 
-                {/* Stats */}
-                <div className="px-5 py-3 text-center bg-white rounded-xl shadow-md border border-gray-100">
-                  <div className="text-2xl font-bold text-transparent bg-clip-text bg-gradient-to-r from-red-600 to-rose-600">
+                {/* Stats - Mobile responsive */}
+                <div className="px-4 py-2 text-center bg-white rounded-xl shadow-md border border-gray-100 sm:px-5 sm:py-3">
+                  <div className="text-xl font-bold text-transparent bg-clip-text bg-gradient-to-r from-red-600 to-rose-600 sm:text-2xl">
                     {orders.length}
                   </div>
                   <div className="text-xs font-medium text-gray-500">Orders</div>
@@ -408,12 +390,36 @@ const ProfilePage = () => {
             </div>
           </div>
 
-          <div className="grid gap-6 lg:grid-cols-4 lg:gap-8">
-            {/* Sidebar */}
+          <div className="grid gap-5 lg:grid-cols-4 lg:gap-8">
+            {/* Sidebar - Mobile: Hamburger menu + drawer */}
             <div className="lg:col-span-1">
-              <div className="sticky top-4 bg-white rounded-2xl shadow-xl border border-gray-100 overflow-hidden">
+              {/* Mobile menu button */}
+              <div className="lg:hidden mb-4">
+                <button
+                  onClick={() => setMobileMenuOpen(!mobileMenuOpen)}
+                  className="w-full flex items-center justify-between px-5 py-3 bg-white rounded-xl shadow-md border border-gray-100"
+                >
+                  <div className="flex items-center gap-3">
+                    {tabs.find(t => t.id === activeTab)?.icon && (
+                      <div className="p-1.5 rounded-lg bg-red-50">
+                        {(() => {
+                          const Icon = tabs.find(t => t.id === activeTab)?.icon;
+                          return Icon ? <Icon className="w-5 h-5 text-red-600" /> : null;
+                        })()}
+                      </div>
+                    )}
+                    <span className="font-semibold text-gray-800">
+                      {tabs.find(t => t.id === activeTab)?.label}
+                    </span>
+                  </div>
+                  <Menu className="w-5 h-5 text-gray-500" />
+                </button>
+              </div>
+
+              {/* Desktop sidebar - always visible */}
+              <div className="hidden lg:block sticky top-4 bg-white rounded-2xl shadow-xl border border-gray-100 overflow-hidden">
                 <div className="p-2">
-                  <nav className="flex gap-1 overflow-x-auto lg:flex-col lg:space-y-1 lg:overflow-visible scrollbar-hide">
+                  <nav className="flex flex-col space-y-1">
                     {tabs.map((tab) => {
                       const Icon = tab.icon;
                       const isActive = activeTab === tab.id;
@@ -421,7 +427,7 @@ const ProfilePage = () => {
                         <button
                           key={tab.id}
                           onClick={() => handleTabChange(tab.id)}
-                          className={`w-full flex-shrink-0 flex items-center gap-3 px-4 py-3 rounded-xl text-left text-sm font-medium transition-all duration-300 ${
+                          className={`w-full flex items-center gap-3 px-4 py-3 rounded-xl text-left text-sm font-medium transition-all duration-300 ${
                             isActive
                               ? "bg-gradient-to-r from-red-900 to-red-800 text-white shadow-lg"
                               : "text-gray-600 hover:bg-red-50 hover:text-gray-700"
@@ -436,12 +442,63 @@ const ProfilePage = () => {
                   </nav>
                 </div>
               </div>
+
+              {/* Mobile drawer overlay */}
+              <AnimatePresence>
+                {mobileMenuOpen && (
+                  <>
+                    <div
+                      className="fixed inset-0 bg-black/50 z-40 lg:hidden"
+                      onClick={() => setMobileMenuOpen(false)}
+                    />
+                    <motion.div
+                      initial={{ x: -300, opacity: 0 }}
+                      animate={{ x: 0, opacity: 1 }}
+                      exit={{ x: -300, opacity: 0 }}
+                      transition={{ type: "spring", damping: 25 }}
+                      className="fixed left-0 top-0 bottom-0 w-72 bg-white z-50 shadow-2xl lg:hidden rounded-r-2xl"
+                    >
+                      <div className="p-5 border-b border-gray-100">
+                        <div className="flex items-center justify-between">
+                          <h2 className="text-lg font-bold text-gray-800">Menu</h2>
+                          <button
+                            onClick={() => setMobileMenuOpen(false)}
+                            className="p-2 rounded-full hover:bg-gray-100"
+                          >
+                            <X className="w-5 h-5 text-gray-500" />
+                          </button>
+                        </div>
+                      </div>
+                      <nav className="p-3 space-y-1">
+                        {tabs.map((tab) => {
+                          const Icon = tab.icon;
+                          const isActive = activeTab === tab.id;
+                          return (
+                            <button
+                              key={tab.id}
+                              onClick={() => handleTabChange(tab.id)}
+                              className={`w-full flex items-center gap-3 px-4 py-3 rounded-xl text-left text-sm font-medium transition-all ${
+                                isActive
+                                  ? "bg-gradient-to-r from-red-900 to-red-800 text-white"
+                                  : "text-gray-600 hover:bg-red-50"
+                              }`}
+                            >
+                              <Icon className="w-5 h-5" />
+                              <span>{tab.label}</span>
+                            </button>
+                          );
+                        })}
+                      </nav>
+                    </motion.div>
+                  </>
+                )}
+              </AnimatePresence>
             </div>
 
-            {/* Main Content */}
+            {/* Main Content - Responsive padding */}
             <div className="lg:col-span-3">
               <div className="bg-white rounded-2xl shadow-xl border border-gray-100 overflow-hidden">
-                <div className="p-6 sm:p-8">
+                <div className="p-4 sm:p-6 md:p-8">
                   <AnimatePresence mode="wait">
                     {/* PROFILE TAB */}
                     {activeTab === "profile" && (
@@ -452,15 +509,15 @@ const ProfilePage = () => {
                         exit={{ opacity: 0, y: -20 }}
                         transition={{ duration: 0.3 }}
                       >
-                        <div className="flex flex-wrap items-center justify-between gap-3 mb-6">
+                        <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 mb-6">
                           <div>
-                            <h2 className="text-2xl font-bold text-gray-700">Personal Information</h2>
+                            <h2 className="text-xl sm:text-2xl font-bold text-gray-800">Personal Information</h2>
                             <p className="mt-1 text-sm text-gray-500">Manage your personal details</p>
                           </div>
                           {!isEditing && (
                             <button
                               onClick={startEditing}
-                              className="inline-flex items-center gap-2 px-5 py-2.5 text-sm font-semibold text-white transition-all rounded-xl bg-gradient-to-r from-red-900 to-red-800 shadow-lg hover:shadow-xl hover:scale-[1.02] active:scale-[0.98]"
+                              className="inline-flex items-center justify-center gap-2 px-4 py-2 text-sm font-semibold text-white transition-all rounded-xl bg-gradient-to-r from-red-900 to-red-800 shadow-md hover:shadow-lg hover:scale-[1.02] active:scale-[0.98]"
                             >
                               <Edit2 className="w-4 h-4" />
                               Edit Profile
@@ -468,8 +525,8 @@ const ProfilePage = () => {
                           )}
                         </div>
 
-                        <form onSubmit={handleProfileUpdate} className="space-y-6">
-                          <div className="grid gap-5 md:grid-cols-2">
+                        <form onSubmit={handleProfileUpdate} className="space-y-5">
+                          <div className="grid gap-5 sm:grid-cols-2">
                             <div>
                               <label className="block mb-2 text-sm font-semibold text-gray-700">Full Name</label>
                               <input
@@ -531,7 +588,7 @@ const ProfilePage = () => {
                           </div>
 
                           {isEditing && (
-                            <div className="flex flex-col-reverse justify-end gap-3 pt-5 border-t border-gray-100 sm:flex-row">
+                            <div className="flex flex-col-reverse sm:flex-row justify-end gap-3 pt-5 border-t border-gray-100">
                               <button
                                 type="button"
                                 onClick={cancelEditing}
@@ -543,7 +600,7 @@ const ProfilePage = () => {
                               <button
                                 type="submit"
                                 disabled={isUpdatingProfile}
-                                className="px-5 py-2.5 text-sm font-semibold text-white transition-all rounded-xl bg-gradient-to-r from-red-900 to-red-800 shadow-lg hover:shadow-xl hover:scale-[1.02] active:scale-[0.98] disabled:opacity-50 disabled:hover:scale-100"
+                                className="px-5 py-2.5 text-sm font-semibold text-white transition-all rounded-xl bg-gradient-to-r from-red-900 to-red-800 shadow-md hover:shadow-lg hover:scale-[1.02] active:scale-[0.98] disabled:opacity-50"
                               >
                                 {isUpdatingProfile ? "Saving..." : "Save Changes"}
                               </button>
@@ -551,16 +608,16 @@ const ProfilePage = () => {
                           )}
                         </form>
 
-                        {/* Addresses Section */}
+                        {/* Addresses Section - Mobile friendly */}
                         {addresses.length > 0 && (
-                          <div className="pt-8 mt-10 border-t border-gray-100">
-                            <h3 className="text-lg font-semibold text-gray-700 mb-4">Saved Addresses</h3>
+                          <div className="pt-8 mt-8 border-t border-gray-100">
+                            <h3 className="text-lg font-semibold text-gray-800 mb-4">Saved Addresses</h3>
                             <div className="space-y-3">
                               {addresses.map((addr) => (
                                 <div key={addr._id} className="p-4 transition-all bg-white border border-gray-200 rounded-xl">
-                                  <div className="flex items-start justify-between gap-3">
-                                    <div className="flex-1 min-w-0">
-                                      <p className="font-semibold text-gray-700">
+                                  <div className="flex flex-col gap-2">
+                                    <div className="flex items-start justify-between gap-3 flex-wrap">
+                                      <p className="font-semibold text-gray-800">
                                         {addr.fullName}
                                         <span className="mx-2 text-gray-300">•</span>
                                         <span className="text-xs font-medium text-gray-500 uppercase">
@@ -569,17 +626,17 @@ const ProfilePage = () => {
                                           {addr.type === "other" && "📍 Other"}
                                         </span>
                                       </p>
-                                      <p className="mt-1 text-sm text-gray-600">
-                                        {addr.addressLine1}, {addr.addressLine2 && `${addr.addressLine2}, `}
-                                        {addr.city}, {addr.state} - {addr.pincode}
-                                      </p>
-                                      <p className="mt-0.5 text-sm text-gray-600">📞 {addr.phone}</p>
                                       {addr.isDefault && (
-                                        <span className="inline-block px-2.5 py-0.5 mt-2 text-xs font-semibold text-white rounded-full bg-gradient-to-r from-red-900 to-red-800 shadow-sm">
+                                        <span className="inline-block px-2 py-0.5 text-xs font-semibold text-white rounded-full bg-gradient-to-r from-red-900 to-red-800 shadow-sm">
                                           Default
                                         </span>
                                       )}
                                     </div>
+                                    <p className="text-sm text-gray-600 break-words">
+                                      {addr.addressLine1}, {addr.addressLine2 && `${addr.addressLine2}, `}
+                                      {addr.city}, {addr.state} - {addr.pincode}
+                                    </p>
+                                    <p className="text-sm text-gray-600">📞 {addr.phone}</p>
                                   </div>
                                 </div>
                               ))}
@@ -598,23 +655,23 @@ const ProfilePage = () => {
                         exit={{ opacity: 0, y: -20 }}
                         transition={{ duration: 0.3 }}
                       >
-                        <h2 className="text-2xl font-bold text-gray-700 mb-6">Recent Orders</h2>
+                        <h2 className="text-xl sm:text-2xl font-bold text-gray-800 mb-5">Recent Orders</h2>
                         {orders.length > 0 ? (
                           <div className="space-y-4">
                             {orders.map((order) => (
-                              <div key={order._id} className="p-5 transition-all bg-white border border-gray-200 rounded-xl hover:border-gray-300 hover:shadow-md">
+                              <div key={order._id} className="p-4 sm:p-5 transition-all bg-white border border-gray-200 rounded-xl hover:border-gray-300 hover:shadow-md">
                                 <div className="flex flex-wrap items-center justify-between gap-2 mb-3">
-                                  <span className="font-bold text-gray-700">Order #{order.orderNumber}</span>
-                                  <span className="text-sm text-gray-500">
+                                  <span className="font-bold text-gray-800 text-sm sm:text-base">Order #{order.orderNumber}</span>
+                                  <span className="text-xs sm:text-sm text-gray-500">
                                     {format(new Date(order.createdAt), "MMM dd, yyyy")}
                                   </span>
                                 </div>
                                 <div className="flex flex-wrap items-center justify-between gap-3">
                                   <span className="text-sm text-gray-600">{order.items?.length || 0} items</span>
-                                  <div className="flex items-center gap-4">
-                                    <span className="text-lg font-bold text-gray-700">₹{order.pricing?.total || 0}</span>
+                                  <div className="flex items-center gap-3 flex-wrap">
+                                    <span className="text-lg font-bold text-gray-800">₹{order.pricing?.total || 0}</span>
                                     <span
-                                      className={`px-3 py-1 rounded-full text-xs font-semibold capitalize ${
+                                      className={`px-2.5 py-1 rounded-full text-xs font-semibold capitalize ${
                                         order.status === "delivered"
                                           ? "bg-green-50 text-green-700 ring-1 ring-green-200"
                                           : order.status === "shipped"
@@ -630,9 +687,9 @@ const ProfilePage = () => {
                             ))}
                           </div>
                         ) : (
-                          <div className="py-16 text-center">
-                            <div className="inline-flex items-center justify-center w-20 h-20 mb-4 rounded-full bg-red-100">
-                              <Package className="w-10 h-10 text-gray-400" />
+                          <div className="py-12 text-center">
+                            <div className="inline-flex items-center justify-center w-16 h-16 mb-4 rounded-full bg-red-100 sm:w-20 sm:h-20">
+                              <Package className="w-8 h-8 text-gray-400 sm:w-10 sm:h-10" />
                             </div>
                             <p className="text-gray-500">No orders yet</p>
                             <p className="mt-1 text-sm text-gray-400">Start shopping to see your orders here</p>
@@ -650,11 +707,11 @@ const ProfilePage = () => {
                         exit={{ opacity: 0, y: -20 }}
                         transition={{ duration: 0.3 }}
                       >
-                        <h2 className="text-2xl font-bold text-gray-700 mb-6">Security Settings</h2>
-                        <div className="p-6 bg-white border border-gray-200 rounded-xl">
-                          <div className="flex flex-wrap items-center justify-between gap-3 mb-4">
+                        <h2 className="text-xl sm:text-2xl font-bold text-gray-800 mb-5">Security Settings</h2>
+                        <div className="p-4 sm:p-6 bg-white border border-gray-200 rounded-xl">
+                          <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 mb-4">
                             <div>
-                              <h3 className="font-bold text-gray-700">Password</h3>
+                              <h3 className="font-bold text-gray-800">Password</h3>
                               <p className="mt-0.5 text-sm text-gray-500">Update your password to keep your account secure</p>
                             </div>
                             <button
@@ -702,7 +759,7 @@ const ProfilePage = () => {
                               </div>
                               <button
                                 type="submit"
-                                className="px-6 py-2.5 text-sm font-semibold text-white transition-all rounded-xl bg-gradient-to-r from-red-900 to-red-800 shadow-lg hover:shadow-xl hover:scale-[1.02] active:scale-[0.98]"
+                                className="w-full sm:w-auto px-6 py-2.5 text-sm font-semibold text-white transition-all rounded-xl bg-gradient-to-r from-red-900 to-red-800 shadow-md hover:shadow-lg hover:scale-[1.02] active:scale-[0.98]"
                               >
                                 Update Password
                               </button>
@@ -712,7 +769,7 @@ const ProfilePage = () => {
                       </motion.div>
                     )}
 
-                    {/* REFERRAL TAB */}
+                    {/* REFERRAL TAB - Mobile responsive */}
                     {activeTab === "referral" && (
                       <motion.div
                         key="referral"
@@ -721,56 +778,60 @@ const ProfilePage = () => {
                         exit={{ opacity: 0, y: -20 }}
                         transition={{ duration: 0.3 }}
                       >
-                        <div className="flex items-center gap-3 mb-6">
+                        <div className="flex items-center gap-3 mb-5">
                           <div className="p-2 rounded-xl bg-gradient-to-br from-red-900 to-red-800 shadow-lg">
                             <UserPlus className="w-5 h-5 text-white" />
                           </div>
                           <div>
-                            <h2 className="text-2xl font-bold text-gray-700">My Referral</h2>
+                            <h2 className="text-xl sm:text-2xl font-bold text-gray-800">My Referral</h2>
                             <p className="text-sm text-gray-500">Invite friends and earn rewards</p>
                           </div>
                         </div>
 
-                        <div className="space-y-6">
-                          <div className="grid gap-4 md:grid-cols-2">
-                            <div className="relative p-6 overflow-hidden bg-gradient-to-br from-red-700 to-red-800 rounded-2xl shadow-xl">
+                        <div className="space-y-5">
+                          <div className="grid gap-4 sm:grid-cols-2">
+                            <div className="relative p-5 overflow-hidden bg-gradient-to-br from-red-700 to-red-800 rounded-2xl shadow-xl">
                               <div className="absolute top-0 right-0 w-32 h-32 bg-white/5 rounded-full -mt-16 -mr-16 blur-2xl" />
-                              <p className="relative text-sm font-medium text-gray-300">Total Referrals</p>
-                              <p className="relative mt-2 text-4xl font-bold text-white">{referralData?.numberOfReferrals || 0}</p>
+                              <p className="relative text-sm font-medium text-gray-200">Total Referrals</p>
+                              <p className="relative mt-2 text-3xl font-bold text-white">{referralData?.numberOfReferrals || 0}</p>
                             </div>
-                            <div className="relative p-6 overflow-hidden bg-white border border-gray-200 rounded-2xl shadow-lg">
+                            <div className="relative p-5 overflow-hidden bg-white border border-gray-200 rounded-2xl shadow-lg">
                               <p className="text-sm font-medium text-gray-500">Referral Earnings</p>
-                              <p className="mt-2 text-4xl font-bold text-gray-900">₹{Math.round(totalEarning)}</p>
+                              <p className="mt-2 text-3xl font-bold text-gray-900">₹{Math.round(totalEarning)}</p>
                             </div>
                           </div>
-                          <div className="p-6 bg-white border border-gray-200 rounded-2xl shadow-lg">
-                            <h3 className="mb-4 text-lg font-bold text-gray-700">Share Referral Link</h3>
-                            <div className="flex flex-col gap-3 md:flex-row">
-                              <input
-                                type="text"
-                                readOnly
-                                value={referralLink}
-                                className="flex-1 px-4 py-3 text-sm text-gray-700 bg-red-50 border border-gray-200 rounded-xl focus:outline-none"
-                              />
-                              <button
-                                onClick={copyToClipboard}
-                                className="inline-flex items-center justify-center gap-2 px-6 py-3 text-sm font-semibold text-white transition-all rounded-xl bg-gradient-to-r from-red-700 to-red-800 shadow-lg hover:shadow-xl hover:scale-[1.02] active:scale-[0.98]"
-                              >
-                                <Copy className="w-4 h-4" />
-                                Copy Link
-                              </button>
+                          
+                          <div className="p-5 bg-white border border-gray-200 rounded-2xl shadow-lg">
+                            <h3 className="mb-3 text-base sm:text-lg font-bold text-gray-800">Share Referral Link</h3>
+                            <div className="flex flex-col gap-3">
+                              <div className="flex flex-col sm:flex-row gap-2">
+                                <input
+                                  type="text"
+                                  readOnly
+                                  value={referralLink}
+                                  className="flex-1 px-3 py-2.5 text-sm text-gray-700 bg-red-50 border border-gray-200 rounded-xl focus:outline-none"
+                                />
+                                <button
+                                  onClick={copyToClipboard}
+                                  className="inline-flex items-center justify-center gap-2 px-5 py-2.5 text-sm font-semibold text-white transition-all rounded-xl bg-gradient-to-r from-red-700 to-red-800 shadow-md hover:shadow-lg hover:scale-[1.02] active:scale-[0.98]"
+                                >
+                                  <Copy className="w-4 h-4" />
+                                  Copy Link
+                                </button>
+                              </div>
+                              <p className="text-sm text-gray-600">
+                                Referral Code:
+                                <span className="ml-2 px-2 py-0.5 text-xs font-bold tracking-wider text-gray-700 uppercase bg-red-100 rounded-lg">{user?.myreferralCode || "N/A"}</span>
+                              </p>
                             </div>
-                            <p className="mt-4 text-sm text-gray-600">
-                              Referral Code:
-                              <span className="ml-2 px-3 py-1 text-xs font-bold tracking-wider text-gray-700 uppercase bg-red-100 rounded-lg">{user?.myreferralCode || "N/A"}</span>
-                            </p>
-                            <div className="grid grid-cols-2 gap-3 mt-6 sm:grid-cols-3 lg:grid-cols-6">
-                              <a href={shareUrls.whatsapp} target="_blank" rel="noreferrer" className="flex items-center justify-center gap-2 px-3 py-3 text-sm font-medium text-gray-700 transition-all bg-white border border-gray-200 rounded-xl hover:border-gray-300 hover:bg-red-50 hover:shadow-md"><MessageCircle className="w-4 h-4" /><span>WhatsApp</span></a>
-                              <a href={shareUrls.email} target="_blank" rel="noreferrer" className="flex items-center justify-center gap-2 px-3 py-3 text-sm font-medium text-gray-700 transition-all bg-white border border-gray-200 rounded-xl hover:border-gray-300 hover:bg-red-50 hover:shadow-md"><Mail className="w-4 h-4" /><span>Email</span></a>
-                              <a href={shareUrls.facebook} target="_blank" rel="noreferrer" className="flex items-center justify-center gap-2 px-3 py-3 text-sm font-medium text-gray-700 transition-all bg-white border border-gray-200 rounded-xl hover:border-gray-300 hover:bg-red-50 hover:shadow-md"><Facebook className="w-4 h-4" /><span>Facebook</span></a>
-                              <a href={shareUrls.twitter} target="_blank" rel="noreferrer" className="flex items-center justify-center gap-2 px-3 py-3 text-sm font-medium text-gray-700 transition-all bg-white border border-gray-200 rounded-xl hover:border-gray-300 hover:bg-red-50 hover:shadow-md"><Twitter className="w-4 h-4" /><span>Twitter</span></a>
-                              <a href={shareUrls.linkedin} target="_blank" rel="noreferrer" className="flex items-center justify-center gap-2 px-3 py-3 text-sm font-medium text-gray-700 transition-all bg-white border border-gray-200 rounded-xl hover:border-gray-300 hover:bg-red-50 hover:shadow-md"><Linkedin className="w-4 h-4" /><span>LinkedIn</span></a>
-                              <a href={shareUrls.telegram} target="_blank" rel="noreferrer" className="flex items-center justify-center gap-2 px-3 py-3 text-sm font-medium text-gray-700 transition-all bg-white border border-gray-200 rounded-xl hover:border-gray-300 hover:bg-red-50 hover:shadow-md"><Send className="w-4 h-4" /><span>Telegram</span></a>
+                            
+                            <div className="grid grid-cols-2 gap-2 mt-5 sm:grid-cols-3 lg:grid-cols-6">
+                              <a href={shareUrls.whatsapp} target="_blank" rel="noreferrer" className="flex items-center justify-center gap-1.5 px-2 py-2 text-xs font-medium text-gray-700 transition-all bg-white border border-gray-200 rounded-xl hover:border-gray-300 hover:bg-red-50 hover:shadow-md sm:gap-2 sm:px-3 sm:py-2.5 sm:text-sm"><MessageCircle className="w-3.5 h-3.5 sm:w-4 sm:h-4" /><span>WhatsApp</span></a>
+                              <a href={shareUrls.email} target="_blank" rel="noreferrer" className="flex items-center justify-center gap-1.5 px-2 py-2 text-xs font-medium text-gray-700 transition-all bg-white border border-gray-200 rounded-xl hover:border-gray-300 hover:bg-red-50 hover:shadow-md sm:gap-2 sm:px-3 sm:py-2.5 sm:text-sm"><Mail className="w-3.5 h-3.5 sm:w-4 sm:h-4" /><span>Email</span></a>
+                              <a href={shareUrls.facebook} target="_blank" rel="noreferrer" className="flex items-center justify-center gap-1.5 px-2 py-2 text-xs font-medium text-gray-700 transition-all bg-white border border-gray-200 rounded-xl hover:border-gray-300 hover:bg-red-50 hover:shadow-md sm:gap-2 sm:px-3 sm:py-2.5 sm:text-sm"><Facebook className="w-3.5 h-3.5 sm:w-4 sm:h-4" /><span>Facebook</span></a>
+                              <a href={shareUrls.twitter} target="_blank" rel="noreferrer" className="flex items-center justify-center gap-1.5 px-2 py-2 text-xs font-medium text-gray-700 transition-all bg-white border border-gray-200 rounded-xl hover:border-gray-300 hover:bg-red-50 hover:shadow-md sm:gap-2 sm:px-3 sm:py-2.5 sm:text-sm"><Twitter className="w-3.5 h-3.5 sm:w-4 sm:h-4" /><span>Twitter</span></a>
+                              <a href={shareUrls.linkedin} target="_blank" rel="noreferrer" className="flex items-center justify-center gap-1.5 px-2 py-2 text-xs font-medium text-gray-700 transition-all bg-white border border-gray-200 rounded-xl hover:border-gray-300 hover:bg-red-50 hover:shadow-md sm:gap-2 sm:px-3 sm:py-2.5 sm:text-sm"><Linkedin className="w-3.5 h-3.5 sm:w-4 sm:h-4" /><span>LinkedIn</span></a>
+                              <a href={shareUrls.telegram} target="_blank" rel="noreferrer" className="flex items-center justify-center gap-1.5 px-2 py-2 text-xs font-medium text-gray-700 transition-all bg-white border border-gray-200 rounded-xl hover:border-gray-300 hover:bg-red-50 hover:shadow-md sm:gap-2 sm:px-3 sm:py-2.5 sm:text-sm"><Send className="w-3.5 h-3.5 sm:w-4 sm:h-4" /><span>Telegram</span></a>
                             </div>
                           </div>
                         </div>
@@ -784,56 +845,58 @@ const ProfilePage = () => {
         </div>
       </div>
 
-      {/* SAVE CONFIRMATION MODAL */}
-      {showSaveModal && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/50 backdrop-blur-sm">
-          <motion.div
-            initial={{ opacity: 0, scale: 0.95 }}
-            animate={{ opacity: 1, scale: 1 }}
-            exit={{ opacity: 0, scale: 0.95 }}
-            className="relative w-full max-w-md bg-white rounded-2xl shadow-2xl overflow-hidden"
-          >
-            <div className="absolute top-0 right-0 pt-4 pr-4">
-              <button
-                onClick={() => setShowSaveModal(false)}
-                className="text-gray-400 hover:text-gray-600 transition"
-              >
-                <X className="w-5 h-5" />
-              </button>
-            </div>
-            <div className="p-6 pt-8">
-              <h3 className="text-xl font-bold text-center text-gray-800">Profile Updated!</h3>
-              <p className="mt-2 text-sm text-center text-gray-500">Your details have been saved successfully.</p>
-
-              <div className="mt-6 space-y-3 bg-gray-50 rounded-xl p-4">
-                <div className="flex justify-between text-sm">
-                  <span className="font-medium text-gray-600">Name:</span>
-                  <span className="text-gray-800">{savedDetails.name}</span>
-                </div>
-                <div className="flex justify-between text-sm">
-                  <span className="font-medium text-gray-600">Phone:</span>
-                  <span className="text-gray-800">{savedDetails.phoneNumber || "—"}</span>
-                </div>
-                <div className="flex justify-between text-sm">
-                  <span className="font-medium text-gray-600">Date of Birth:</span>
-                  <span className="text-gray-800">{savedDetails.dateOfBirth || "—"}</span>
-                </div>
-                <div className="flex justify-between text-sm">
-                  <span className="font-medium text-gray-600">Gender:</span>
-                  <span className="text-gray-800 capitalize">{savedDetails.gender || "—"}</span>
-                </div>
+      {/* Save Confirmation Modal - Mobile responsive */}
+      <AnimatePresence>
+        {showSaveModal && (
+          <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/50 backdrop-blur-sm">
+            <motion.div
+              initial={{ opacity: 0, scale: 0.95 }}
+              animate={{ opacity: 1, scale: 1 }}
+              exit={{ opacity: 0, scale: 0.95 }}
+              className="relative w-full max-w-sm sm:max-w-md bg-white rounded-2xl shadow-2xl overflow-hidden mx-4"
+            >
+              <div className="absolute top-0 right-0 pt-3 pr-3 sm:pt-4 sm:pr-4">
+                <button
+                  onClick={() => setShowSaveModal(false)}
+                  className="p-1 text-gray-400 hover:text-gray-600 transition rounded-full"
+                >
+                  <X className="w-5 h-5" />
+                </button>
               </div>
+              <div className="p-5 pt-8 sm:p-6 sm:pt-8">
+                <h3 className="text-lg sm:text-xl font-bold text-center text-gray-800">Profile Updated!</h3>
+                <p className="mt-2 text-sm text-center text-gray-500">Your details have been saved successfully.</p>
 
-              <button
-                onClick={() => setShowSaveModal(false)}
-                className="w-full mt-6 px-4 py-2.5 text-sm font-semibold text-white bg-gradient-to-r from-red-900 to-red-800 rounded-xl hover:shadow-lg transition"
-              >
-                Done
-              </button>
-            </div>
-          </motion.div>
-        </div>
-      )}
+                <div className="mt-5 space-y-2.5 bg-gray-50 rounded-xl p-3 sm:p-4">
+                  <div className="flex flex-col sm:flex-row sm:justify-between text-sm gap-1 sm:gap-0">
+                    <span className="font-medium text-gray-600">Name:</span>
+                    <span className="text-gray-800 break-all">{savedDetails.name}</span>
+                  </div>
+                  <div className="flex flex-col sm:flex-row sm:justify-between text-sm gap-1 sm:gap-0">
+                    <span className="font-medium text-gray-600">Phone:</span>
+                    <span className="text-gray-800">{savedDetails.phoneNumber || "—"}</span>
+                  </div>
+                  <div className="flex flex-col sm:flex-row sm:justify-between text-sm gap-1 sm:gap-0">
+                    <span className="font-medium text-gray-600">Date of Birth:</span>
+                    <span className="text-gray-800">{savedDetails.dateOfBirth || "—"}</span>
+                  </div>
+                  <div className="flex flex-col sm:flex-row sm:justify-between text-sm gap-1 sm:gap-0">
+                    <span className="font-medium text-gray-600">Gender:</span>
+                    <span className="text-gray-800 capitalize">{savedDetails.gender || "—"}</span>
+                  </div>
+                </div>
+
+                <button
+                  onClick={() => setShowSaveModal(false)}
+                  className="w-full mt-5 px-4 py-2.5 text-sm font-semibold text-white bg-gradient-to-r from-red-900 to-red-800 rounded-xl hover:shadow-lg transition"
+                >
+                  Done
+                </button>
+              </div>
+            </motion.div>
+          </div>
+        )}
+      </AnimatePresence>
     </div>
   );
 };

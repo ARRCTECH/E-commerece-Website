@@ -1,81 +1,81 @@
-"use client"
-import { useEffect, useState, lazy, Suspense } from "react"
-import { useDispatch, useSelector } from "react-redux"
-import { BrowserRouter as Router, Routes, Route, useLocation } from "react-router-dom"
-import { onAuthStateChanged } from "firebase/auth"
-import { auth } from "./config/firebase"
-import { initializeAuth, setFirebaseUser, logout } from "./store/slices/authSlice"
-import { loadCartFromStorage, fetchCart } from "./store/slices/cartSlice"
-import NetworkStatus from "./components/NetworkStatus"
-import { validateEnvironment, debugEnvironment } from "./utils/envValidation"
+"use client";
+import { useEffect, useState, lazy, Suspense } from "react";
+import { useDispatch, useSelector } from "react-redux";
+import { BrowserRouter as Router, Routes, Route, useLocation } from "react-router-dom";
+import { onAuthStateChanged } from "firebase/auth";
+import { auth } from "./config/firebase";
+import { initializeAuth, setFirebaseUser, logout } from "./store/slices/authSlice";
+import { loadCartFromStorage, fetchCart } from "./store/slices/cartSlice";
+import NetworkStatus from "./components/NetworkStatus";
+import { validateEnvironment, debugEnvironment } from "./utils/envValidation";
+import GTMTracker from "./components/GTMTracker";
 
-import GTMTracker from "./components/GTMTracker"
 // Pages (lazy-loaded)
-const HomePage = lazy(() => import("./pages/HomePage"))
-const LoginPage = lazy(() => import("./pages/LoginPage"))
-const ProductsPage = lazy(() => import("./pages/ProductsPage"))
-const ProductDetailPage = lazy(() => import("./pages/ProductDetailPage"))
-const CartPage = lazy(() => import("./pages/CartPage"))
-const CheckoutPage = lazy(() => import("./pages/CheckoutPage"))
-const ProfilePage = lazy(() => import("./pages/ProfilePage"))
-const MyOrdersPage = lazy(() => import("./pages/MyOrdersPage"))
-const WishlistPage = lazy(() => import("./pages/WishlistPage"))
-const AboutUsPage = lazy(() => import("./pages/Aboutus"))
-const ContactUsPage = lazy(() => import("./pages/ContactUsPage"))
-const FAQPage = lazy(() => import("./pages/FAQPage"))
-const PrivacyPage = lazy(() => import("./pages/PrivacyPage"))
-const TermsPage = lazy(() => import("./pages/TermsPage"))
-const SearchResultsPage = lazy(() => import("./pages/SearchResultPage"))
-const ProductListingPage = lazy(() => import("./pages/ProductListingPage"))
-const OrderConfirmationPage = lazy(() => import("./pages/OrderConfirmationPage"))
-const CookiesPage = lazy(() => import("./pages/CookiesPage"))
-const ReturnPage = lazy(() => import("./pages/ReturnPage"))
-const ShippingPage = lazy(() => import("./pages/ShippingPage"))
-const OrderDetailsPage = lazy(() => import("./pages/OrderDetailsPage"))
+const HomePage = lazy(() => import("./pages/HomePage"));
+const LoginPage = lazy(() => import("./pages/LoginPage"));
+const ProductsPage = lazy(() => import("./pages/ProductsPage"));
+const ProductDetailPage = lazy(() => import("./pages/ProductDetailPage"));
+const CartPage = lazy(() => import("./pages/CartPage"));
+const CheckoutPage = lazy(() => import("./pages/CheckoutPage"));
+const ProfilePage = lazy(() => import("./pages/ProfilePage"));
+const MyOrdersPage = lazy(() => import("./pages/MyOrdersPage"));
+const WishlistPage = lazy(() => import("./pages/WishlistPage"));
+const AboutUsPage = lazy(() => import("./pages/Aboutus"));
+const ContactUsPage = lazy(() => import("./pages/ContactUsPage"));
+const FAQPage = lazy(() => import("./pages/FAQPage"));
+const PrivacyPage = lazy(() => import("./pages/PrivacyPage"));
+const TermsPage = lazy(() => import("./pages/TermsPage"));
+const SearchResultsPage = lazy(() => import("./pages/SearchResultPage"));
+const ProductListingPage = lazy(() => import("./pages/ProductListingPage"));
+const OrderConfirmationPage = lazy(() => import("./pages/OrderConfirmationPage"));
+const CookiesPage = lazy(() => import("./pages/CookiesPage"));
+const ReturnPage = lazy(() => import("./pages/ReturnPage"));
+const ShippingPage = lazy(() => import("./pages/ShippingPage"));
+const OrderDetailsPage = lazy(() => import("./pages/OrderDetailsPage"));
 
-// Admin/Digital Marketer pages (lazy-loaded)
-const AdminDashboard = lazy(() => import("./pages/admin/AdminDashboard"))
-const DigitalMarketerDashboard = lazy(() => import("./pages/digitalmarketer/DigitalMarketerDashboard"))
+// Admin/Digital Marketer pages
+const AdminDashboard = lazy(() => import("./pages/admin/AdminDashboard"));
+const DigitalMarketerDashboard = lazy(() => import("./pages/digitalmarketer/DigitalMarketerDashboard"));
 
-// Components (kept as direct imports so the shell renders instantly)
-import Navbar from "./components/Navbar"
-import Footer from "./components/Footer"
-import ProtectedRoute from "./components/ProtectedRoute"
-import ToastProvider from "./components/ToastProvider"
+// Components (kept as direct imports)
+import Navbar from "./components/Navbar";
+import Footer from "./components/Footer";
+import ProtectedRoute from "./components/ProtectedRoute";
+import ToastProvider from "./components/ToastProvider";
+import ScrollToTop from "./components/ScrollToTop";
 
-// Styles
-import "./App.css"
-import ScrollToTop from "./components/ScrollToTop"
+import "./App.css";
 
 function AppContent() {
-  const location = useLocation()
-  const dispatch = useDispatch()
-  const { initialized } = useSelector((state) => state.auth)
-  const [appReady, setAppReady] = useState(false)
+  const location = useLocation();
+  const dispatch = useDispatch();
+  const { initialized } = useSelector((state) => state.auth);
+  const [appReady, setAppReady] = useState(false);
 
-  const isCartPage = location.pathname === "/cart"
-  const isCheckoutPage = location.pathname === "/checkout"
-  
-  // Check if current route is admin or digital marketer
-  const isAdminRoute = location.pathname.startsWith("/admin")
-  const isDigitalMarketerRoute = location.pathname.startsWith("/digitalMarketer")
-  const isDashboardRoute = isAdminRoute || isDigitalMarketerRoute
+  const isCartPage = location.pathname === "/cart";
+  const isCheckoutPage = location.pathname === "/checkout";
+  const isLoginPage = ["/login", "/register", "/signup"].includes(location.pathname);
+  const isWishlistPage = location.pathname === "/wishlist";
+  const isAdminRoute = location.pathname.startsWith("/admin");
+  const isDigitalMarketerRoute = location.pathname.startsWith("/digitalMarketer");
+  const isDashboardRoute = isAdminRoute || isDigitalMarketerRoute;
+
+  // Hide navbar & footer on mobile for these routes
+  const shouldHideOnMobile = isCartPage || isCheckoutPage || isLoginPage || isWishlistPage;
 
   useEffect(() => {
-    const isValidEnvironment = validateEnvironment()
+    const isValidEnvironment = validateEnvironment();
     if (!isValidEnvironment) {
-      console.error("❌ Application cannot start due to missing environment variables")
-      return
+      console.error("❌ Application cannot start due to missing environment variables");
+      return;
     }
-    debugEnvironment()
-    dispatch(initializeAuth())
-    // Load cart from localStorage for guest users
-    dispatch(loadCartFromStorage())
-    // Set up Firebase auth state listener
+    debugEnvironment();
+    dispatch(initializeAuth());
+    dispatch(loadCartFromStorage());
+
     const unsubscribe = onAuthStateChanged(auth, async (firebaseUser) => {
       try {
         if (firebaseUser) {
-          // User is signed in, update Firebase user in state
           dispatch(
             setFirebaseUser({
               uid: firebaseUser.uid,
@@ -84,41 +84,36 @@ function AppContent() {
               displayName: firebaseUser.displayName,
               emailVerified: firebaseUser.emailVerified,
               photoURL: firebaseUser.photoURL,
-            }),
-          )
-          // Fetch user's cart from server
-          dispatch(fetchCart())
+            })
+          );
+          dispatch(fetchCart());
         } else {
-          // User is signed out, load guest cart from localStorage
-          dispatch(loadCartFromStorage())
+          dispatch(loadCartFromStorage());
         }
       } catch (error) {
-        console.error("Auth state change error:", error)
-        dispatch(logout())
-        // Load guest cart even if auth fails
-        dispatch(loadCartFromStorage())
+        console.error("Auth state change error:", error);
+        dispatch(logout());
+        dispatch(loadCartFromStorage());
       } finally {
-        setAppReady(true)
+        setAppReady(true);
       }
-    })
+    });
 
-    return () => unsubscribe()
-  }, [dispatch])
+    return () => unsubscribe();
+  }, [dispatch]);
 
   return (
     <div className="App">
       <ToastProvider />
       <NetworkStatus />
       <main className="main-content">
-        {/* Only show Navbar on non-dashboard routes */}
+        {/* Navbar – hidden on mobile for specific pages */}
         {!isDashboardRoute && (
-          <div className={isCartPage ? "hidden md:block" : ""}>
-            <div className={isCheckoutPage ? "hidden md:block" : ""}>
-              <Navbar />
-            </div>
+          <div className={shouldHideOnMobile ? "hidden md:block" : ""}>
+            <Navbar />
           </div>
         )}
-        
+
         <Suspense fallback={<div className="flex items-center justify-center py-10 text-gray-600">Loading…</div>}>
           <Routes>
             {/* Public Routes */}
@@ -138,6 +133,7 @@ function AppContent() {
             <Route path="/cookies" element={<CookiesPage />} />
             <Route path="/returns" element={<ReturnPage />} />
             <Route path="/shipping" element={<ShippingPage />} />
+
             {/* Protected Routes */}
             <Route path="/cart" element={<CartPage />} />
             <Route path="/checkout" element={<CheckoutPage />} />
@@ -146,6 +142,7 @@ function AppContent() {
             <Route path="/wishlist" element={<WishlistPage />} />
             <Route path="/order-confirmation/:orderId" element={<OrderConfirmationPage />} />
             <Route path="/order/:orderId" element={<OrderDetailsPage />} />
+
             {/* Admin Routes */}
             <Route
               path="/admin/*"
@@ -155,6 +152,7 @@ function AppContent() {
                 </ProtectedRoute>
               }
             />
+
             {/* Digital Marketer Routes */}
             <Route
               path="/digitalMarketer/*"
@@ -164,6 +162,7 @@ function AppContent() {
                 </ProtectedRoute>
               }
             />
+
             {/* 404 */}
             <Route
               path="*"
@@ -188,27 +187,25 @@ function AppContent() {
           </Routes>
         </Suspense>
       </main>
-      
-      {/* Only show Footer on non-dashboard routes */}
+
+      {/* Footer – hidden on mobile for specific pages */}
       {!isDashboardRoute && (
-        <div className={isCartPage ? "hidden md:block" : ""}>
-          <div className={isCheckoutPage ? "hidden md:block" : ""}>
-            <Footer />
-          </div>
+        <div className={shouldHideOnMobile ? "hidden md:block" : ""}>
+          <Footer />
         </div>
       )}
     </div>
-  )
+  );
 }
 
 function App() {
   return (
     <Router>
-      <GTMTracker/>
-      <ScrollToTop/>
+      <GTMTracker />
+      <ScrollToTop />
       <AppContent />
     </Router>
-  )
+  );
 }
 
-export default App
+export default App;

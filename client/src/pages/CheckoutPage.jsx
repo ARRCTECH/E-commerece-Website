@@ -96,7 +96,7 @@ const CheckoutPage = () => {
 
   // ========== REFERRAL STATE ==========
   const [referralCode, setReferralCode] = useState("");
-  const [appliedReferral, setAppliedReferral] = useState(null); // { code, discountType, discountValue, percentageValue }
+  const [appliedReferral, setAppliedReferral] = useState(null);
   const [referralLoading, setReferralLoading] = useState(false);
   const [referralError, setReferralError] = useState("");
 
@@ -108,7 +108,7 @@ const CheckoutPage = () => {
 
   const token = localStorage.getItem("authToken");
 
-  // Load Razorpay script if not present
+  // Load Razorpay script
   useEffect(() => {
     if (window.Razorpay) {
       setRazorpayLoaded(true);
@@ -142,7 +142,7 @@ const CheckoutPage = () => {
     fetchPartialCodSettings();
   }, [API_URL]);
 
-  // Fetch all available coupons from backend
+  // Fetch all available coupons
   useEffect(() => {
     const fetchCoupons = async () => {
       if (!token) return;
@@ -159,7 +159,6 @@ const CheckoutPage = () => {
     fetchCoupons();
   }, [token, API_URL, setCoupons]);
 
-  // [REFERRAL] Function to validate a referral code
   const validateReferralCode = useCallback(async (code) => {
     if (!code) return;
     setReferralLoading(true);
@@ -184,7 +183,6 @@ const CheckoutPage = () => {
     }
   }, [API_URL, user?._id]);
 
-  // [REFERRAL] Remove applied referral
   const removeReferral = () => {
     setAppliedReferral(null);
     setReferralCode("");
@@ -192,7 +190,6 @@ const CheckoutPage = () => {
     toast.success("Referral discount removed");
   };
 
-  // Fetch existing referral details for the logged-in user (if any)
   const getReferralDetails = useCallback(async () => {
     if (!user?._id) return;
     try {
@@ -211,20 +208,17 @@ const CheckoutPage = () => {
     getReferralDetails();
   }, [getReferralDetails]);
 
-  // Fetch cart if not buy‑now mode and cart empty
   useEffect(() => {
     if (!isBuyNow && !cartItems.length) {
       dispatch(fetchCart());
     }
   }, [dispatch, cartItems.length, isBuyNow]);
 
-  // Clear any leftover errors on mount
   useEffect(() => {
     dispatch(clearError());
     dispatch(clearCouponError());
   }, [dispatch]);
 
-  // Cleanup on unmount: close Razorpay and clear timeouts
   useEffect(() => {
     return () => {
       if (rzpInstanceRef.current) {
@@ -237,7 +231,6 @@ const CheckoutPage = () => {
     };
   }, []);
 
-  // Show congratulations popup when a coupon is applied
   useEffect(() => {
     if (appliedCoupon && appliedCoupon.discountAmount > 0) {
       setCongratulationsData({
@@ -252,13 +245,11 @@ const CheckoutPage = () => {
     }
   }, [appliedCoupon, setCongratulationsData, setShowCongratulationsPopup]);
 
-  // ✅ Calculate final pricing with online discount (₹30 per quantity) + referral discount
   const calculateFinalPricing = useMemo(() => {
     const subtotal = isBuyNow && buyNowProduct
       ? buyNowProduct.product.price * buyNowProduct.quantity
       : cartSummary.subtotal || 0;
 
-    // ✅ Calculate total quantity for online discount
     let totalQuantity = 0;
     const items = isBuyNow && buyNowProduct ? [buyNowProduct] : cartItems;
     items.forEach(item => {
@@ -269,13 +260,9 @@ const CheckoutPage = () => {
       }
     });
 
-    // Online discount: ₹30 per quantity (only for online payment)
     const ONLINE_DISCOUNT_PER_QUANTITY = 30;
     const onlineDiscountAmount = totalQuantity * ONLINE_DISCOUNT_PER_QUANTITY;
 
-    // [REFERRAL] Calculate referral discount from two sources:
-    // 1. Automatic referral discount based on user's own referral earnings (percentage/discountValue)
-    // 2. Applied referral code from another user (appliedReferral)
     let autoReferralDiscount = 0;
     if (percentage) {
       autoReferralDiscount += Math.round(subtotal * (percentage / 100));
@@ -384,7 +371,6 @@ const CheckoutPage = () => {
   }, [selectedAddress, getDisplayItems]);
 
   const createOrderData = useCallback(() => {
-    // Normalize phone number: remove any existing +91
     let phone = selectedAddress?.phoneNumber || "";
     phone = phone.replace(/^\+91/, "");
     return {
@@ -406,12 +392,10 @@ const CheckoutPage = () => {
       },
       couponCode: appliedCoupon?.code || "",
       isBuyNow: isBuyNow,
-      // [REFERRAL] Include applied referral code if any
       referralCode: appliedReferral?.code || null,
     };
   }, [getDisplayItems, selectedAddress, appliedCoupon, isBuyNow, appliedReferral]);
 
-  // Update referral earnings after successful order
   const updateReferralEarnings = useCallback(async () => {
     if (!calculateFinalPricing.referralDiscount) return;
     try {
@@ -421,7 +405,6 @@ const CheckoutPage = () => {
         amount: calculateFinalPricing.referralDiscount,
       });
     } catch (error) {
-      // If update fails, try to create a new record
       try {
         await axios.post(`${API_URL}/referral-total-earning/create`, {
           userId: user._id,
@@ -433,7 +416,6 @@ const CheckoutPage = () => {
     }
   }, [user._id, calculateFinalPricing.referralDiscount, API_URL]);
 
-  // ------ ORDER HANDLERS ------
   const handlePlaceOrder = async () => {
     if (!validateOrder()) return;
     if (!razorpayLoaded) {
@@ -566,7 +548,6 @@ const CheckoutPage = () => {
       partialPercentage: partialPercentage,
       freediscount: calculateFinalPricing.freediscount,
       referralDiscount: calculateFinalPricing.referralDiscount,
-      // [REFERRAL] Include referral code if applied
       referralCode: appliedReferral?.code || null,
     };
 
@@ -620,7 +601,6 @@ const CheckoutPage = () => {
     }
   };
 
-  // ----- EXIT HANDLERS -----
   const handleBackButton = () => setShowExitWarning(true);
   const handleContinueCheckout = () => {
     setShowExitWarning(false);
@@ -636,7 +616,6 @@ const CheckoutPage = () => {
     navigate("/cart");
   };
 
-  // Block back navigation
   useEffect(() => {
     window.history.pushState({ page: 1 }, "", window.location.href);
     const onBackButtonEvent = (e) => {
@@ -764,7 +743,6 @@ const CheckoutPage = () => {
                 </div>
               )}
 
-              {/* [COUPON] Show all coupons – no category filtering for bulk items */}
               {filterNCoupon.length > 0 && (
                 <div className="mt-4 space-y-2">
                   {filterNCoupon.map((coupon) => (
@@ -797,7 +775,7 @@ const CheckoutPage = () => {
               )}
             </div>
 
-            {/* [REFERRAL] New Section: Referral Code */}
+            {/* Referral Code Section */}
             <div className="bg-white rounded-xl p-6 shadow-sm">
               <div className="flex items-center mb-4">
                 <Gift className="w-5 h-5 mr-2 text-red-600" />
@@ -848,7 +826,7 @@ const CheckoutPage = () => {
             </div>
           </div>
 
-          {/* Order Summary */}
+          {/* Order Summary - Right Column */}
           <div className="lg:col-span-1">
             <div className="bg-white rounded-xl p-6 shadow-sm sticky top-24">
               <div className="flex justify-between items-center mb-4">
@@ -906,7 +884,6 @@ const CheckoutPage = () => {
                     <span>-₹{calculateFinalPricing.onlineDiscount}</span>
                   </div>
                 )}
-                {/* [REFERRAL] Show auto referral discount (from user's own earnings) */}
                 {calculateFinalPricing.autoReferralDiscount > 0 && (
                   <div className="flex justify-between text-indigo-600">
                     <span className="flex items-center gap-1">
@@ -915,7 +892,6 @@ const CheckoutPage = () => {
                     <span>-₹{calculateFinalPricing.autoReferralDiscount}</span>
                   </div>
                 )}
-                {/* [REFERRAL] Show manual referral discount (from entered code) */}
                 {calculateFinalPricing.manualReferralDiscount > 0 && (
                   <div className="flex justify-between text-pink-600">
                     <span>Referral Code Discount</span>
@@ -938,21 +914,19 @@ const CheckoutPage = () => {
                 </div>
               </div>
 
+              {/* Desktop button - hidden on mobile */}
               <button
                 onClick={() => setShowPaymentModal(true)}
-                className="w-full mt-6 py-3 bg-red-600 text-white rounded-xl font-semibold"
+                className="w-full mt-6 py-3 bg-red-600 text-white rounded-xl font-semibold hidden md:block"
               >
                 Proceed to Payment
               </button>
-              <div className="mt-4 flex justify-center text-xs text-gray-500">
-                <Shield className="w-4 h-4 mr-1" /> Secure Checkout
-              </div>
             </div>
           </div>
         </div>
 
-        {/* Mobile sticky button */}
-        <div className="fixed bottom-0 left-0 right-0 bg-white border-t p-4 md:hidden">
+        {/* Mobile sticky button - visible only on mobile */}
+        <div className="fixed bottom-0 left-0 right-0 bg-white border-t p-4 md:hidden z-50">
           <button
             onClick={() => setShowPaymentModal(true)}
             className="w-full py-3 bg-red-600 text-white rounded-xl font-semibold"
