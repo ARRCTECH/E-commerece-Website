@@ -160,7 +160,6 @@ const SearchResultsPage = () => {
                     <option value="price-low">Price: Low to High</option>
                     <option value="price-high">Price: High to Low</option>
                     <option value="newest">Newest First</option>
-                    <option value="rating">Customer Rating</option>
                   </select>
                 </div>
                 <div className="text-sm text-gray-600">

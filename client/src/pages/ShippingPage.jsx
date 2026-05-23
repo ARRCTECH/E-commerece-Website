@@ -170,7 +170,8 @@ const ShippingPage = () => {
             </div>
             <div className="flex items-center gap-2 text-gray-600">
               <Mail className="w-5 h-5 text-red-500" />
-              <span>factorysaleusadata@gmail.com</span>
+              <span>
+info@factorysaleusa.com</span>
             </div>
           </div>
         </div>

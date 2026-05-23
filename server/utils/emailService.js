@@ -303,7 +303,9 @@ const templates = {
           <div style="background: #fefce8; padding: 20px; border-radius: 8px; border-left: 4px solid #eab308; margin: 25px 0;">
             <p style="margin: 0; color: #92400e; font-size: 14px;">
               <strong>Need Help?</strong> Contact our customer support team at 
-              <a href="mailto:factorysaleusadata@gmail.com" style="color: #92400e; text-decoration: underline;">factorysaleusadata@gmail.com</a>
+              <a href="mailto:
+info@factorysaleusa.com" style="color: #92400e; text-decoration: underline;">
+info@factorysaleusa.com</a>
               or call us at <strong>+91 8830155383</strong>
             </p>
           </div>

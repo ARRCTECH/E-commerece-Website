@@ -87,14 +87,14 @@ export default function ReferralProgram() {
                 </div>
                 <h1 className="text-3xl sm:text-4xl lg:text-5xl font-light text-white tracking-tight">
                   Share & Earn{" "}
-                  <span className="font-serif italic text-amber-400 font-semibold">₹500</span>
+                  <span className="font-serif italic text-red-400 font-semibold">Rewards</span>
                 </h1>
                 <p className="text-white/50 text-sm max-w-md mt-3">
-                  Invite friends, earn <span className="text-amber-400">₹500 per referral</span>. Track earnings in real time.
+                  Invite friends, earn <span className="text-red-400">Rewards per referral</span>. Track earnings in real time.
                 </p>
                 <button
                   onClick={() => navigate("/profile") || handleActiveButton("referral")}
-                  className="mt-6 bg-gradient-to-r from-amber-500 to-amber-600 text-white px-6 py-2.5 rounded-full font-semibold text-sm shadow-lg hover:shadow-amber-500/30 transition-all duration-300 inline-flex items-center gap-2"
+                  className="mt-6 bg-gradient-to-r from-red-500 to-red-600 text-white px-6 py-2.5 rounded-full font-semibold text-sm shadow-lg hover:shadow-amber-500/30 transition-all duration-300 inline-flex items-center gap-2"
                 >
                   Get Your Link <ArrowUpRight className="w-3.5 h-3.5" />
                 </button>
@@ -103,13 +103,13 @@ export default function ReferralProgram() {
               <div className="bg-white/5 backdrop-blur-sm border border-white/10 rounded-2xl p-5 w-full max-w-sm">
                 <div className="flex items-center justify-between mb-4 pb-3 border-b border-white/10">
                   <span className="text-white/60 text-xs uppercase tracking-wider">Referral Stats</span>
-                  <span className="text-amber-400 text-[10px] font-mono">LIVE</span>
+                  <span className="text-red-600 text-[10px] font-mono">LIVE</span>
                 </div>
                 <div className="space-y-3">
                   <div className="flex justify-between items-center">
                     <span className="text-white/50 text-xs">Your Code</span>
                     <div className="flex items-center gap-2">
-                      <code className="bg-white/10 px-2 py-1 rounded text-amber-400 text-xs font-mono">
+                      <code className="bg-white/10 px-2 py-1 rounded text-red-400 text-xs font-mono">
                         {user?.myreferralCode}
                       </code>
                       <button onClick={() => copyToClipboard(user?.myreferralCode)} className="p-1 rounded bg-white/10 hover:bg-white/20">
@@ -126,15 +126,15 @@ export default function ReferralProgram() {
                   <div className="space-y-1">
                     <div className="flex justify-between text-[10px]">
                       <span className="text-white/50">Progress</span>
-                      <span className="text-amber-400">{Math.min(100, ((user?.referralCount || 0) / 10) * 100)}%</span>
+                      <span className="text-red-400">{Math.min(100, ((user?.referralCount || 0) / 10) * 100)}%</span>
                     </div>
                     <div className="h-1 bg-white/10 rounded-full overflow-hidden">
-                      <div className="h-full bg-gradient-to-r from-amber-500 to-amber-600 rounded-full transition-all duration-500" style={{ width: `${Math.min(100, ((user?.referralCount || 0) / 10) * 100)}%` }} />
+                      <div className="h-full bg-gradient-to-r from-red-500 to-red-600 rounded-full transition-all duration-500" style={{ width: `${Math.min(100, ((user?.referralCount || 0) / 10) * 100)}%` }} />
                     </div>
                   </div>
                   <div className="flex justify-between items-center pt-2 border-t border-white/10">
                     <span className="text-white/50 text-xs">Earnings</span>
-                    <span className="text-amber-400 font-bold text-lg">₹<CountUp value={user?.referralEarnings || 0} /></span>
+                    <span className="text-red-400 font-bold text-lg">₹<CountUp value={user?.referralEarnings || 0} /></span>
                   </div>
                 </div>
               </div>
@@ -144,7 +144,7 @@ export default function ReferralProgram() {
 
         <section className="px-4 py-12 max-w-7xl mx-auto">
           <div className="text-center mb-8">
-            <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-amber-100 text-amber-700 text-[10px] font-semibold tracking-wide mb-4">
+            <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-red-100 text-red-700 text-[10px] font-semibold tracking-wide mb-4">
               <Shield className="w-3 h-3" /> SIMPLE PROCESS
             </div>
             <h2 className="text-2xl font-serif text-neutral-900">How It Works</h2>
@@ -153,10 +153,10 @@ export default function ReferralProgram() {
             {[
               { icon: <Share2 />, title: "Share Link", desc: "Send your unique referral link to friends" },
               { icon: <UserPlus />, title: "Friend Signs Up", desc: "They register using your link" },
-              { icon: <Award />, title: "Earn Rewards", desc: "Get ₹500 credited to your wallet" },
+              { icon: <Award />, title: "Earn Rewards", desc: "Get upto ₹100 credited to your wallet" },
             ].map((step, idx) => (
               <div key={idx} className="text-center p-6 bg-white rounded-2xl border border-neutral-100 hover:border-amber-200 hover:shadow-lg transition">
-                <div className="w-12 h-12 bg-amber-100 rounded-full flex items-center justify-center mx-auto mb-3 text-amber-600">{step.icon}</div>
+                <div className="w-12 h-12 bg-red-100 rounded-full flex items-center justify-center mx-auto mb-3 text-amber-600">{step.icon}</div>
                 <h3 className="font-semibold text-neutral-800 mb-1">{step.title}</h3>
                 <p className="text-neutral-500 text-sm">{step.desc}</p>
               </div>
@@ -175,16 +175,16 @@ export default function ReferralProgram() {
 
       {/* Left Side */}
       <div className="max-w-md text-center sm:text-left mx-auto sm:mx-0">
-        <div className="inline-flex items-center gap-2 bg-amber-500/10 rounded-full px-3 py-0.5 mb-2">
-          <Gift className="w-3 h-3 text-amber-400" />
-          <span className="text-[9px] font-medium text-amber-400 uppercase tracking-wider">
+        <div className="inline-flex items-center gap-2 bg-red-500/10 rounded-full px-3 py-0.5 mb-2">
+          <Gift className="w-3 h-3 text-red-400" />
+          <span className="text-[9px] font-medium text-red-400 uppercase tracking-wider">
             Limited Time
           </span>
         </div>
 
         <h1 className="text-2xl sm:text-3xl lg:text-4xl font-light text-white tracking-tight">
           Refer & Earn{" "}
-          <span className="font-serif italic text-amber-400 font-semibold">
+          <span className="font-serif italic text-red-400 font-semibold">
             ₹7500
           </span>
         </h1>
@@ -198,7 +198,7 @@ export default function ReferralProgram() {
       <div className="flex-shrink-0 mt-4 sm:mt-0 flex justify-center sm:justify-end">
         <button
           onClick={handleSignUp}
-          className="bg-gradient-to-r from-amber-500 to-amber-600 text-white px-7 py-3 rounded-full font-semibold text-sm shadow-lg hover:shadow-amber-500/30 transition inline-flex items-center gap-2 whitespace-nowrap"
+          className="bg-gradient-to-r from-red-500 to-red-600 text-white px-7 py-3 rounded-full font-semibold text-sm shadow-lg hover:shadow-amber-500/30 transition inline-flex items-center gap-2 whitespace-nowrap"
         >
           Sign Up <ArrowUpRight className="w-4 h-4" />
         </button>

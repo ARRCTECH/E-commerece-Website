@@ -211,7 +211,8 @@ const Footer = () => {
                     className="flex items-start gap-3 break-all text-neutral-400 transition hover:text-white"
                   >
                     <ContactIcon><Mail className="h-3.5 w-3.5" /></ContactIcon>
-                    <span>factorysaleusadata@gmail.com</span>
+                    <span>
+info@factorysaleusa.com</span>
                   </a>
                 </li>
               </ul>
@@ -252,7 +253,8 @@ const Footer = () => {
                     className="flex items-start gap-3 break-all text-neutral-400 transition hover:text-white"
                   >
                     <ContactIcon><Mail className="h-3.5 w-3.5" /></ContactIcon>
-                    <span>factorysaleusadata@gmail.com</span>
+                    <span>
+info@factorysaleusa.com</span>
                   </a>
                 </li>
               </ul>

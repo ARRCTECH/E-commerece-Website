@@ -95,10 +95,12 @@ const ContactUsPage = () => {
                   <div>
                     <p className="font-semibold text-gray-800 mb-1">Email Address</p>
                     <a
-                      href="mailto:factorysaleusadata@gmail.com"
+                      href="mailto:
+info@factorysaleusa.com"
                       className="text-gray-600 hover:text-red-600 transition-colors break-all"
                     >
-                      factorysaleusadata@gmail.com
+                      
+info@factorysaleusa.com
                     </a>
                     <p className="text-xs text-gray-400 mt-1">
                       We respond within 24 hours

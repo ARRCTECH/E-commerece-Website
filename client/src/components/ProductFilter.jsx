@@ -488,7 +488,7 @@ const ProductFilters = memo(({ filters, categories, onFilterChange, onClearFilte
         </div>
 
         {/* Rating Section */}
-        <div className="bg-white rounded-xl border border-gray-100 shadow-sm overflow-hidden">
+        {/* <div className="bg-white rounded-xl border border-gray-100 shadow-sm overflow-hidden">
           <motion.button
             whileHover={{ backgroundColor: "#F9FAFB" }}
             onClick={() => toggleSection("rating")}
@@ -548,7 +548,7 @@ const ProductFilters = memo(({ filters, categories, onFilterChange, onClearFilte
               </motion.div>
             )}
           </AnimatePresence>
-        </div>
+        </div> */}
 
         {/* Active filters summary */}
         {getActiveCount > 0 && (

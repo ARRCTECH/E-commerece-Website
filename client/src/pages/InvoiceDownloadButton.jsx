@@ -11,7 +11,7 @@ const DEFAULT_COMPANY = {
   TAGLINE: "Premium Men's wear",
   GSTIN: "27ETNPK4151G1ZH",
   ADDRESS: "SHOP NO. 1 OM SAI GANESH KPIRA CHAWL NEAR CHIRAG HOTEL,NEAR BASANT BAHAR ROAD ULHASNAGAR 421005",
-  EMAIL: "factorysaleusadata@gmail.com",
+  EMAIL: "info@factorysaleusa.com",
   PHONE: "+91 8830155383",
   STATE: "MAHARASHTRA",
 };

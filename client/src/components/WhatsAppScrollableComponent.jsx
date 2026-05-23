@@ -146,8 +146,7 @@ const WhatsAppScrollableComponent = () => {
                 rel="noopener noreferrer"
                 whileHover={{ scale: 1.02 }}
                 whileTap={{ scale: 0.98 }}
-                className="group inline-flex w-full sm:w-fit items-center justify-center gap-2 rounded-full bg-gradient-to-r from-[#b8902c] to-[#c9a14a] px-5 sm:px-6 py-2.5 sm:py-3 text-xs sm:text-sm font-semibold text-black transition-all hover:shadow-lg hover:shadow-[#b8902c]/30"
-              >
+className="group inline-flex w-full sm:w-fit items-center justify-center gap-2 rounded-full bg-gradient-to-r from-[#075E54] to-[#25D366] px-5 sm:px-6 py-2.5 sm:py-3 text-xs sm:text-sm font-semibold text-white transition-all hover:shadow-lg hover:shadow-[#25D366]/30"              >
                 <MessageCircle className="h-4 w-4 sm:h-4.5 sm:w-4.5" strokeWidth={1.8} />
                 Join WhatsApp Community
                 <ArrowUpRight className="h-3.5 w-3.5 sm:h-4 sm:w-4 transition-transform group-hover:-translate-y-0.5 group-hover:translate-x-0.5" />

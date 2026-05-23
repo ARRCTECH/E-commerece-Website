@@ -545,7 +545,7 @@ const OrderConfirmationPage = () => {
               </a>
               <a href="tel:+9211891719" className="text-red-600 hover:text-red-700 inline-flex items-center">
                 <Phone className="mr-1 h-3 w-3" />
-                +91 9211891719
+                +91 8830155383
               </a>
             </div>
           </motion.div>
