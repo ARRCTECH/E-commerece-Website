@@ -161,7 +161,6 @@ const userSchema = new mongoose.Schema(
     },
     phoneNumber: {
       type: String,
-      default: null,
     },
     expireReferralDate: {
       type: Date,
