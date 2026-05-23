@@ -171,27 +171,10 @@ const Navbar = () => {
     toast.success("Logged out successfully");
   }, [dispatch, navigate]);
 
-  const desiredMobileCategoryNames = ["Oversized", "New Arrival", "Minimalist", "Regular"];
-  const categoriesForMobileScroll = [];
+  const categoriesForMobileScroll = categories.filter(cat =>
+    !cat.parentCategory
+  );
 
-  desiredMobileCategoryNames.forEach((name) => {
-    const foundCat = categories.find((cat) => cat.name === name);
-    if (foundCat && !["anime-t-shirt", "ksauni-tshirts-styles"].includes(foundCat.slug)) {
-      categoriesForMobileScroll.push(foundCat);
-    }
-  });
-
-  if (categoriesForMobileScroll.length < 5 && categories.length > 0) {
-    const existingNames = new Set(categoriesForMobileScroll.map((cat) => cat.name));
-    for (const cat of categories) {
-      if (!existingNames.has(cat.name) && categoriesForMobileScroll.length < 5) {
-        if (!["anime-t-shirt", "ksauni-tshirts-styles"].includes(cat.slug)) {
-          categoriesForMobileScroll.push(cat);
-          existingNames.add(cat.name);
-        }
-      }
-    }
-  }
 
   const isProductDetailPage = location.pathname.startsWith("/product/");
   const isCartPage = location.pathname === "/cart";

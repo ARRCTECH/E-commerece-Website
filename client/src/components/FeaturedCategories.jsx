@@ -19,7 +19,7 @@ const FeaturedCategories = () => {
 
   // Filter only parent categories (parentCategory is null) and showOnHomepage is true
   const allFeatured = categories?.filter((c) => c.showOnHomepage && !c.parentCategory) || [];
-  const featured = allFeatured.slice(0, 8);
+  const featured = allFeatured;
 
   // mobile 2 cards per page
   const chunkedCategories = [];

@@ -161,15 +161,7 @@ const BannersManagement = () => {
               <Plus className="w-4 h-4" />
               <span>Add Banner</span>
             </button>
-            <label className="inline-flex items-center space-x-2 cursor-pointer">
-              <input
-                type="checkbox"
-                checked={showSalePopup}
-                onChange={(e) => dispatch(updatePopupSetting(e.target.checked))}
-                className="w-4 h-4 text-blue-600 form-checkbox"
-              />
-              <span className="text-sm">Show Sale Popup</span>
-            </label>
+           
           </div>
         </div>
       </div>
@@ -208,25 +200,7 @@ const BannersManagement = () => {
                     {banner.isActive ? "Active" : "Inactive"}
                   </span>
                 </div>
-                <label className="inline-flex items-center mb-2 space-x-2 cursor-pointer">
-                  <input
-                    type="checkbox"
-                    checked={!!popupBanners.find((pb) => pb.bannerId === banner._id && pb.isActive)}
-                    onChange={(e) => {
-                      const isChecked = e.target.checked;
-                      const newPopupBanners = popupBanners.map((pb) => ({
-                        ...pb,
-                        isActive: pb.bannerId === banner._id ? isChecked : false,
-                      }));
-                      if (!newPopupBanners.find((pb) => pb.bannerId === banner._id)) {
-                        newPopupBanners.push({ bannerId: banner._id, isActive: isChecked });
-                      }
-                      dispatch(updatePopupSetting({ popupBanners: newPopupBanners }));
-                    }}
-                    className="w-4 h-4 text-blue-600 form-checkbox"
-                  />
-                  <span className="text-xs sm:text-sm">Sudden Popup</span>
-                </label>
+               
                 <h3 className="mb-1 text-sm font-medium text-gray-900 sm:text-lg line-clamp-2">{banner.title}</h3>
                 {banner.subtitle && (
                   <p className="mb-2 text-xs text-gray-600 sm:text-sm line-clamp-1">{banner.subtitle}</p>
