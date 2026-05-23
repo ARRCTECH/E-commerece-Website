@@ -89,9 +89,6 @@ const protect = async (req, res, next) => {
 
     next();
   } catch (error) {
-    console.error("Auth middleware error:", error);
-    
-    // Handle specific JWT errors
     if (error.name === 'JsonWebTokenError') {
       return res.status(401).json({
         success: false,

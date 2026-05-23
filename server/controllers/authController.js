@@ -147,7 +147,7 @@ const createUserWithReferral = async (userData, referredByCode = null) => {
 // ==================== REGISTER WITH EMAIL & PASSWORD ====================
 const registerWithEmail = async (req, res) => {
   try {
-    const { name,email, password, referredBy } = req.body;
+    const { name, email, password, referredBy } = req.body;
     if (!email || !password || !name) {
       return res.status(400).json({ success: false, message: "Email, password, and name are required" });
     }
@@ -201,9 +201,14 @@ const registerWithEmail = async (req, res) => {
     // Generate tokens
     const customToken = await admin.auth().createCustomToken(user.firebaseUid);
     const jwtToken = jwt.sign(
-      { userId: user._id, firebaseUid: user.firebaseUid, email: user.email, role: user.role,referredBy: user.referredBy,myreferralCode: user.myreferralCode },
+      {
+        userId: user._id, role: user.role, phoneNumber: user.phoneNumber,
+        name: user.name, email: user.email, firebaseUid: user.firebaseUid,
+        authMethod: user.authMethod, referredBy: user.referredBy,
+        myreferralCode: user.myreferralCode
+      },
       process.env.JWT_SECRET,
-      { expiresIn: "7d" }
+      { expiresIn: '1d', algorithm: 'HS256' }
     );
 
     return res.status(201).json({
@@ -689,9 +694,9 @@ const updateProfile = async (req, res) => {
   }
 };
 
-const getProfileDetails = async (req, res) =>{
+const getProfileDetails = async (req, res) => {
   try {
-    const userId=req.user.userId
+    const userId = req.user.userId
     const user = await User.findById(userId);
     if (!user) return res.status(404).json({ success: false, message: "User not found" });
 
@@ -709,7 +714,7 @@ const getProfileDetails = async (req, res) =>{
     return res.status(500).json({ success: false, message: "Failed to get profile" });
   }
 }
-const updateProfileDetails=async (req,res)=>{
+const updateProfileDetails = async (req, res) => {
   try {
     const { name, dateOfBirth, gender, phoneNumber } = req.body;
     const user = await User.findById(req.user.userId);
@@ -773,10 +778,10 @@ const uploadAvatar = async (req, res) => {
       console.error("Firebase photo update error:", err);
     }
 
-    return res.status(200).json({ 
-      success: true, 
-      message: "Avatar uploaded", 
-      user: { ...user.toObject(), avatar: user.avatar } 
+    return res.status(200).json({
+      success: true,
+      message: "Avatar uploaded",
+      user: { ...user.toObject(), avatar: user.avatar }
     });
   } catch (error) {
     console.error("Upload avatar error:", error);
