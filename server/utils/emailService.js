@@ -1,10 +1,11 @@
 const nodemailer = require("nodemailer");
 
-// Create transporter
+// Create transporter (updated for Hostinger SMTP)
 const createTransport = () => {
   return nodemailer.createTransport({
     host: process.env.SMTP_HOST,
-    port: process.env.SMTP_PORT,
+    port: parseInt(process.env.SMTP_PORT, 10),
+    secure: process.env.SMTP_SECURE === 'true', // important for port 465
     auth: {
       user: process.env.SMTP_USER,
       pass: process.env.SMTP_PASS,
@@ -12,19 +13,19 @@ const createTransport = () => {
   });
 };
 
-// Email templates
+// Email templates (unchanged)
 const templates = {
   welcome: (data) => ({
-    subject: "Welcome toFactory Sale!",
+    subject: "Welcome to Factory Sale!",
     html: `
       <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto;">
         <div style="background: linear-gradient(135deg, #ec4899, #be185d); padding: 40px; text-align: center;">
-          <h1 style="color: white; margin: 0; font-size: 28px;">Welcome toFactory Sale!</h1>
+          <h1 style="color: white; margin: 0; font-size: 28px;">Welcome to Factory Sale!</h1>
         </div>
         <div style="padding: 40px; background: #f9fafb;">
           <h2 style="color: #1f2937; margin-bottom: 20px;">Hello ${data.name}!</h2>
           <p style="color: #4b5563; line-height: 1.6; margin-bottom: 20px;">
-            Thank you for joiningFactory Sale! We're excited to have you as part of our community.
+            Thank you for joining Factory Sale! We're excited to have you as part of our community.
           </p>
           <p style="color: #4b5563; line-height: 1.6; margin-bottom: 30px;">
             Your account has been created with the email: <strong>${data.email}</strong>
@@ -41,7 +42,7 @@ const templates = {
         </div>
         <div style="background: #1f2937; padding: 20px; text-align: center;">
           <p style="color: #9ca3af; margin: 0; font-size: 14px;">
-            © 2024Factory Sale. All rights reserved.
+            © 2024 Factory Sale. All rights reserved.
           </p>
         </div>
       </div>
@@ -49,7 +50,7 @@ const templates = {
   }),
 
   passwordReset: (data) => ({
-    subject: "Reset Your Password -Factory Sale",
+    subject: "Reset Your Password - Factory Sale",
     html: `
       <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto;">
         <div style="background: linear-gradient(135deg, #ec4899, #be185d); padding: 40px; text-align: center;">
@@ -58,7 +59,7 @@ const templates = {
         <div style="padding: 40px; background: #f9fafb;">
           <h2 style="color: #1f2937; margin-bottom: 20px;">Hello ${data.name}!</h2>
           <p style="color: #4b5563; line-height: 1.6; margin-bottom: 20px;">
-            We received a request to reset your password for yourFactory Sale account.
+            We received a request to reset your password for your Factory Sale account.
           </p>
           <p style="color: #4b5563; line-height: 1.6; margin-bottom: 30px;">
             Click the button below to reset your password. This link will expire in 1 hour.
@@ -75,7 +76,7 @@ const templates = {
         </div>
         <div style="background: #1f2937; padding: 20px; text-align: center;">
           <p style="color: #9ca3af; margin: 0; font-size: 14px;">
-            © 2024Factory Sale. All rights reserved.
+            © 2024 Factory Sale. All rights reserved.
           </p>
         </div>
       </div>
@@ -222,7 +223,7 @@ const templates = {
       <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; background: #ffffff;">
         <div style="background: linear-gradient(135deg, #ec4899, #be185d); padding: 30px; text-align: center;">
           <h1 style="color: white; margin: 0; font-size: 28px;">✅ Order Confirmed!</h1>
-          <p style="color: white; margin: 10px 0 0 0; opacity: 0.9; font-size: 16px;">Thank you for shopping withFactory Sale</p>
+          <p style="color: white; margin: 10px 0 0 0; opacity: 0.9; font-size: 16px;">Thank you for shopping with Factory Sale</p>
         </div>
         <div style="padding: 30px; background: #f9fafb;">
           <h2 style="color: #1f2937; margin-bottom: 20px;">Hello ${data.customerName || "Valued Customer"}!</h2>
@@ -312,7 +313,7 @@ const templates = {
         </div>
         <div style="background: #1f2937; padding: 25px; text-align: center;">
           <p style="color: #9ca3af; margin: 0 0 10px 0; font-size: 14px;">
-            © 2024Factory Sale. All rights reserved.
+            © 2024 Factory Sale. All rights reserved.
           </p>
           <p style="color: #6b7280; margin: 0; font-size: 12px;">
             You received this email because you placed an order with us. If you have any questions, please contact support.
@@ -323,7 +324,7 @@ const templates = {
   }),
 };
 
-// Send email function
+// Send email function (updated from address)
 const sendEmail = async ({ to, subject, template, data, html, text }) => {
   try {
     const transporter = createTransport();
@@ -345,7 +346,7 @@ const sendEmail = async ({ to, subject, template, data, html, text }) => {
     }
 
     const mailOptions = {
-      from: `"Fashion Store" <${process.env.SMTP_USER || "orders@fashionstore.com"}>`,
+      from: `"${process.env.FROM_NAME || 'Factory Sale'}" <${process.env.SMTP_USER}>`,
       to,
       ...emailContent,
     };

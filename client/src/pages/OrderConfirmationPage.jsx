@@ -539,9 +539,9 @@ const OrderConfirmationPage = () => {
               If you have any questions about your order, feel free to contact us.
             </p>
             <div className="flex flex-col justify-center gap-2 text-xs sm:flex-row">
-              <a href="mailto:support@Factory Sale.com" className="text-red-600 hover:text-red-700 inline-flex items-center">
+              <a href="mailto:info@factorysaleusa.com" className="text-red-600 hover:text-red-700 inline-flex items-center">
                 <Mail className="mr-1 h-3 w-3" />
-                support@Factory Sale.com
+                info@factorysaleusa.com
               </a>
               <a href="tel:+9211891719" className="text-red-600 hover:text-red-700 inline-flex items-center">
                 <Phone className="mr-1 h-3 w-3" />
