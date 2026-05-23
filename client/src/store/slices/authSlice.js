@@ -382,7 +382,7 @@ export const registerWithEmail = createAsyncThunk(
     try {
       const response = await axios.post(`${API_BASE_URL}/auth/register/email`, userData);
       // Assuming response contains { token, user }
-      localStorage.setItem("authToken", response.data.token);
+      localStorage.setItem("authToken", response.data.jwtToken);
       return response.data;
     } catch (error) {
       return rejectWithValue(error.response?.data || { message: error.message });
