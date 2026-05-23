@@ -280,44 +280,7 @@ const ProductsPage = () => {
               )}
             </button>
             
-            {/* Sort Button */}
-            <div className="relative flex-1">
-              <button
-                onClick={() => setShowSortMenu(!showSortMenu)}
-                className="flex items-center justify-center gap-1.5 w-full px-3 py-2 text-sm font-medium text-gray-700 bg-gray-100 rounded-lg active:bg-gray-200 transition-colors"
-                style={{ height: '40px' }}
-              >
-                <span>Sort: {currentSortLabel}</span>
-                <ChevronDown className={`w-4 h-4 transition-transform ${showSortMenu ? 'rotate-180' : ''}`} />
-              </button>
-              
-              {/* Sort Dropdown */}
-              <AnimatePresence>
-                {showSortMenu && (
-                  <motion.div
-                    initial={{ opacity: 0, y: -10 }}
-                    animate={{ opacity: 1, y: 0 }}
-                    exit={{ opacity: 0, y: -10 }}
-                    className="absolute top-full right-0 mt-1 w-48 bg-white rounded-lg shadow-lg border border-gray-200 z-50"
-                  >
-                    {sortOptions.map((option) => (
-                      <button
-                        key={option.value}
-                        onClick={() => {
-                          setSortBy(option.value)
-                          setShowSortMenu(false)
-                        }}
-                        className={`block w-full text-left px-4 py-2 text-sm hover:bg-gray-50 transition-colors ${
-                          sortBy === option.value ? 'text-red-500 font-medium' : 'text-gray-700'
-                        }`}
-                      >
-                        {option.label}
-                      </button>
-                    ))}
-                  </motion.div>
-                )}
-              </AnimatePresence>
-            </div>
+           
             
             {/* Clear Filters Button (only if filters active) */}
             {activeFiltersCount > 0 && (
@@ -399,43 +362,6 @@ const ProductsPage = () => {
                   </span>
                 )}
               </p>
-              
-              {/* Desktop Sort Dropdown */}
-              <div className="relative">
-                <button
-                  onClick={() => setShowSortMenu(!showSortMenu)}
-                  className="flex items-center gap-2 px-4 py-2 text-sm font-medium text-gray-700 bg-white border border-gray-200 rounded-lg hover:bg-gray-50"
-                >
-                  <span>Sort by: {currentSortLabel}</span>
-                  <ChevronDown className={`w-4 h-4 transition-transform ${showSortMenu ? 'rotate-180' : ''}`} />
-                </button>
-                
-                <AnimatePresence>
-                  {showSortMenu && (
-                    <motion.div
-                      initial={{ opacity: 0, y: -10 }}
-                      animate={{ opacity: 1, y: 0 }}
-                      exit={{ opacity: 0, y: -10 }}
-                      className="absolute top-full right-0 mt-1 w-48 bg-white rounded-lg shadow-lg border border-gray-200 z-50"
-                    >
-                      {sortOptions.map((option) => (
-                        <button
-                          key={option.value}
-                          onClick={() => {
-                            setSortBy(option.value)
-                            setShowSortMenu(false)
-                          }}
-                          className={`block w-full text-left px-4 py-2 text-sm hover:bg-gray-50 transition-colors ${
-                            sortBy === option.value ? 'text-red-500 font-medium' : 'text-gray-700'
-                          }`}
-                        >
-                          {option.label}
-                        </button>
-                      ))}
-                    </motion.div>
-                  )}
-                </AnimatePresence>
-              </div>
             </div>
 
             {/* Loading State */}
