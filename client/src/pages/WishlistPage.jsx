@@ -172,7 +172,7 @@ const WishlistPage = () => {
           )}
         </div>
 
-        
+
         {/* <motion.div
           initial={{ opacity: 0, y: 14 }}
           animate={{ opacity: 1, y: 0 }}
@@ -249,15 +249,13 @@ const WishlistPage = () => {
                     }}
                     className="group"
                   >
-                    <div className="relative bg-white rounded-2xl overflow-hidden ring-1 ring-neutral-200/70 shadow-sm hover:shadow-xl hover:shadow-neutral-300/50 hover:-translate-y-1 hover:ring-red-200/60 transition-all duration-500">
-                      <ProductCard
-                        product={product}
-                        wishlistItems={wishlistItems}
-                        user={null}
-                        onAddToCart={handleAddToCart}
-                        onWishlist={handleWishlist}
-                      />
-                    </div>
+                    <ProductCard
+                      product={product}
+                      wishlistItems={wishlistItems}
+                      user={null}
+                      onAddToCart={handleAddToCart}
+                      onWishlist={handleWishlist}
+                    />
                   </motion.div>
                 ))}
               </AnimatePresence>

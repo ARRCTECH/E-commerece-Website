@@ -116,7 +116,6 @@ const ProductCard = ({ product, wishlistItems, user, onAddToCart, onWishlist }) 
       setIsAddingToCart(true);
       try {
         await onAddToCart(product, e);
-        toast.success("Added to cart!");
       } catch (error) {
         toast.error("Failed to add to cart");
       } finally {
