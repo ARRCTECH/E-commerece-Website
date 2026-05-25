@@ -43,11 +43,11 @@ exports.updateReferralDetails = async (req, res) => {
         for (const referral of user.referredTo) {
             if (referral.creditStatus === true) {
                 console.log(`Referral for order already credited`);
-                continue;
-                count++;
+                count++;  // ✅ Move before continue
+    continue;
             }
             const orders = await Order.find({ user: keysArray[count++] });
-            if (!orders || orders.status !== "DELIVERED") {
+if (!orders.length || orders[0].status !== "DELIVERED") {
                 console.log(`Order not delivered or not found`);
                 continue;
             }

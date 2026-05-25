@@ -4,6 +4,7 @@ import { useParams, Link, useNavigate } from "react-router-dom"
 import { useDispatch, useSelector } from "react-redux"
 import { motion, AnimatePresence } from "framer-motion"
 import { Swiper, SwiperSlide } from "swiper/react"
+
 import { FreeMode, Navigation, Thumbs, Pagination } from "swiper/modules"
 import "swiper/css"
 import "swiper/css/free-mode"
@@ -40,6 +41,7 @@ const ProductDetailPage = () => {
   const [showBulkModal, setShowBulkModal] = useState(false)
   const [selectedColors, setSelectedColors] = useState([])
   const [bulkQuantity, setBulkQuantity] = useState(1)
+
   const isInWishlist = wishlistItems.some((item) => item._id === currentProduct?._id)
   const isBulkProduct = currentProduct?.isBulkProduct === true
   const piecesPerSet = isBulkProduct

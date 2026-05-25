@@ -74,9 +74,9 @@ const InvoiceDownloadButton = ({ order, company = {} }) => {
       const pageH = doc.internal.pageSize.getHeight();
       const M = 36;
 
-      // ============ HEADER BAR ============
+      // ============ HEADER BAR (Red Background) ============
       doc.setFillColor(220, 38, 38);
-      doc.rect(0, 0, pageW, 85, "F");
+      doc.rect(0, 0, pageW, 95, "F");
 
       doc.setTextColor(255, 255, 255);
       doc.setFont("helvetica", "bold");
@@ -86,27 +86,43 @@ const InvoiceDownloadButton = ({ order, company = {} }) => {
       doc.setFontSize(7);
       doc.text(co.TAGLINE, M, 46);
       
-      // ✅ Address ko multiple lines me wrap karna
-      doc.setFontSize(6.5);
-      const addressLines = doc.splitTextToSize(co.ADDRESS, pageW - M * 2 - 100);
+      // ✅ Address - Custom formatted with proper line breaks (White text on red background)
+      doc.setFontSize(8);
+      doc.setTextColor(255, 255, 255);
+      
+      const addressPart1 = "SHOP NO. 1 OM SAI GANESH KPIRA CHAWL NEAR CHIRAG HOTEL,";
+      const addressPart2 = "NEAR BASANT BAHAR ROAD";
+      const addressPart3 = "ULHASNAGAR 421005";
+      
       let addrY = 56;
-      addressLines.forEach((line) => {
-        doc.text(line, M, addrY);
-        addrY += 8;
-      });
-      doc.text(`GSTIN: ${co.GSTIN}`, M, addrY + 4);
+      doc.text(addressPart1, M, addrY);
+      addrY += 9;
+      doc.text(addressPart2, M, addrY);
+      addrY += 9;
+      doc.text(addressPart3, M, addrY);
+      
+      // ✅ GSTIN - Properly positioned with enough spacing (White text on red background)
+      doc.setFontSize(7.5);
+      doc.setTextColor(255, 255, 255);
+      doc.text(`GSTIN: ${co.GSTIN}`, M, addrY + 14);
 
+      // Right side content on red background
       doc.setFont("helvetica", "bold");
       doc.setFontSize(16);
+      doc.setTextColor(255, 255, 255);
       doc.text("TAX INVOICE", pageW - M, 32, { align: "right" });
       doc.setFont("helvetica", "normal");
       doc.setFontSize(6.5);
       doc.text("Original for Recipient", pageW - M, 46, { align: "right" });
-      doc.text(`${co.EMAIL} | ${co.PHONE}`, pageW - M, 58, { align: "right" });
-      doc.text(`State: ${co.STATE}`, pageW - M, 68, { align: "right" });
+      
+      // ✅ Phone and Email - Font size increased (White text on red background)
+      doc.setFontSize(8);
+      doc.text(`${co.EMAIL} | ${co.PHONE}`, pageW - M, 60, { align: "right" });
+      doc.setFontSize(6.5);
+      doc.text(`State: ${co.STATE}`, pageW - M, 72, { align: "right" });
 
       // ============ ORDER META STRIP ============
-      let y = 110;
+      let y = 120;
       const orderId = order.orderNumber || order.orderId || order._id || order.id || "-";
       const invoiceNo = `INV-${String(orderId).slice(-8).toUpperCase()}`;
       const orderDate = order.createdAt
@@ -282,30 +298,25 @@ const InvoiceDownloadButton = ({ order, company = {} }) => {
       const shipping = order.pricing?.shipping ?? order.shippingCharge ?? order.shippingCost ?? 0;
       const freeDisc = order.pricing?.freediscount ?? order.freediscount ?? 0;
       const couponDisc = order.discount ?? 0;
-      // ✅ Referral discount management
       const referralDisc = order.pricing?.referralDiscount ?? order.referralDiscount ?? 0;
 
-      // Total includes referral discount subtraction
       const total = subtotal + shipping - freeDisc - couponDisc - referralDisc;
 
-      // Page-break safety
       if (ty > pageH - 220) {
         doc.addPage();
         ty = M + 20;
       }
 
-      // ✅ FIX: Payment box aur total box ka height same rakhna
       const totalsX = pageW - M - 220;
       const totalsW = 220;
       const discountRowsCount = (freeDisc > 0 ? 1 : 0) + (couponDisc > 0 ? 1 : 0) + (referralDisc > 0 ? 1 : 0);
-      const rowsCount = 2 + discountRowsCount; // subtotal + shipping + discounts
-      const boxH = Math.max(rowsCount * 18 + 45, 130); // Minimum height set kiya
+      const rowsCount = 2 + discountRowsCount;
+      const boxH = Math.max(rowsCount * 18 + 45, 130);
       
       const payBoxW = pageW - M * 2 - totalsW - 12;
       const payBoxX = M;
       const payBoxY = ty;
 
-      // ✅ Payment Breakdown Box (Left side)
       doc.setFillColor(255, 251, 245);
       doc.rect(payBoxX, payBoxY, payBoxW, boxH, "F");
       doc.setDrawColor(230, 200, 160);
@@ -345,7 +356,6 @@ const InvoiceDownloadButton = ({ order, company = {} }) => {
         payLine("Amount Paid", inr(total), true);
       }
 
-      // ✅ Total Box (Right side) - Same height as payment box
       doc.setFillColor(250, 250, 250);
       doc.rect(totalsX, ty, totalsW, boxH, "F");
       doc.setDrawColor(220, 220, 220);
@@ -370,7 +380,6 @@ const InvoiceDownloadButton = ({ order, company = {} }) => {
           `- ${inr(couponDisc)}`,
           { color: [16, 145, 80] }
         );
-      // ✅ Display referral discount row if present
       if (referralDisc > 0) {
         row("Referral Discount", `- ${inr(referralDisc)}`, { color: [16, 145, 80] });
       }
