@@ -150,6 +150,7 @@ const registerWithEmail = async (req, res) => {
       if (referralConfig) {
         const now = new Date();
         referralDetails = {
+          name: name.trim(),
           expiryDate: new Date(now.getTime() + referralConfig.daysUntilExpiry * 24 * 60 * 60 * 1000),
           amount: referralConfig.value || 0,
           type: referralConfig.type || "percentage",
