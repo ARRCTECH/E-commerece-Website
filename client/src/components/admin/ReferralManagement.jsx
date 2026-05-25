@@ -23,7 +23,7 @@ const ReferralManagement = () => {
     setLoading(true);
     setError(null);
     try {
-      const response = await axios.get(`${API_URL}/admin/users`, getAuthConfig());
+      const response = await axios.get(`${API_URL}/auth/getallprofile`, getAuthConfig());
       const data = response.data;
       if (!data.success) throw new Error('API returned unsuccessful');
       const users = data.users || [];

@@ -538,6 +538,45 @@ const getProfile = async (req, res) => {
   }
 };
 
+const getAllProfile = async (req, res) => {
+  try {
+    // Fetch all users, exclude sensitive fields like password
+    const users = await User.find().select('-password -__v'); // adjust as needed
+
+    if (!users || users.length === 0) {
+      return res.status(404).json({ success: false, message: "No users found" });
+    }
+
+    // Return the array of users
+    return res.status(200).json({
+      success: true,
+      count: users.length,
+      users: users.map(user => ({
+        _id: user._id,
+        firebaseUid: user.firebaseUid,
+        name: user.name,
+        email: user.email,
+        phoneNumber: user.phoneNumber,
+        role: user.role,
+        authMethod: user.authMethod,
+        isVerified: user.isVerified,
+        avatar: user.avatar,
+        dateOfBirth: user.dateOfBirth,
+        gender: user.gender,
+        addresses: user.addresses,
+        createdAt: user.createdAt,
+        lastLogin: user.lastLogin,
+        myreferralCode: user.myreferralCode,
+        referredBy: user.referredBy,
+        referredTo: user.referredTo
+      }))
+    });
+  } catch (error) {
+    console.error("Get all profiles error:", error);
+    return res.status(500).json({ success: false, message: "Failed to get profiles" });
+  }
+};
+
 const updateProfile = async (req, res) => {
   try {
     const { name, dateOfBirth, gender, addresses } = req.body;
@@ -719,5 +758,6 @@ module.exports = {
   sendPhoneOTP,
   verifyPhoneOTP,
   updateProfileDetails,
-  getProfileDetails
+  getProfileDetails,
+  getAllProfile
 };
