@@ -416,14 +416,14 @@ const ProductDetailPage = () => {
             >
               <Heart id="wish" className={`w-5 h-5 ${isInWishlist ? "fill-current" : ""}`} />
             </button>
-            if(user){
-              <button
-                onClick={handleReferralShare}
-                className="absolute top-3 right-12 z-10 p-2 rounded-full bg-white/80 backdrop-blur-sm shadow-md"
-              >
-                <Share2 className="w-5 h-5 text-gray-700" />
-              </button>
-            }
+            {user && (
+  <button
+    onClick={handleReferralShare}
+    className="absolute top-3 right-12 z-10 p-2 rounded-full bg-white/80 backdrop-blur-sm shadow-md"
+  >
+    <Share2 className="w-5 h-5 text-gray-700" />
+  </button>
+)}
             <Swiper spaceBetween={0} pagination={{ clickable: true, dynamicBullets: true }} modules={[Pagination]} className="rounded-xl">
               {mediaItems.map((item, idx) => (
                 <SwiperSlide key={idx}>
@@ -449,7 +449,7 @@ const ProductDetailPage = () => {
                 </SwiperSlide>
               ))}
             </Swiper>
-            <div className="px-2">
+            <div className="px-5">
               <p className="text-lg font-bold text-gray-900">{currentProduct.brand || "Factory Sale"}</p>
               <p className="text-sm text-gray-600 mt-1">{currentProduct.name}</p>
               <div className="flex items-center gap-2 mt-2">
@@ -500,12 +500,14 @@ const ProductDetailPage = () => {
               </div>
               <div className="flex-1">
                 <div className="relative bg-gray-50 rounded-xl overflow-hidden group">
-                  <button
-                    onClick={handleReferralShare}
-                    className="absolute top-4 right-4 z-10 p-2 rounded-full bg-white/80 backdrop-blur-sm shadow-md hover:bg-white transition"
-                  >
-                    <Share2 className="w-5 h-5 text-gray-700" />
-                  </button>
+                  {user && (
+  <button
+    onClick={handleReferralShare}
+    className="absolute top-4 right-4 z-10 p-2 rounded-full bg-white/80 backdrop-blur-sm shadow-md hover:bg-white transition"
+  >
+    <Share2 className="w-5 h-5 text-gray-700" />
+  </button>
+)}
                   {mediaItems[selectedMediaIndex]?.type === 'image' ? (
                     <motion.img
                       src={mediaItems[selectedMediaIndex]?.url}
@@ -1245,5 +1247,7 @@ const ProductDetailPage = () => {
           </button>
         </div>
       </div>
-    </div>)}
+    </div>
+    );
+  }
 export default ProductDetailPage
