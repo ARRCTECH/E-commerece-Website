@@ -221,7 +221,7 @@ const createRazorpayOrder = async (req, res) => {
     const shippingCharges = 0;
 
     // ✅ Calculate final total
-    const total = Math.round(subtotal + shippingCharges - totalDiscount);
+    const total = Math.round(subtotal + shippingCharges - totalDiscount-referralDiscount - freediscount);
     const orderNumber = `FH-${Date.now()}`;
 
     console.log("💰 Order Summary:", { subtotal, shippingCharges, totalDiscount, total, freediscount, referralDiscount });
@@ -363,7 +363,8 @@ const createPartialCodOrder = async (req, res) => {
       totalAmount,
       onlineAmount,
       codAmount,
-      percentage
+      percentage,
+      referralDiscount
     } = req.body;
 
     if (!items || items.length === 0) {
@@ -444,7 +445,7 @@ const createPartialCodOrder = async (req, res) => {
     }
 
     // ✅ Partial COD साठी total = original subtotal - coupon discount (कोणताही online discount नाही)
-    const finalTotal = Math.round(subtotal + shippingCharges - discount);
+    const finalTotal = Math.round(subtotal + shippingCharges - discount-referralDiscount);
     const orderNumber = `FH-${Date.now()}`;
 
     console.log("💰 Order Summary:", { subtotal, shippingCharges, discount, finalTotal });

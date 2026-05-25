@@ -213,7 +213,7 @@ const CheckoutPage = () => {
     }
   }, [appliedCoupon, setCongratulationsData, setShowCongratulationsPopup]);
 
-  // ✅ Calculate final pricing – only auto referral discount (no manual)
+  // ✅ Calculate final pricing – includes automated referral discount
   const calculateFinalPricing = useMemo(() => {
     const subtotal = isBuyNow && buyNowProduct
       ? buyNowProduct.product.price * buyNowProduct.quantity
@@ -249,7 +249,6 @@ const CheckoutPage = () => {
       : Math.round(subtotal * (filterYCoupon[0]?.discountValue || 0) / 100);
 
     const totalDiscount = couponDiscount + freediscount + onlineDiscountAmount + autoReferralDiscount;
-    const totalDiscountWithoutOnline= Math.round(subtotal+couponDiscount + freediscount + autoReferralDiscount);
     const totalValue = Math.round(subtotal + shippingCharges - totalDiscount);
     return {
       subtotal,
@@ -259,7 +258,6 @@ const CheckoutPage = () => {
       freediscount,
       onlineDiscount: onlineDiscountAmount,
       totalDiscount,
-      totalDiscountWithoutOnline,
       referralDiscount: autoReferralDiscount,
       autoReferralDiscount,
       total: totalValue > 0 ? totalValue : 0,
@@ -351,11 +349,10 @@ const CheckoutPage = () => {
       },
       couponCode: appliedCoupon?.code || "",
       isBuyNow: isBuyNow,
-      // No manual referral code
     };
   }, [getDisplayItems, selectedAddress, appliedCoupon, isBuyNow]);
 
-  // Update referral earnings after successful order (only reset user's own balance)
+  // Update referral earnings after successful order (reset user's own balance)
   const updateReferralEarnings = useCallback(async () => {
     if (!calculateFinalPricing.referralDiscount) return;
     try {
@@ -442,7 +439,7 @@ const CheckoutPage = () => {
     setShowPaymentModal(false);
 
     const orderPayload = {
-      amount: Math.round(calculateFinalPricing.totalDiscountWithoutOnline || 0),
+      amount: Math.round(calculateFinalPricing.subtotal || 0),
       freediscount: calculateFinalPricing.freediscount,
       referralDiscount: calculateFinalPricing.referralDiscount,
       ...createOrderData(),
@@ -470,9 +467,9 @@ const CheckoutPage = () => {
     dispatch(clearError());
     setShowPaymentModal(false);
 
-    const originalAmount = calculateFinalPricing.originalSubtotal || calculateFinalPricing.subtotal-Math.round(calculateFinalPricing.autoReferralDiscount);
+    const originalAmount = calculateFinalPricing.originalSubtotal - calculateFinalPricing.referralDiscount;
     const onlineAmount = Math.round(originalAmount * partialPercentage / 100);
-    const codAmount = originalAmount - onlineAmount-Math.round(calculateFinalPricing.autoReferralDiscount);
+    const codAmount = originalAmount - onlineAmount;
     
     const orderPayload = {
       items: getDisplayItems().map((item) => ({
@@ -498,7 +495,6 @@ const CheckoutPage = () => {
       partialPercentage: partialPercentage,
       freediscount: calculateFinalPricing.freediscount,
       referralDiscount: calculateFinalPricing.referralDiscount,
-      // No referralCode field
     };
 
     try {
@@ -579,6 +575,26 @@ const CheckoutPage = () => {
     return () => window.removeEventListener("popstate", onBackButtonEvent);
   }, []);
 
+  // ---------- HANDLE COUPON APPLY (FIXED) ----------
+  const handleApplyCoupon = async () => {
+    if (!couponCode.trim()) {
+      toast.error("Please enter a coupon code");
+      return;
+    }
+    try {
+      const result = await dispatch(
+        validateCoupon({
+          code: couponCode.trim().toUpperCase(),
+          cartTotal: calculateFinalPricing.subtotal,
+        })
+      ).unwrap();
+      toast.success(`Coupon "${result.code}" applied successfully!`);
+      setCouponCode(""); // Clear input field after successful apply
+    } catch (err) {
+      toast.error(err?.message || "Invalid or expired coupon");
+    }
+  };
+
   const displayItems = getDisplayItems();
   const hasItems = displayItems.length > 0;
   const showPartialCodOption =
@@ -652,7 +668,7 @@ const CheckoutPage = () => {
               />
             </div>
 
-            {/* Coupon Section */}
+            {/* Coupon Section - Fixed with working handler */}
             <div className="bg-white rounded-xl p-6 shadow-sm">
               <div className="flex items-center mb-4">
                 <Tag className="w-5 h-5 mr-2 text-red-600" />
@@ -664,7 +680,7 @@ const CheckoutPage = () => {
                   <span>-₹{appliedCoupon.discountAmount}</span>
                   <button
                     onClick={() => dispatch(removeCoupon())}
-                    className="text-red-500"
+                    className="text-red-500 hover:text-red-700"
                   >
                     Remove
                   </button>
@@ -676,21 +692,15 @@ const CheckoutPage = () => {
                     value={couponCode}
                     onChange={(e) => setCouponCode(e.target.value.toUpperCase())}
                     placeholder="Enter promo code"
-                    className="flex-1 px-4 py-2 border rounded-lg"
+                    className="flex-1 px-4 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-red-500"
+                    disabled={couponLoading?.validating}
                   />
                   <button
-                    onClick={() =>
-                      dispatch(
-                        validateCoupon({
-                          code: couponCode,
-                          cartTotal: calculateFinalPricing.subtotal,
-                        })
-                      )
-                    }
+                    onClick={handleApplyCoupon}
                     disabled={!couponCode.trim() || couponLoading?.validating}
-                    className="px-6 py-2 bg-red-600 text-white rounded-lg disabled:opacity-50"
+                    className="px-6 py-2 bg-red-600 text-white rounded-lg disabled:opacity-50 disabled:cursor-not-allowed hover:bg-red-700 transition"
                   >
-                    Apply
+                    {couponLoading?.validating ? "Applying..." : "Apply"}
                   </button>
                 </div>
               )}
@@ -758,7 +768,7 @@ const CheckoutPage = () => {
                 {calculateFinalPricing.referralDiscount > 0 && (
                   <div className="flex justify-between text-indigo-600">
                     <span className="flex items-center gap-1">
-                      Referral Earnings <Info className="w-3 h-3" title="Discount from your referral earnings" />
+                      Referral Earnings <Info className="w-3 h-3" title="Automatically applied from your referral balance" />
                     </span>
                     <span>-₹{calculateFinalPricing.referralDiscount}</span>
                   </div>
@@ -781,7 +791,7 @@ const CheckoutPage = () => {
 
               <button
                 onClick={() => setShowPaymentModal(true)}
-                className="w-full mt-6 py-3 bg-red-600 text-white rounded-xl font-semibold"
+                className="w-full mt-6 py-3 bg-red-600 text-white rounded-xl font-semibold hover:bg-red-700 transition"
               >
                 Proceed to Payment
               </button>
@@ -823,8 +833,8 @@ const CheckoutPage = () => {
         onCOD={handlePlaceCodOrder}
         onPartialCod={handlePartialCodOrder}
         amount={calculateFinalPricing.total}
-        amountCOD={calculateFinalPricing.total-Math.round(calculateFinalPricing?.autoReferralDiscount)}
-        originalAmount={calculateFinalPricing.originalSubtotal-Math.round(calculateFinalPricing?.autoReferralDiscount) || calculateFinalPricing?.subtotal-Math.round(calculateFinalPricing.autoReferralDiscount)}
+        amountCOD={calculateFinalPricing.referralDiscount}
+        originalAmount={calculateFinalPricing.originalSubtotal}
         showPartialCod={showPartialCodOption}
         partialPercentage={partialPercentage}
         isBulkProduct={isBulkBuyNow || displayItems.some((item) => item.isBulkProduct)}
