@@ -13,6 +13,7 @@ import { fetchWishlist } from "../store/slices/wishlistSlice";
 import toast from "react-hot-toast";
 import { format } from "date-fns";
 import Preloader from "../components/Preloader";
+import InvoiceDownloadButton from "../pages/InvoiceDownloadButton";
 
 const ProfilePage = () => {
   const dispatch = useDispatch();
@@ -682,6 +683,9 @@ const ProfilePage = () => {
                                       {order.status}
                                     </span>
                                   </div>
+                                  <div className="w-full sm:w-auto mt-3 sm:mt-0">
+                <InvoiceDownloadButton order={order} />
+              </div>
                                 </div>
                               </div>
                             ))}

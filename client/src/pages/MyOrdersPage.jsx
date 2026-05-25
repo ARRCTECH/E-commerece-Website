@@ -12,6 +12,7 @@ import { fetchUserOrders, cancelOrder, clearError } from "../store/slices/orderS
 import LoadingSpinner from "../components/LoadingSpinner";
 import axios from "axios";
 import toast from "react-hot-toast";
+import InvoiceDownloadButton from "../pages/InvoiceDownloadButton";
 
 // Premium Modal Component
 const Modal = ({ children, onClose }) => {
@@ -477,6 +478,9 @@ const MyOrdersPage = () => {
                           <Eye className="w-3.5 h-3.5" />
                           View Details
                         </button>
+                        <div className="w-full sm:w-auto">
+    <InvoiceDownloadButton order={order} />
+  </div>
                         <button
                           onClick={() => {
                             setSelectedOrder(order);

@@ -19,7 +19,7 @@ import {
   Headphones,
   Sparkles,
 } from "lucide-react";
-import { FaPinterest } from "react-icons/fa";
+import { FaPinterest, FaWhatsapp } from "react-icons/fa";
 
 const Footer = () => {
   const { categories } = useSelector((state) => state.categories || {});
@@ -114,17 +114,19 @@ const Footer = () => {
               honest pricing. Crafted in India, worn everywhere.
             </p>
 
-            {/* Social Links */}
+            {/* Social Links - WhatsApp Added Here */}
             <div className="mt-6">
               <p className="text-[10px] font-semibold uppercase tracking-[0.22em] text-neutral-500">
                 Follow the house
               </p>
-              <div className="mt-3 flex items-center gap-2">
+              <div className="mt-3 flex items-center gap-2 flex-wrap">
                 {[
-                  { Icon: Facebook, href: "https://www.facebook.com/profile.php?id=61568941858515&mibextid=ZbWKwL", label: "Facebook" },
-                  { Icon: Instagram, href: "https://www.instagram.com/factorysaleusa?utm_source=qr&igsh=Nm9uNnFjdjhqNnBm", label: "Instagram" },
-                  { Icon: Youtube, href: "https://youtube.com/@factorysale-r5n?si=_4Kz0Y4c_xY_mQeu", label: "YouTube" },
-                ].map(({ Icon, href, label }) => (
+                  { Icon: Facebook, href: "https://www.facebook.com/profile.php?id=61568941858515&mibextid=ZbWKwL", label: "Facebook", color: "#1877F2" },
+                  { Icon: Instagram, href: "https://www.instagram.com/factorysaleusa?utm_source=qr&igsh=Nm9uNnFjdjhqNnBm", label: "Instagram", color: "#E4405F" },
+                  { Icon: Youtube, href: "https://youtube.com/@factorysale-r5n?si=_4Kz0Y4c_xY_mQeu", label: "YouTube", color: "#FF0000" },
+                  // ✅ WhatsApp Icon Added
+                  { Icon: FaWhatsapp, href: "https://chat.whatsapp.com/Gk6xdrfvHj06xjcmi6dG4a", label: "WhatsApp Group", color: "#25D366" },
+                ].map(({ Icon, href, label, color }) => (
                   <a
                     key={label}
                     href={href}
@@ -140,6 +142,8 @@ const Footer = () => {
               </div>
             </div>
           </div>
+          
+          {/* Mobile Shop Menu */}
           <div className="block md:hidden w-full border-t border-white/10 pt-4">
             <button
               onClick={() => setShowShopMenu(!showShopMenu)}
@@ -189,6 +193,7 @@ const Footer = () => {
               </ul>
             </div>
 
+            {/* Mobile Connect Section with WhatsApp */}
             <div className="block md:hidden">
               <FooterHeading>Connect</FooterHeading>
               <ul className="mt-5 space-y-3 text-[13px]">
@@ -211,8 +216,19 @@ const Footer = () => {
                     className="flex items-start gap-3 break-all text-neutral-400 transition hover:text-white"
                   >
                     <ContactIcon><Mail className="h-3.5 w-3.5" /></ContactIcon>
-                    <span>
-info@factorysaleusa.com</span>
+                    <span>info@factorysaleusa.com</span>
+                  </a>
+                </li>
+                {/* ✅ WhatsApp Link in Mobile Connect */}
+                <li>
+                  <a
+                    href="https://chat.whatsapp.com/Gk6xdrfvHj06xjcmi6dG4a"
+                    target="_blank"
+                    rel="noreferrer"
+                    className="flex items-start gap-3 text-neutral-400 transition hover:text-green-400"
+                  >
+                    <ContactIcon><FaWhatsapp className="h-3.5 w-3.5" /></ContactIcon>
+                    <span>Join WhatsApp Group</span>
                   </a>
                 </li>
               </ul>
@@ -230,7 +246,7 @@ info@factorysaleusa.com</span>
               </ul>
             </div>
 
-            {/* Contact */}
+            {/* Desktop Connect Section with WhatsApp */}
             <div className="hidden sm:block col-span-2 sm:col-span-1">
               <FooterHeading>Connect</FooterHeading>
               <ul className="mt-5 space-y-3 text-[13px]">
@@ -253,8 +269,19 @@ info@factorysaleusa.com</span>
                     className="flex items-start gap-3 break-all text-neutral-400 transition hover:text-white"
                   >
                     <ContactIcon><Mail className="h-3.5 w-3.5" /></ContactIcon>
-                    <span>
-info@factorysaleusa.com</span>
+                    <span>info@factorysaleusa.com</span>
+                  </a>
+                </li>
+                {/* ✅ WhatsApp Link in Desktop Connect */}
+                <li>
+                  <a
+                    href="https://chat.whatsapp.com/Gk6xdrfvHj06xjcmi6dG4a"
+                    target="_blank"
+                    rel="noreferrer"
+                    className="flex items-start gap-3 text-neutral-400 transition hover:text-green-400"
+                  >
+                    <ContactIcon><FaWhatsapp className="h-3.5 w-3.5" /></ContactIcon>
+                    <span className="text-sm">Join WhatsApp Group</span>
                   </a>
                 </li>
               </ul>
