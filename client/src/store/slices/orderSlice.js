@@ -122,6 +122,19 @@ export const cancelOrder = createAsyncThunk(
   }
 );
 
+export const exportOrdersToExcel = createAsyncThunk(
+  "order/exportOrdersToExcel",
+  async ({ startDate, endDate }, { rejectWithValue }) => {
+    try {
+      const response = await orderAPI.exportOrders(startDate, endDate);
+      // Return blob data for file download
+      return { data: response.data, startDate, endDate };
+    } catch (error) {
+      return rejectWithValue(error.response?.data?.message || "Failed to export orders");
+    }
+  }
+);
+
 // ===============================
 // Initial State
 // ===============================
@@ -143,12 +156,14 @@ const initialState = {
     fetching: false,      // Fetch orders
     cancelling: false,    // Cancel order
     partialCod: false,    // Partial COD loading
+    exporting: false,
   },
   error: null,
   success: {
     orderCreated: false,
     paymentVerified: false,
     orderCancelled: false,
+    exportSuccess: false,
   },
   // Partial COD specific
   paymentMethods: {
@@ -354,7 +369,24 @@ const orderSlice = createSlice({
       .addCase(cancelOrder.rejected, (state, action) => {
         state.loading.cancelling = false;
         state.error = action.payload;
+      })
+      .addCase(exportOrdersToExcel.pending, (state) => {
+        state.loading.exporting = true;
+        state.error = null;
+        state.success.exportSuccess = false;
+      })
+      .addCase(exportOrdersToExcel.fulfilled, (state, action) => {
+        state.loading.exporting = false;
+        state.success.exportSuccess = true;
+        // Note: Blob data is handled in component for download
+        // We just store success state here
+      })
+      .addCase(exportOrdersToExcel.rejected, (state, action) => {
+        state.loading.exporting = false;
+        state.error = action.payload;
+        state.success.exportSuccess = false;
       });
+      
   },
 });
 
@@ -367,7 +399,8 @@ export const {
   clearRazorpayOrder, 
   setCurrentOrder,
   clearPartialCodDetails,
-  resetPaymentMethods
+  resetPaymentMethods,
+  clearExportSucess
 } = orderSlice.actions;
 
 // ===============================
@@ -428,6 +461,15 @@ export const selectIsBulkOrder = createSelector(
 export const selectPartialCodDetails = createSelector(
   selectOrderState,
   (order) => order.partialCodDetails || null
+);
+export const selectExportLoading = createSelector(
+  selectOrderState,
+  (order) => order.loading?.exporting || false
+);
+
+export const selectExportSuccess = createSelector(
+  selectOrderState,
+  (order) => order.success?.exportSuccess || false
 );
 
 // Cross-slice selectors

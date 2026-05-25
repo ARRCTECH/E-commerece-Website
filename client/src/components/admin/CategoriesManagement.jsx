@@ -345,7 +345,7 @@ const CategoriesManagement = ({ products = [] }) => {
           <table className="min-w-full">
             <thead>
               <tr className="bg-gradient-to-r from-rose-50 to-red-50 border-b border-rose-100">
-                <th className="px-6 py-4 text-xs font-bold text-left text-gray-700 uppercase tracking-wider">Category</th>
+                <th className="px-6 py-4 text-xs font-bold text-left text-gray-700 uppercase tracking-wider">Category Name</th>
                 <th className="px-6 py-4 text-xs font-bold text-left text-gray-700 uppercase tracking-wider">Parent Category</th>
                 <th className="px-6 py-4 text-xs font-bold text-left text-gray-700 uppercase tracking-wider">Products</th>
                 <th className="px-6 py-4 text-xs font-bold text-left text-gray-700 uppercase tracking-wider">Status</th>

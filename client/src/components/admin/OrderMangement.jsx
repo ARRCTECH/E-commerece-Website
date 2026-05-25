@@ -4,7 +4,7 @@ import { useDispatch, useSelector } from "react-redux"
 import { 
   Eye, Edit, Search, Filter, X, ChevronLeft, ChevronRight, 
   ChevronsLeft, ChevronsRight, Package, User, Calendar, 
-  CreditCard, Truck, MapPin, Phone, Mail, Clock
+  CreditCard, Truck, MapPin, Phone, Mail, Clock, Download
 } from "lucide-react"
 import { fetchAllOrders, updateOrderStatus } from "../../store/slices/adminSlice"
 import { orderAPI } from "../../store/api/orderAPI"
@@ -33,6 +33,14 @@ const OrdersManagement = () => {
     carrier: "",
     notes: "",
   })
+  
+  // 🆕 Export Modal State
+  const [showExportModal, setShowExportModal] = useState(false)
+  const [exportDateRange, setExportDateRange] = useState({
+    startDate: "",
+    endDate: ""
+  })
+  const [exportLoading, setExportLoading] = useState(false)
 
   useEffect(() => {
     dispatch(fetchAllOrders(filters))
@@ -85,6 +93,49 @@ const OrdersManagement = () => {
       setShowStatusModal(false)
       setSelectedOrder(null)
       setStatusUpdate({ status: "", trackingNumber: "", carrier: "", notes: "" })
+    }
+  }
+
+  // 🆕 Export Handler
+  const handleExportClick = () => {
+    setExportDateRange({ startDate: "", endDate: "" })
+    setShowExportModal(true)
+  }
+
+  const handleExportSubmit = async (e) => {
+    e.preventDefault()
+    
+    if (!exportDateRange.startDate || !exportDateRange.endDate) {
+      alert("Please select both start date and end date")
+      return
+    }
+
+    setExportLoading(true)
+    
+    try {
+      const response = await orderAPI.exportOrders(exportDateRange.startDate, exportDateRange.endDate)
+      
+      // Create download link
+      const url = window.URL.createObjectURL(new Blob([response.data]))
+      const link = document.createElement("a")
+      link.href = url
+      link.setAttribute("download", `orders_${exportDateRange.startDate}_to_${exportDateRange.endDate}.xlsx`)
+      document.body.appendChild(link)
+      link.click()
+      link.remove()
+      window.URL.revokeObjectURL(url)
+      
+      // Close modal
+      setShowExportModal(false)
+      setExportDateRange({ startDate: "", endDate: "" })
+      
+      // Optional: Show success message
+      alert("Orders exported successfully!")
+    } catch (error) {
+      console.error("Export error:", error)
+      alert(error.response?.data?.message || "Failed to export orders")
+    } finally {
+      setExportLoading(false)
     }
   }
 
@@ -147,9 +198,19 @@ const OrdersManagement = () => {
             <h1 className="text-2xl sm:text-3xl font-bold text-white mt-1">Orders Management</h1>
             <p className="text-rose-100/90 text-sm mt-1">Track and manage all customer orders</p>
           </div>
-          <div className="flex items-center gap-2 text-white/80 text-sm">
-            <Package className="w-4 h-4" />
-            <span>Total Orders: {ordersPagination?.totalOrders || 0}</span>
+          <div className="flex items-center gap-3">
+            {/* 🆕 Export Button */}
+            <button
+              onClick={handleExportClick}
+              className="inline-flex items-center gap-2 px-4 py-2.5 text-sm font-semibold text-white bg-gray-500 rounded-xl  shadow-lg  transition-all duration-200"
+            >
+              <Download className="w-4 h-4 text-black" />
+              Export to Excel
+            </button>
+            <div className="flex items-center gap-2 text-white/80 text-sm">
+              <Package className="w-4 h-4" />
+              <span>Total Orders: {ordersPagination?.totalOrders || 0}</span>
+            </div>
           </div>
         </div>
       </div>
@@ -400,7 +461,87 @@ const OrdersManagement = () => {
         )}
       </div>
 
-      {/* Order Details Modal */}
+      {/* 🆕 Export Modal */}
+      {showExportModal && (
+        <div className="fixed inset-0 z-50 overflow-y-auto bg-gray-900/60 backdrop-blur-sm">
+          <div className="min-h-screen flex items-center justify-center p-3 sm:p-6">
+            <div className="relative w-full max-w-md bg-white rounded-2xl shadow-2xl overflow-hidden">
+              <div className="sticky top-0 z-10 bg-gradient-to-r from-emerald-600 to-teal-600 px-5 sm:px-6 py-4 flex items-center justify-between">
+                <div>
+                  <h3 className="text-lg font-bold text-white flex items-center gap-2">
+                    <Download className="w-5 h-5" />
+                    Export Orders to Excel
+                  </h3>
+                  <p className="text-xs text-emerald-100 mt-0.5">Select date range to export orders</p>
+                </div>
+                <button 
+                  onClick={() => setShowExportModal(false)} 
+                  className="p-2 text-white/90 hover:bg-white/20 rounded-lg transition"
+                >
+                  <X className="w-5 h-5" />
+                </button>
+              </div>
+
+              <form onSubmit={handleExportSubmit} className="p-5 sm:p-6 space-y-5">
+                <div>
+                  <label className={labelCls}>Start Date</label>
+                  <input
+                    type="date"
+                    value={exportDateRange.startDate}
+                    onChange={(e) => setExportDateRange(prev => ({ ...prev, startDate: e.target.value }))}
+                    required
+                    className={inputCls}
+                    max={new Date().toISOString().split("T")[0]}
+                  />
+                </div>
+
+                <div>
+                  <label className={labelCls}>End Date</label>
+                  <input
+                    type="date"
+                    value={exportDateRange.endDate}
+                    onChange={(e) => setExportDateRange(prev => ({ ...prev, endDate: e.target.value }))}
+                    required
+                    className={inputCls}
+                    min={exportDateRange.startDate}
+                    max={new Date().toISOString().split("T")[0]}
+                  />
+                </div>
+
+
+                <div className="flex gap-3 pt-2">
+                  <button
+                    type="button"
+                    onClick={() => setShowExportModal(false)}
+                    className="flex-1 px-4 py-2.5 text-sm font-semibold text-gray-700 bg-white border border-gray-200 rounded-xl hover:bg-gray-50 transition"
+                  >
+                    Cancel
+                  </button>
+                  <button
+                    type="submit"
+                    disabled={exportLoading}
+                    className="flex-1 px-4 py-2.5 text-sm font-semibold text-white bg-gradient-to-r from-emerald-600 to-teal-600 rounded-xl shadow-md hover:shadow-lg disabled:opacity-50 disabled:cursor-not-allowed transition-all duration-200 flex items-center justify-center gap-2"
+                  >
+                    {exportLoading ? (
+                      <>
+                        <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin" />
+                        Exporting...
+                      </>
+                    ) : (
+                      <>
+                        <Download className="w-4 h-4" />
+                        Export Now
+                      </>
+                    )}
+                  </button>
+                </div>
+              </form>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Order Details Modal (Unchanged - Same as before) */}
       {showOrderModal && selectedOrder && (
         <div className="fixed inset-0 z-50 overflow-y-auto bg-gray-900/60 backdrop-blur-sm">
           <div className="min-h-screen flex items-start sm:items-center justify-center p-3 sm:p-6">
@@ -592,7 +733,7 @@ const OrdersManagement = () => {
         </div>
       )}
 
-      {/* Status Update Modal */}
+      {/* Status Update Modal (Unchanged - Same as before) */}
       {showStatusModal && selectedOrder && (
         <div className="fixed inset-0 z-50 overflow-y-auto bg-gray-900/60 backdrop-blur-sm">
           <div className="min-h-screen flex items-center justify-center p-3 sm:p-6">
