@@ -9,7 +9,9 @@
  
  router.post('/fetchReferral', getReferralDetails);
  router.put('/updatefetchReferral', updateReferralDetails);
- router.post('/updatefetchReferralwithoutSaving', updateReferralDetailswithoutSaving);
+ if(updateReferralDetailswithoutSaving){
+   router.post('/updateReferralDetailsW', updateReferralDetailsW);
+ }
  router.post('/forceZeroAfterPaymentDone',forceZeroAfterPaymentDone)
  
  module.exports = router;

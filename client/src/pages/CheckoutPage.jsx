@@ -197,7 +197,7 @@ const CheckoutPage = () => {
     if (!user?._id) return;
     try {
       const res = await axios.post(
-        `${API_URL}/referral/updatefetchReferralwithoutSaving`,
+        `${API_URL}/referral/updatefetchReferralW`,
         { userId: user._id }
       );
       setPercentage(res.data.data.percentageValue);

@@ -110,7 +110,7 @@ exports.updateReferralDetails = async (req, res) => {
         });
     }
 };
-exports.updateReferralDetails = async (req, res) => {
+exports.updateReferralDetailsW = async (req, res) => {
     try {
         const { userId } = req.body;
         const user = await User.findById(userId);
@@ -177,7 +177,6 @@ exports.updateReferralDetails = async (req, res) => {
             referralDoc.percentageValue += percentageValue;
             referralDoc.discountValue += discountValue;
         }
-        await referralDoc.save();
         res.status(200).json({
             success: true,
             message: "Referral details updated successfully",
