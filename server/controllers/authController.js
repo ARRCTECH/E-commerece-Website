@@ -542,7 +542,8 @@ const getProfile = async (req, res) => {
 const getAllProfile = async (req, res) => {
   try {
     // Fetch all users, exclude sensitive fields like password
-    const users = await User.find().select('-password -__v'); // adjust as needed
+    const users = await User.find().select('-password -__v'); 
+    // adjust as needed
 
     if (!users || users.length === 0) {
       return res.status(404).json({ success: false, message: "No users found" });
