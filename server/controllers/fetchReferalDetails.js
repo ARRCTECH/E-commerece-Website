@@ -205,7 +205,6 @@ exports.forceZeroAfterPaymentDone = async (req, res) => {
         if (!referralDoc) {
             referralDoc = new Referral({
                 userId,
-                numberOfReferrals: 0,
                 percentageValue: 0,
                 discountValue: 0,
             });
@@ -213,8 +212,6 @@ exports.forceZeroAfterPaymentDone = async (req, res) => {
             // Force zero: reset fields to zero
             referralDoc.percentageValue = 0;
             referralDoc.discountValue = 0;
-            // Optionally reset numberOfReferrals if needed
-            referralDoc.numberOfReferrals = 0;
         }
         await referralDoc.save();
         res.status(200).json({

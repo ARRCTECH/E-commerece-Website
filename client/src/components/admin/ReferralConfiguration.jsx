@@ -159,18 +159,6 @@ const ReferralConfiguration = () => {
       <div className="bg-white rounded-xl shadow-sm border border-gray-100 overflow-hidden transition-all hover:shadow-md">
         <div className="px-5 py-4 border-b border-gray-100 flex justify-between items-center">
           <h3 className="font-semibold text-gray-800">{title}</h3>
-          <label className="relative inline-flex items-center cursor-pointer">
-            <input
-              type="checkbox"
-              className="sr-only peer"
-              checked={active}
-              onChange={(e) => setActive(e.target.checked)}
-            />
-            <div className="w-10 h-5 bg-gray-200 rounded-full peer peer-checked:bg-red-500 peer-checked:after:translate-x-full after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:rounded-full after:h-4 after:w-4 after:transition-all"></div>
-            <span className="ml-2 text-sm font-medium text-gray-600">
-              {active ? "Active" : "Inactive"}
-            </span>
-          </label>
         </div>
         <div className="p-5 space-y-4">
           {/* Discount Type */}
