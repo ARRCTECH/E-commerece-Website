@@ -540,7 +540,7 @@ const ReferralManagement = () => {
                         <strong>{entry.referredName}</strong>
                       </td>
                       <td>
-                        ${entry.amount.toFixed(2)}
+                        ₹{entry.amount.toFixed(2)}
                         {entry.type === 'percentage' && (
                           <span style={{ fontSize: '0.7rem', marginLeft: '0.25rem', color: '#5b6e8c' }}>({entry.amount}%)</span>
                         )}
