@@ -37,47 +37,51 @@ exports.updateReferralDetails = async (req, res) => {
         }
         let percentageValue = 0;
         let discountValue = 0;
-        let creditedCount = 0;
         const keysArray = Array.from(user.referredTo.keys());
         let count = 0;
-        for (const referral of user.referredTo) {
+        for (const referrals of user.referredTo) {
+            const referral=referrals[1]
             if (referral.creditStatus === true) {
                 console.log(`Referral for order already credited`);
+                count++;
                 continue;
+            }
+            const orders = await Order.find({ user: `${keysArray[count++]}` });
+            for (const order of orders) {
+                if (order.status !== "DELIVERED") {
+                    console.log(`Order not delivered, skipping`);
+                    count++;
+                    continue;
+                }
+                const lastSync = new Date(order.shipmozoDetails.lastSyncAt);
+                const now = new Date();
+                const tenDaysInMs = 10 * 24 * 60 * 60 * 1000;
+                const diffMs = lastSync-now;
+                if (diffMs < tenDaysInMs) {
+                    console.log('Last sync was more than 10 days ago');
+                    count++;
+                    continue;
+                }
+                if (new Date() > referral.expiryDate) {
+                    console.log(`Referral for order has expired`);
+                    count++;
+                    continue;
+                }
+                if (referral.type === "fixed") {
+                    discountValue += referral.amount || 0;
+                    console.log(discountValue);
+                } else if (referral.type === "percentage") {
+                    percentageValue += referral.amount || 0;
+                    console.log(percentageValue);
+                }
+                referral.creditStatus = true;
                 count++;
             }
-            const orders = await Order.find({ user: keysArray[count++] });
-            if (!orders || orders.status !== "DELIVERED") {
-                console.log(`Order not delivered or not found`);
-                continue;
-            }
-            const lastSync = new Date(order.shipmozoDetails.lastSyncAt);
-            const now = new Date();
-            const tenDaysInMs = 10 * 24 * 60 * 60 * 1000; 
-            if (now - lastSync > tenDaysInMs) {
-                console.log('Last sync was more than 10 days ago');
-                continue;
-                count++;
-            } else {
-                console.log('Last sync is within 10 days');
-            }
-
-            if (new Date() > referral.expiryDate) {
-                console.log(`Referral for order has expired`);
-                continue;
-                count++;
-            }
-            if (referral.type === "fixed") {
-                discountValue += referral.amount || 0;
-            } else if (referral.type === "percentage") {
-                percentageValue += referral.amount || 0;
-            }
-            referral.creditStatus = true;
-            creditedCount++;
         }
-        if (creditedCount > 0) {
+        if (count > 0) {
             await user.save();
         }
+
         let referralDoc = await Referral.findOne({ userId });
         const totalReferrals = keysArray.length;
         if (!referralDoc) {
@@ -106,7 +110,7 @@ exports.updateReferralDetails = async (req, res) => {
         });
     }
 };
-exports.updateReferralDetailswithoutSaving = async (req, res) => {
+exports.updateReferralDetails = async (req, res) => {
     try {
         const { userId } = req.body;
         const user = await User.findById(userId);
@@ -118,47 +122,46 @@ exports.updateReferralDetailswithoutSaving = async (req, res) => {
         }
         let percentageValue = 0;
         let discountValue = 0;
-        let creditedCount = 0;
         const keysArray = Array.from(user.referredTo.keys());
         let count = 0;
-        for (const referral of user.referredTo) {
+        for (const referrals of user.referredTo) {
+            const referral=referrals[1]
             if (referral.creditStatus === true) {
                 console.log(`Referral for order already credited`);
+                count++;
                 continue;
+            }
+            const orders = await Order.find({ user: `${keysArray[count++]}` });
+            for (const order of orders) {
+                if (order.status !== "DELIVERED") {
+                    console.log(`Order not delivered, skipping`);
+                    count++;
+                    continue;
+                }
+                const lastSync = new Date(order.shipmozoDetails.lastSyncAt);
+                const now = new Date();
+                const tenDaysInMs = 10 * 24 * 60 * 60 * 1000;
+                const diffMs = lastSync-now;
+                if (diffMs < tenDaysInMs) {
+                    console.log('Last sync was more than 10 days ago');
+                    count++;
+                    continue;
+                }
+                if (new Date() > referral.expiryDate) {
+                    console.log(`Referral for order has expired`);
+                    count++;
+                    continue;
+                }
+                if (referral.type === "fixed") {
+                    discountValue += referral.amount || 0;
+                    console.log(discountValue);
+                } else if (referral.type === "percentage") {
+                    percentageValue += referral.amount || 0;
+                    console.log(percentageValue);
+                }
+                referral.creditStatus = true;
                 count++;
             }
-            const orders = await Order.find({ user: keysArray[count++] });
-            if (!orders || orders.status !== "DELIVERED") {
-                console.log(`Order not delivered or not found`);
-                continue;
-            }
-
-            const lastSync = new Date(order.shipmozoDetails.lastSyncAt);
-            const now = new Date();
-            const tenDaysInMs = 10 * 24 * 60 * 60 * 1000; 
-            if (now - lastSync > tenDaysInMs) {
-                console.log('Last sync was more than 10 days ago');
-                continue;
-                count++;
-            } else {
-                console.log('Last sync is within 10 days');
-            }
-
-            if (new Date() > referral.expiryDate) {
-                console.log(`Referral for order has expired`);
-                continue;
-                count++;
-            }
-            if (referral.type === "fixed") {
-                discountValue += referral.amount || 0;
-            } else if (referral.type === "percentage") {
-                percentageValue += referral.amount || 0;
-            }
-            referral.creditStatus = true;
-            creditedCount++;
-        }
-        if (creditedCount > 0) {
-            await user.save();
         }
         let referralDoc = await Referral.findOne({ userId });
         const totalReferrals = keysArray.length;
@@ -174,6 +177,7 @@ exports.updateReferralDetailswithoutSaving = async (req, res) => {
             referralDoc.percentageValue += percentageValue;
             referralDoc.discountValue += discountValue;
         }
+        await referralDoc.save();
         res.status(200).json({
             success: true,
             message: "Referral details updated successfully",
@@ -226,4 +230,5 @@ exports.forceZeroAfterPaymentDone = async (req, res) => {
             message: "Server Error"
         });
     }
+};
 };

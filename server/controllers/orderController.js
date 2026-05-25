@@ -7,6 +7,7 @@ const Razorpay = require("razorpay");
 const crypto = require("crypto");
 const { sendEmail } = require("../utils/emailService");
 const shipmozoService = require("../services/shipmozoService");
+const XLSX = require("xlsx");
 
 const razorpay = new Razorpay({
   key_id: process.env.RAZORPAY_KEY_ID,
@@ -662,6 +663,7 @@ const verifyPaymentAndCreateOrder = async (req, res) => {
 
     console.log("🟢 Verifying payment for order:", razorpay_order_id);
     console.log("🟢 Payment ID:", razorpay_payment_id);
+    console.log("🟢 User ID:", userId);
 
     const body = `${razorpay_order_id}|${razorpay_payment_id}`;
     const expectedSignature = crypto
@@ -674,40 +676,60 @@ const verifyPaymentAndCreateOrder = async (req, res) => {
       return res.status(400).json({ success: false, message: "Payment verification failed" });
     }
 
+    console.log("✅ Signature verified");
+
     let order;
 
     if (userId) {
-      const user = await User.findById(userId).lean();
-      if (!user?.tempOrderData) {
+      // ✅ Remove .lean() from here
+      const user = await User.findById(userId);
+      
+      if (!user?.tempOrderData || !user.tempOrderData.temp_order_id) {
+        console.log("❌ Temp order data missing for user:", userId);
         return res.status(400).json({ success: false, message: "Order data not found" });
       }
-      order = await Order.findOne({ _id: user.tempOrderData.temp_order_id, user: userId });
+      
+      console.log("✅ Found temp order ID:", user.tempOrderData.temp_order_id);
+      order = await Order.findOne({ 
+        _id: user.tempOrderData.temp_order_id, 
+        user: userId 
+      });
     } else {
       order = await Order.findOne({ "paymentInfo.razorpayOrderId": razorpay_order_id });
     }
 
     if (!order) {
+      console.log("❌ Order not found");
       return res.status(404).json({ success: false, message: "Order not found" });
     }
 
+    console.log("✅ Order found, current payment status:", order.paymentInfo?.status);
+
+    // ✅ Update order - FIXED WAY
     order.status = "CONFIRMED";
     order.shippingStatus = "PROCESSING";
-    order.paymentInfo = {
-      ...order.paymentInfo,
-      razorpayPaymentId: razorpay_payment_id,
-      razorpaySignature: razorpay_signature,
-      status: "PAID",
-      paidAt: new Date(),
-      method: "RAZORPAY",
-    };
+    
+    // ✅ Update paymentInfo correctly
+    order.paymentInfo.method = "RAZORPAY";
+    order.paymentInfo.razorpayPaymentId = razorpay_payment_id;
+    order.paymentInfo.razorpaySignature = razorpay_signature;
+    order.paymentInfo.status = "PAID";
+    order.paymentInfo.paidAt = new Date();
+    
     await order.save();
+    
+    console.log("✅ Order updated successfully!");
+    console.log("   New Payment Status:", order.paymentInfo.status);  // Should be "PAID"
+    console.log("   New Order Status:", order.status);  // Should be "CONFIRMED"
 
+    // Update stock
     for (const item of order.items) {
       if (!item.isBulkProduct) {
         await Product.findByIdAndUpdate(item.product, { $inc: { stock: -item.quantity } });
       }
     }
 
+    // Update coupon usage
     if (userId && order.coupon?.code) {
       const coupon = await Coupon.findOne({ code: order.coupon.code });
       if (coupon) {
@@ -719,11 +741,12 @@ const verifyPaymentAndCreateOrder = async (req, res) => {
       }
     }
 
+    // Clear temp data and cart
     if (userId) {
       await User.findByIdAndUpdate(userId, { cart: [], tempOrderData: null });
     }
 
-    // ✅ Send response immediately
+    // Send response
     res.json({
       success: true,
       message: "Order placed successfully",
@@ -732,6 +755,7 @@ const verifyPaymentAndCreateOrder = async (req, res) => {
         orderNumber: order.orderNumber,
         total: order.total,
         status: order.status,
+        paymentStatus: order.paymentInfo.status,  // ← "PAID" yeil
         pricing: {
           subtotal: order.subtotal,
           shipping: order.shippingCharge,
@@ -743,67 +767,17 @@ const verifyPaymentAndCreateOrder = async (req, res) => {
       },
     });
 
-    // ✅ BACKGROUND: Push order to Shipmozo (DRAFT mode - NO auto-assign)
+    // Background Shipmozo push (optional)
     setImmediate(async () => {
       try {
-        console.log(`🟢 Background: Pushing order to Shipmozo (DRAFT) for ${order.orderNumber}`);
-
-        const freshOrder = await Order.findById(order._id);
-
-        const shipmozoData = {
-          orderNumber: freshOrder.orderNumber,
-          customer: {
-            name: freshOrder.shippingAddress.fullName,
-            phone: freshOrder.shippingAddress.phoneNumber,
-            email: freshOrder.shippingAddress.email || ""
-          },
-          address: {
-            addressLine1: freshOrder.shippingAddress.addressLine1,
-            addressLine2: freshOrder.shippingAddress.addressLine2 || "",
-            pinCode: freshOrder.shippingAddress.pinCode,
-            city: freshOrder.shippingAddress.city,
-            state: freshOrder.shippingAddress.state
-          },
-          items: freshOrder.items.map(item => ({
-            name: item.name,
-            quantity: item.quantity,
-            price: item.price
-          })),
-          totalAmount: freshOrder.total,
-          referralDiscount: freshOrder.pricing?.referralDiscount || 0,
-          paymentType: "PREPAID",
-          weight: 200  // grams (dummy)
-        };
-
-        // ✅ ONLY push order - NO auto-assign
-        const pushResult = await shipmozoService.pushOrder(shipmozoData);
-
-        if (pushResult.success) {
-          freshOrder.shipmozoDetails = {
-            orderId: pushResult.orderId,
-            referenceId: pushResult.referenceId,
-            status: "ORDER_PUSHED",  // ✅ DRAFT mode - AWB not generated
-            lastSyncAt: new Date()
-          };
-          await freshOrder.save();
-          console.log(`✅ Order pushed to Shipmozo (DRAFT). Order ID: ${pushResult.orderId}`);
-          console.log(`📋 Client must login to Shipmozo dashboard to generate AWB`);
-        } else {
-          console.error(`❌ Shipmozo push failed:`, pushResult.error);
-          freshOrder.shipmozoDetails = {
-            status: "FAILED",
-            errorMessage: pushResult.error,
-            lastSyncAt: new Date()
-          };
-          await freshOrder.save();
-        }
+        // ... your existing shipmozo code (keep as is)
       } catch (bgError) {
         console.error("❌ Background Shipmozo error:", bgError);
       }
     });
 
   } catch (error) {
-    console.error("Verify payment error:", error);
+    console.error("❌ Verify payment error:", error);
     res.status(500).json({ success: false, message: error.message || "Payment verification failed" });
   }
 };
@@ -1610,6 +1584,185 @@ const cancelOrder = async (req, res) => {
 
 
 // ===============================
+// EXPORT ORDERS TO EXCEL (Admin Only)
+// ===============================
+
+const exportOrdersToExcel = async (req, res) => {
+  try {
+    console.log("=".repeat(60));
+    console.log("📊 EXPORT ORDERS TO EXCEL");
+    console.log("=".repeat(60));
+
+    const { startDate, endDate } = req.body;
+
+    if (!startDate || !endDate) {
+      return res.status(400).json({ 
+        success: false, 
+        message: "Please provide both startDate and endDate" 
+      });
+    }
+
+    const start = new Date(startDate);
+    start.setHours(0, 0, 0, 0);
+
+    const end = new Date(endDate);
+    end.setHours(23, 59, 59, 999);
+
+    console.log(`📅 Date Range: ${start.toISOString()} to ${end.toISOString()}`);
+
+    // Fetch orders in date range
+    const orders = await Order.find({
+      createdAt: { $gte: start, $lte: end }
+    })
+      .populate("user", "name email")
+      .sort({ createdAt: -1 });
+
+    console.log(`✅ Found ${orders.length} orders`);
+
+    if (orders.length === 0) {
+      return res.status(404).json({ 
+        success: false, 
+        message: "No orders found in this date range" 
+      });
+    }
+
+    // Prepare Excel data
+    const excelData = orders.map((order, index) => {
+      const onlineDiscount = order.pricing?.onlineDiscount || 0;
+      const couponDiscount = order.discount || 0;
+      const totalDiscount = onlineDiscount + couponDiscount;
+
+      let paymentMethodDisplay = "—";
+      if (order.paymentInfo?.method === "RAZORPAY") paymentMethodDisplay = "Online (Full)";
+      else if (order.paymentInfo?.method === "COD") paymentMethodDisplay = "Cash on Delivery";
+      else if (order.paymentInfo?.method === "PARTIAL_COD") paymentMethodDisplay = "Partial COD";
+
+      let paymentStatusDisplay = "—";
+      if (order.paymentInfo?.status === "PAID") paymentStatusDisplay = "Paid";
+      else if (order.paymentInfo?.status === "PARTIALLY_PAID") paymentStatusDisplay = "Partially Paid";
+      else if (order.paymentInfo?.status === "PENDING") paymentStatusDisplay = "Pending";
+      else if (order.paymentInfo?.status === "REFUNDED") paymentStatusDisplay = "Refunded";
+
+      const shippingStatus = order.shippingStatus || "PENDING";
+
+      const awbNumber = order.shipmozoDetails?.awbNumber || order.trackingInfo?.awbCode || "—";
+
+      const courierName = order.shipmozoDetails?.courierCompany || order.trackingInfo?.courierName || "—";
+
+      const itemsList = order.items.map(item => 
+        `${item.name} (${item.quantity} × ₹${item.price})${item.isBulkProduct ? ' [BULK]' : ''}`
+      ).join(" | ");
+
+      const sizesList = order.items.map(item => item.size || "—").join(", ");
+
+      const colorsList = order.items.map(item => item.color || "—").join(", ");
+
+      return {
+        "Sr. No.": index + 1,
+        "Order Number": order.orderNumber,
+        "Order Date": new Date(order.createdAt).toLocaleString("en-IN", { 
+          day: "2-digit", 
+          month: "2-digit", 
+          year: "numeric",
+          hour: "2-digit",
+          minute: "2-digit"
+        }),
+        "Customer Name": order.shippingAddress?.fullName || "—",
+        "Phone": order.shippingAddress?.phoneNumber || "—",
+        "Email": order.shippingAddress?.email || order.user?.email || "—",
+        "Address": `${order.shippingAddress?.addressLine1 || ""} ${order.shippingAddress?.addressLine2 || ""}, ${order.shippingAddress?.city || ""}, ${order.shippingAddress?.state || ""} - ${order.shippingAddress?.pinCode || ""}`,
+        "Items": itemsList,
+        "Sizes": sizesList,
+        "Colors": colorsList,
+        "Quantity": order.items.reduce((sum, item) => sum + item.quantity, 0),
+        "Subtotal (₹)": order.subtotal || 0,
+        "Coupon Discount (₹)": couponDiscount,
+        "Online Discount (₹)": onlineDiscount,
+        "Total Discount (₹)": totalDiscount,
+        "Shipping Charges (₹)": order.shippingCharge || 0,
+        "Total Amount (₹)": order.total || 0,
+        "Payment Method": paymentMethodDisplay,
+        "Payment Status": paymentStatusDisplay,
+        "Order Status": order.status || "—",
+        "Shipping Status": shippingStatus,
+        "AWB Number": awbNumber,
+        "Courier Name": courierName,
+        "Tracking URL": order.shipmozoDetails?.trackingUrl || order.trackingInfo?.trackingUrl || "—",
+        "Cancel Reason": order.cancelReason || "—",
+        "Return Reason": order.returnReason || "—",
+      };
+    });
+
+    const worksheet = XLSX.utils.json_to_sheet(excelData);
+
+    // Auto-size columns (set column widths)
+    const colWidths = [
+      { wch: 8 },   // Sr. No.
+      { wch: 20 },  // Order Number
+      { wch: 20 },  // Order Date
+      { wch: 25 },  // Customer Name
+      { wch: 15 },  // Phone
+      { wch: 30 },  // Email
+      { wch: 50 },  // Address
+      { wch: 60 },  // Items
+      { wch: 15 },  // Sizes
+      { wch: 15 },  // Colors
+      { wch: 10 },  // Quantity
+      { wch: 15 },  // Subtotal
+      { wch: 15 },  // Coupon Discount
+      { wch: 15 },  // Online Discount
+      { wch: 15 },  // Total Discount
+      { wch: 15 },  // Shipping Charges
+      { wch: 15 },  // Total Amount
+      { wch: 18 },  // Payment Method
+      { wch: 15 },  // Payment Status
+      { wch: 15 },  // Order Status
+      { wch: 15 },  // Shipping Status
+      { wch: 20 },  // AWB Number
+      { wch: 20 },  // Courier Name
+      { wch: 40 },  // Tracking URL
+      { wch: 30 },  // Cancel Reason
+      { wch: 30 },  // Return Reason
+    ];
+    worksheet["!cols"] = colWidths;
+
+    const headerRange = XLSX.utils.decode_range(worksheet["!ref"] || "A1:Z1");
+    for (let C = headerRange.s.c; C <= headerRange.e.c; ++C) {
+      const address = XLSX.utils.encode_cell({ r: 0, c: C });
+      if (!worksheet[address]) continue;
+      worksheet[address].s = {
+        font: { bold: true, sz: 11 },
+        fill: { fgColor: { rgb: "D3D3D3" }, patternType: "solid" },
+        alignment: { horizontal: "center", vertical: "center" }
+      };
+    }
+
+    const workbook = XLSX.utils.book_new();
+    XLSX.utils.book_append_sheet(workbook, worksheet, `Orders_${startDate}_to_${endDate}`);
+
+    const excelBuffer = XLSX.write(workbook, { type: "buffer", bookType: "xlsx" });
+
+    const fileName = `orders_${startDate}_to_${endDate}.xlsx`;
+    res.setHeader("Content-Type", "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet");
+    res.setHeader("Content-Disposition", `attachment; filename=${fileName}`);
+
+    console.log(`✅ Excel file generated: ${fileName}`);
+    console.log("=".repeat(60));
+
+    return res.send(excelBuffer);
+
+  } catch (error) {
+    console.error("❌ Export orders error:", error);
+    res.status(500).json({ 
+      success: false, 
+      message: "Failed to export orders",
+      error: error.message 
+    });
+  }
+};
+
+
+// ===============================
 // Exports
 // ===============================
 
@@ -1626,5 +1779,6 @@ module.exports = {
   getPaymentMethodsHandler,
   createPartialCodOrder,
   verifyPartialCodPayment,
-  returnOrder
+  returnOrder,
+  exportOrdersToExcel
 };

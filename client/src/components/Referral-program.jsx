@@ -77,6 +77,7 @@ export default function ReferralProgram() {
 
     return (
       <div className="w-full bg-neutral-50">
+        {/* Hero Section - Logged In */}
         <section className="relative bg-gradient-to-r from-neutral-900 to-neutral-800 overflow-hidden">
           <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-12 sm:py-16">
             <div className="flex flex-col lg:flex-row items-center justify-between gap-8">
@@ -142,6 +143,7 @@ export default function ReferralProgram() {
           </div>
         </section>
 
+        {/* How It Works - 3 cards in a single row on ALL devices (including mobile) */}
         <section className="px-4 py-12 max-w-7xl mx-auto">
           <div className="text-center mb-8">
             <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-red-100 text-red-700 text-[10px] font-semibold tracking-wide mb-4">
@@ -149,16 +151,24 @@ export default function ReferralProgram() {
             </div>
             <h2 className="text-2xl font-serif text-neutral-900">How It Works</h2>
           </div>
-          <div className="grid md:grid-cols-3 gap-6">
+
+          {/* Three columns forced on all screens, with responsive padding/text sizes */}
+          <div className="grid grid-cols-3 gap-2 sm:gap-6">
             {[
-              { icon: <Share2 />, title: "Share Link", desc: "Send your unique referral link to friends" },
-              { icon: <UserPlus />, title: "Friend Signs Up", desc: "They register using your link" },
-              { icon: <Award />, title: "Earn Rewards", desc: "Get upto ₹100 credited to your wallet" },
+              { icon: <Share2 className="w-4 h-4 sm:w-5 sm:h-5" />, title: "Share Link", desc: "Send your unique referral link to friends" },
+              { icon: <UserPlus className="w-4 h-4 sm:w-5 sm:h-5" />, title: "Friend Signs Up", desc: "They register using your link" },
+              { icon: <Award className="w-4 h-4 sm:w-5 sm:h-5" />, title: "Earn Rewards", desc: "Get upto ₹100 credited to your wallet" },
             ].map((step, idx) => (
-              <div key={idx} className="text-center p-6 bg-white rounded-2xl border border-neutral-100 hover:border-amber-200 hover:shadow-lg transition">
-                <div className="w-12 h-12 bg-red-100 rounded-full flex items-center justify-center mx-auto mb-3 text-amber-600">{step.icon}</div>
-                <h3 className="font-semibold text-neutral-800 mb-1">{step.title}</h3>
-                <p className="text-neutral-500 text-sm">{step.desc}</p>
+              <div key={idx} className="text-center p-2 sm:p-6 bg-white rounded-2xl border border-neutral-100 hover:border-amber-200 hover:shadow-lg transition">
+                <div className="w-8 h-8 sm:w-12 sm:h-12 bg-red-100 rounded-full flex items-center justify-center mx-auto mb-1 sm:mb-3 text-amber-600">
+                  {step.icon}
+                </div>
+                <h3 className="font-semibold text-neutral-800 text-xs sm:text-base mb-0.5 sm:mb-1">
+                  {step.title}
+                </h3>
+                <p className="text-neutral-500 text-[10px] sm:text-sm leading-tight sm:leading-normal">
+                  {step.desc}
+                </p>
               </div>
             ))}
           </div>
@@ -167,57 +177,55 @@ export default function ReferralProgram() {
     );
   }
 
+  // Non-logged in view (sign-up prompt)
   return (
     <div className="w-full bg-neutral-50">
-     <section className="relative bg-gradient-to-r from-neutral-900 to-neutral-800">
-  <div className="w-full px-4 sm:px-6 lg:px-8 py-6 sm:py-8">
-    <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between w-full max-w-5xl mx-auto">
+      <section className="relative bg-gradient-to-r from-neutral-900 to-neutral-800">
+        <div className="w-full px-4 sm:px-6 lg:px-8 py-6 sm:py-8">
+          <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between w-full max-w-5xl mx-auto">
+            {/* Left Side */}
+            <div className="max-w-md text-center sm:text-left mx-auto sm:mx-0">
+              <div className="inline-flex items-center gap-2 bg-red-500/10 rounded-full px-3 py-0.5 mb-2">
+                <Gift className="w-3 h-3 text-red-400" />
+                <span className="text-[9px] font-medium text-red-400 uppercase tracking-wider">
+                  Limited Time
+                </span>
+              </div>
+              <h1 className="text-2xl sm:text-3xl lg:text-4xl font-light text-white tracking-tight">
+                Refer & Earn{" "}
+                <span className="font-serif italic text-red-400 font-semibold">
+                  ₹7500
+                </span>
+              </h1>
+              <p className="text-white/50 text-xs sm:text-sm mt-1 max-w-md mx-auto sm:mx-0">
+                Invite friends, earn rewards on every successful signup.
+              </p>
+            </div>
 
-      {/* Left Side */}
-      <div className="max-w-md text-center sm:text-left mx-auto sm:mx-0">
-        <div className="inline-flex items-center gap-2 bg-red-500/10 rounded-full px-3 py-0.5 mb-2">
-          <Gift className="w-3 h-3 text-red-400" />
-          <span className="text-[9px] font-medium text-red-400 uppercase tracking-wider">
-            Limited Time
-          </span>
+            {/* Right Side */}
+            <div className="flex-shrink-0 mt-4 sm:mt-0 flex justify-center sm:justify-end">
+              <button
+                onClick={handleSignUp}
+                className="bg-gradient-to-r from-red-500 to-red-600 text-white px-7 py-3 rounded-full font-semibold text-sm shadow-lg hover:shadow-amber-500/30 transition inline-flex items-center gap-2 whitespace-nowrap"
+              >
+                Sign Up <ArrowUpRight className="w-4 h-4" />
+              </button>
+            </div>
+          </div>
         </div>
-
-        <h1 className="text-2xl sm:text-3xl lg:text-4xl font-light text-white tracking-tight">
-          Refer & Earn{" "}
-          <span className="font-serif italic text-red-400 font-semibold">
-            ₹7500
-          </span>
-        </h1>
-
-        <p className="text-white/50 text-xs sm:text-sm mt-1 max-w-md mx-auto sm:mx-0">
-          Invite friends, earn rewards on every successful signup.
-        </p>
-      </div>
-
-      {/* Right Side */}
-      <div className="flex-shrink-0 mt-4 sm:mt-0 flex justify-center sm:justify-end">
-        <button
-          onClick={handleSignUp}
-          className="bg-gradient-to-r from-red-500 to-red-600 text-white px-7 py-3 rounded-full font-semibold text-sm shadow-lg hover:shadow-amber-500/30 transition inline-flex items-center gap-2 whitespace-nowrap"
-        >
-          Sign Up <ArrowUpRight className="w-4 h-4" />
-        </button>
-      </div>
-
-    </div>
-  </div>
-</section>
+      </section>
 
       <section className="px-4 py-12 max-w-7xl mx-auto">
         <div className="text-center mb-6 sm:mb-8">
           <h2 className="text-xl sm:text-2xl font-serif text-neutral-900">Why Join?</h2>
         </div>
 
+        {/* 3 cards in a row on mobile as well */}
         <div className="grid grid-cols-3 gap-2 sm:gap-5">
           {[
-            { icon: <Package />, title: "Referral Code", desc: "Share this code with friends" },
-            { icon: <Sparkles />, title: "Special Offers", desc: "First order discount" },
-            { icon: <Lock />, title: "Secure Payment", desc: "128‑bit SSL encryption" },
+            { icon: <Package className="w-4 h-4 sm:w-5 sm:h-5" />, title: "Referral Code", desc: "Share this code with friends" },
+            { icon: <Sparkles className="w-4 h-4 sm:w-5 sm:h-5" />, title: "Special Offers", desc: "First order discount" },
+            { icon: <Lock className="w-4 h-4 sm:w-5 sm:h-5" />, title: "Secure Payment", desc: "128‑bit SSL encryption" },
           ].map((feature, i) => (
             <div
               key={i}

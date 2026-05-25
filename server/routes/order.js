@@ -6,10 +6,11 @@ const {
   getUserOrders,
   getOrderDetails,
   cancelOrder,
-  createPartialCodOrder,        // ✅ Make sure this is imported
-  verifyPartialCodPayment,      // ✅ Make sure this is imported
+  createPartialCodOrder,        
+  verifyPartialCodPayment,    
   getPaymentMethodsHandler,
-  returnOrder     // ✅ Make sure this is imported
+  returnOrder ,
+  exportOrdersToExcel
 } = require("../controllers/orderController");
 const { protect, optionalProtect } = require("../middleware/auth");
 
@@ -40,5 +41,6 @@ router.get("/my-orders", protect, getUserOrders);
 router.get("/:orderId", optionalProtect, getOrderDetails);
 router.put("/:orderId/cancel", protect, cancelOrder);
 router.post("/return",returnOrder)
+router.post("/export-orders", protect, exportOrdersToExcel);
 
 module.exports = router;

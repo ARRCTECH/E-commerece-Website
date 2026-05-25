@@ -7,7 +7,7 @@
     "start": "node src/index.js",
     "dev": "nodemon src/index.js",
     "create-indexes": "node scripts/create-indexes.js",
-"test": "echo \"No server tests yet\""
+    "test": "echo \"No server tests yet\""
   },
   "dependencies": {
     "bcryptjs": "^2.4.3",
@@ -26,7 +26,8 @@
     "nodemailer": "^6.9.4",
     "razorpay": "^2.9.6",
     "slugify": "^1.6.6",
-    "twilio": "^4.15.0"
+    "twilio": "^4.15.0",
+    "xlsx": "^0.18.5"
   },
   "devDependencies": {
     "nodemon": "^3.1.10"
