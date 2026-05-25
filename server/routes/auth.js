@@ -14,7 +14,8 @@ const {
   verifyPhoneOTP,
   googleSignIn,
   updateProfileDetails,
-  getProfileDetails
+  getProfileDetails,
+  getAllProfile
   
 } = require("../controllers/authController")
 const { firebaseAuth, authorize } = require("../middleware/firebaseAuth")
@@ -181,6 +182,7 @@ router.delete("/account", deleteAccount)
 router.get("/profile/:id", getProfile)
 router.get("/getprofiledetails",getProfileDetails)
 router.put("/updateprofiledetails",updateProfileDetails)
+router.get("/getallprofile",getAllProfile)
 
 // Admin only routes
 router.get("/admin/users", authorize("admin"), async (req, res) => {

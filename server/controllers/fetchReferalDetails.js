@@ -191,3 +191,44 @@ exports.updateReferralDetails = async (req, res) => {
         });
     }
 };
+
+
+exports.forceZeroAfterPaymentDone = async (req, res) => {
+    try {
+        const { userId } = req.body;
+        if (!userId) {
+            return res.status(400).json({
+                success: false,
+                message: "userId is required"
+            });
+        }
+        let referralDoc = await Referral.findOne({ userId });
+        if (!referralDoc) {
+            referralDoc = new Referral({
+                userId,
+                numberOfReferrals: 0,
+                percentageValue: 0,
+                discountValue: 0,
+            });
+        } else {
+            // Force zero: reset fields to zero
+            referralDoc.percentageValue = 0;
+            referralDoc.discountValue = 0;
+            // Optionally reset numberOfReferrals if needed
+            referralDoc.numberOfReferrals = 0;
+        }
+        await referralDoc.save();
+        res.status(200).json({
+            success: true,
+            message: "Referral details updated successfully (forced zero)",
+            data: referralDoc
+        });
+    } catch (error) {
+        console.error("Update Referral Error:", error);
+        res.status(500).json({
+            success: false,
+            message: "Server Error"
+        });
+    }
+};
+};
