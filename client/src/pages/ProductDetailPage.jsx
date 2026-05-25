@@ -104,13 +104,6 @@ const ProductDetailPage = () => {
     }
   }, [currentProduct, isBulkProduct])
 
-  useEffect(() => {
-  if (isBulkProduct && currentProduct?.colors?.length > 0) {
-    const allColors = currentProduct.colors.map(color => color.name);
-    setSelectedColors(allColors);
-  }
-}, [isBulkProduct, currentProduct?._id]);
-
   const getDiscountPercentage = () => {
     if (isBulkProduct) {
       const original = currentProduct?.bulkConfig?.originalPricePerSet
@@ -1209,30 +1202,78 @@ const ProductDetailPage = () => {
           </motion.div>)}
       </AnimatePresence>
       <AnimatePresence>
-        {showSizeGuide && (
-          <motion.div
-            className="fixed inset-0 bg-black bg-opacity-50 z-50 flex items-center justify-center p-4"
-            initial={{ opacity: 0 }}
-            animate={{ opacity: 1 }}
-            exit={{ opacity: 0 }}
-            onClick={() => setShowSizeGuide(false)}>
-            <motion.div
-              className="relative bg-white rounded-xl w-full max-w-md max-h-[80vh] overflow-y-auto"
-              initial={{ scale: 0.9, y: 20 }}
-              animate={{ scale: 1, y: 0 }}
-              exit={{ scale: 0.9, y: 20 }}
-              onClick={e => e.stopPropagation()}>
-              <div className="p-4">
-                <div className="flex items-center justify-between mb-3">
-                  <h3 className="text-lg font-bold text-gray-900">Size Guide</h3>
-                  <button onClick={() => setShowSizeGuide(false)} className="p-1 rounded-full hover:bg-gray-100">
-                    <X className="w-5 h-5 text-gray-700" />
-                  </button>
-                </div>
-                <img src="/6.webp" alt="Size Guide" className="w-full h-auto rounded-lg" />
-              </div>
-            </motion.div>
-          </motion.div>)}
+       {showSizeGuide && (
+  <motion.div
+    className="fixed inset-0 bg-black bg-opacity-80 z-50 flex items-center justify-center p-4"
+    initial={{ opacity: 0 }}
+    animate={{ opacity: 1 }}
+    exit={{ opacity: 0 }}
+    onClick={() => setShowSizeGuide(false)}
+  >
+    <motion.div
+      className="relative bg-white rounded-2xl w-full max-w-3xl max-h-[90vh] overflow-hidden"
+      initial={{ scale: 0.9, y: 20 }}
+      animate={{ scale: 1, y: 0 }}
+      exit={{ scale: 0.9, y: 20 }}
+      onClick={(e) => e.stopPropagation()}
+    >
+      {/* Better Header with Zoom Hint */}
+      <div className="sticky top-0 bg-white border-b border-gray-100 px-5 py-3 flex items-center justify-between z-10">
+        <div>
+          <h3 className="text-lg font-bold text-gray-900">📏 Size Measurement Guide</h3>
+          <p className="text-xs text-gray-500 mt-0.5">Pinch to zoom | Click to enlarge</p>
+        </div>
+        <button 
+          onClick={() => setShowSizeGuide(false)} 
+          className="p-2 rounded-full hover:bg-gray-100 transition-colors"
+        >
+          <X className="w-5 h-5 text-gray-600" />
+        </button>
+      </div>
+      
+      {/* Scrollable Image Container with Zoom */}
+      <div className="p-4 overflow-y-auto max-h-[calc(90vh-80px)]">
+        <div className="relative group">
+          <img 
+            src="/6.webp" 
+            alt="Size Guide - Measurement Chart" 
+            className="w-full h-auto rounded-lg cursor-zoom-in transition-transform duration-200 hover:scale-[1.02]"
+            onClick={(e) => {
+              // Open fullscreen image on click
+              const modal = document.createElement('div');
+              modal.className = 'fixed inset-0 bg-black z-[60] flex items-center justify-center p-4 cursor-pointer';
+              modal.onclick = () => modal.remove();
+              const img = document.createElement('img');
+              img.src = '/6.webp';
+              img.className = 'max-w-full max-h-full object-contain';
+              modal.appendChild(img);
+              document.body.appendChild(modal);
+            }}
+            onError={(e) => {
+              e.target.onerror = null;
+              e.target.src = "https://placehold.co/800x1000/f8f9fa/6c757d?text=Size+Guide+Image+Not+Found";
+            }}
+          />
+          
+          {/* Zoom Hint Overlay */}
+          <div className="absolute bottom-3 right-3 bg-black/60 backdrop-blur-sm rounded-full px-3 py-1.5 text-white text-xs flex items-center gap-1.5 opacity-0 group-hover:opacity-100 transition-opacity">
+            <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0zM10 7v3m0 0v3m0-3h3m-3 0H7" />
+            </svg>
+            <span>Click to enlarge</span>
+          </div>
+        </div>
+        
+        {/* Additional Info Footer */}
+        <div className="mt-4 pt-3 border-t border-gray-100 text-center">
+          <p className="text-[10px] text-gray-400">
+            * Measurements are in inches. For best fit, please refer to this guide before ordering.
+          </p>
+        </div>
+      </div>
+    </motion.div>
+  </motion.div>
+)}
       </AnimatePresence>
       <div className="lg:hidden fixed bottom-0 left-0 right-0 bg-white border-t border-gray-200 p-4 z-40 shadow-lg">
         <div className="flex gap-3">
@@ -1254,7 +1295,5 @@ const ProductDetailPage = () => {
           </button>
         </div>
       </div>
-    </div>
-    );
-  }
+    </div>)}
 export default ProductDetailPage
