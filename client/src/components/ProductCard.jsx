@@ -85,6 +85,13 @@ const ProductCard = ({ product, wishlistItems, user, onAddToCart, onWishlist }) 
   }, [showBulkModal]);
 
   useEffect(() => {
+  if (showBulkModal && isBulkProduct && product?.colors?.length > 0) {
+    const allColors = product.colors.map(color => color.name);
+    setSelectedColors(allColors);
+  }
+}, [showBulkModal, isBulkProduct, product?._id]);
+
+  useEffect(() => {
     if (showBulkModal && modalRef.current) {
       const focusable = modalRef.current.querySelectorAll('button, [href], input, select, textarea, [tabindex]:not([tabindex="-1"])');
       if (focusable.length) focusable[0].focus();
