@@ -7,6 +7,8 @@ import {
   Facebook, Twitter, Linkedin, Send, Copy, Shield, Edit2,
   ChevronRight, Sparkles, X, Menu
 } from "lucide-react";
+import InvoiceDownloadButton from "../pages/InvoiceDownloadButton";
+
 import { changePassword, uploadAvatar } from "../store/slices/authSlice";
 import { fetchUserOrders } from "../store/slices/orderSlice";
 import { fetchWishlist } from "../store/slices/wishlistSlice";
@@ -682,6 +684,9 @@ const ProfilePage = () => {
                                       {order.status}
                                     </span>
                                   </div>
+                                   <div className="w-full sm:w-auto mt-3 sm:mt-0">
+                <InvoiceDownloadButton order={order} />
+              </div>
                                 </div>
                               </div>
                             ))}
