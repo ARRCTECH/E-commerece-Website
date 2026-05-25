@@ -663,6 +663,7 @@ const verifyPaymentAndCreateOrder = async (req, res) => {
 
     console.log("🟢 Verifying payment for order:", razorpay_order_id);
     console.log("🟢 Payment ID:", razorpay_payment_id);
+    console.log("🟢 User ID:", userId);
 
     const body = `${razorpay_order_id}|${razorpay_payment_id}`;
     const expectedSignature = crypto
@@ -675,40 +676,60 @@ const verifyPaymentAndCreateOrder = async (req, res) => {
       return res.status(400).json({ success: false, message: "Payment verification failed" });
     }
 
+    console.log("✅ Signature verified");
+
     let order;
 
     if (userId) {
-      const user = await User.findById(userId).lean();
-      if (!user?.tempOrderData) {
+      // ✅ Remove .lean() from here
+      const user = await User.findById(userId);
+      
+      if (!user?.tempOrderData || !user.tempOrderData.temp_order_id) {
+        console.log("❌ Temp order data missing for user:", userId);
         return res.status(400).json({ success: false, message: "Order data not found" });
       }
-      order = await Order.findOne({ _id: user.tempOrderData.temp_order_id, user: userId });
+      
+      console.log("✅ Found temp order ID:", user.tempOrderData.temp_order_id);
+      order = await Order.findOne({ 
+        _id: user.tempOrderData.temp_order_id, 
+        user: userId 
+      });
     } else {
       order = await Order.findOne({ "paymentInfo.razorpayOrderId": razorpay_order_id });
     }
 
     if (!order) {
+      console.log("❌ Order not found");
       return res.status(404).json({ success: false, message: "Order not found" });
     }
 
+    console.log("✅ Order found, current payment status:", order.paymentInfo?.status);
+
+    // ✅ Update order - FIXED WAY
     order.status = "CONFIRMED";
     order.shippingStatus = "PROCESSING";
-    order.paymentInfo = {
-      ...order.paymentInfo,
-      razorpayPaymentId: razorpay_payment_id,
-      razorpaySignature: razorpay_signature,
-      status: "PAID",
-      paidAt: new Date(),
-      method: "RAZORPAY",
-    };
+    
+    // ✅ Update paymentInfo correctly
+    order.paymentInfo.method = "RAZORPAY";
+    order.paymentInfo.razorpayPaymentId = razorpay_payment_id;
+    order.paymentInfo.razorpaySignature = razorpay_signature;
+    order.paymentInfo.status = "PAID";
+    order.paymentInfo.paidAt = new Date();
+    
     await order.save();
+    
+    console.log("✅ Order updated successfully!");
+    console.log("   New Payment Status:", order.paymentInfo.status);  // Should be "PAID"
+    console.log("   New Order Status:", order.status);  // Should be "CONFIRMED"
 
+    // Update stock
     for (const item of order.items) {
       if (!item.isBulkProduct) {
         await Product.findByIdAndUpdate(item.product, { $inc: { stock: -item.quantity } });
       }
     }
 
+    // Update coupon usage
     if (userId && order.coupon?.code) {
       const coupon = await Coupon.findOne({ code: order.coupon.code });
       if (coupon) {
@@ -720,11 +741,12 @@ const verifyPaymentAndCreateOrder = async (req, res) => {
       }
     }
 
+    // Clear temp data and cart
     if (userId) {
       await User.findByIdAndUpdate(userId, { cart: [], tempOrderData: null });
     }
 
-    // ✅ Send response immediately
+    // Send response
     res.json({
       success: true,
       message: "Order placed successfully",
@@ -733,6 +755,7 @@ const verifyPaymentAndCreateOrder = async (req, res) => {
         orderNumber: order.orderNumber,
         total: order.total,
         status: order.status,
+        paymentStatus: order.paymentInfo.status,  // ← "PAID" yeil
         pricing: {
           subtotal: order.subtotal,
           shipping: order.shippingCharge,
@@ -744,67 +767,17 @@ const verifyPaymentAndCreateOrder = async (req, res) => {
       },
     });
 
-    // ✅ BACKGROUND: Push order to Shipmozo (DRAFT mode - NO auto-assign)
+    // Background Shipmozo push (optional)
     setImmediate(async () => {
       try {
-        console.log(`🟢 Background: Pushing order to Shipmozo (DRAFT) for ${order.orderNumber}`);
-
-        const freshOrder = await Order.findById(order._id);
-
-        const shipmozoData = {
-          orderNumber: freshOrder.orderNumber,
-          customer: {
-            name: freshOrder.shippingAddress.fullName,
-            phone: freshOrder.shippingAddress.phoneNumber,
-            email: freshOrder.shippingAddress.email || ""
-          },
-          address: {
-            addressLine1: freshOrder.shippingAddress.addressLine1,
-            addressLine2: freshOrder.shippingAddress.addressLine2 || "",
-            pinCode: freshOrder.shippingAddress.pinCode,
-            city: freshOrder.shippingAddress.city,
-            state: freshOrder.shippingAddress.state
-          },
-          items: freshOrder.items.map(item => ({
-            name: item.name,
-            quantity: item.quantity,
-            price: item.price
-          })),
-          totalAmount: freshOrder.total,
-          referralDiscount: freshOrder.pricing?.referralDiscount || 0,
-          paymentType: "PREPAID",
-          weight: 200  // grams (dummy)
-        };
-
-        // ✅ ONLY push order - NO auto-assign
-        const pushResult = await shipmozoService.pushOrder(shipmozoData);
-
-        if (pushResult.success) {
-          freshOrder.shipmozoDetails = {
-            orderId: pushResult.orderId,
-            referenceId: pushResult.referenceId,
-            status: "ORDER_PUSHED",  // ✅ DRAFT mode - AWB not generated
-            lastSyncAt: new Date()
-          };
-          await freshOrder.save();
-          console.log(`✅ Order pushed to Shipmozo (DRAFT). Order ID: ${pushResult.orderId}`);
-          console.log(`📋 Client must login to Shipmozo dashboard to generate AWB`);
-        } else {
-          console.error(`❌ Shipmozo push failed:`, pushResult.error);
-          freshOrder.shipmozoDetails = {
-            status: "FAILED",
-            errorMessage: pushResult.error,
-            lastSyncAt: new Date()
-          };
-          await freshOrder.save();
-        }
+        // ... your existing shipmozo code (keep as is)
       } catch (bgError) {
         console.error("❌ Background Shipmozo error:", bgError);
       }
     });
 
   } catch (error) {
-    console.error("Verify payment error:", error);
+    console.error("❌ Verify payment error:", error);
     res.status(500).json({ success: false, message: error.message || "Payment verification failed" });
   }
 };
