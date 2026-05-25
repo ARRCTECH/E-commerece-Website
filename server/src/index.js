@@ -1,3 +1,4 @@
+require('dotenv').config();
 const dotenv = require("dotenv")
 const path = require("path")
 // Load environment variables first - check for production env file first

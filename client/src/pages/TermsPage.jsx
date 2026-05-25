@@ -128,9 +128,7 @@ const TermsPage = () => {
               Please read these terms and conditions carefully before using our services
             </p>
             <div className="inline-block p-4 bg-white rounded-lg shadow-md">
-              <p className="text-sm text-gray-600">
-                <strong>Last Updated:</strong> January 15, 2024
-              </p>
+              
             </div>
           </motion.div>
         </div>

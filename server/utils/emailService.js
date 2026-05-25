@@ -31,7 +31,7 @@ const templates = {
             Your account has been created with the email: <strong>${data.email}</strong>
           </p>
           <div style="text-align: center; margin: 30px 0;">
-            <a href="${process.env.FRONTEND_URL || "http://localhost:3000"}" 
+            <a href="https://factorysaleusa.com/"
                style="background: #ec4899; color: white; padding: 12px 30px; text-decoration: none; border-radius: 6px; font-weight: bold;">
               Start Shopping
             </a>
@@ -42,7 +42,7 @@ const templates = {
         </div>
         <div style="background: #1f2937; padding: 20px; text-align: center;">
           <p style="color: #9ca3af; margin: 0; font-size: 14px;">
-            © 2024 Factory Sale. All rights reserved.
+            © 2026 Factory Sale. All rights reserved.
           </p>
         </div>
       </div>
@@ -76,7 +76,7 @@ const templates = {
         </div>
         <div style="background: #1f2937; padding: 20px; text-align: center;">
           <p style="color: #9ca3af; margin: 0; font-size: 14px;">
-            © 2024 Factory Sale. All rights reserved.
+            © 2026 Factory Sale. All rights reserved.
           </p>
         </div>
       </div>
@@ -315,7 +315,7 @@ info@factorysaleusa.com</a>
         </div>
         <div style="background: #1f2937; padding: 25px; text-align: center;">
           <p style="color: #9ca3af; margin: 0 0 10px 0; font-size: 14px;">
-            © 2024 Factory Sale. All rights reserved.
+            © 2026 Factory Sale. All rights reserved.
           </p>
           <p style="color: #6b7280; margin: 0; font-size: 12px;">
             You received this email because you placed an order with us. If you have any questions, please contact support.
