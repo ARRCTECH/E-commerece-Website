@@ -106,4 +106,9 @@ createPartialCodOrder: (orderData) =>
   
   cancelOrder: (orderId, reason) =>
     api.put(`/orders/${orderId}/cancel`, { reason }),
+  
+   exportOrders: (startDate, endDate) =>
+    api.post("/orders/export-orders", { startDate, endDate }, {
+      responseType: "blob"  // Important for file download
+    }),
 };

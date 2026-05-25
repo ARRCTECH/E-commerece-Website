@@ -7,6 +7,7 @@ const Razorpay = require("razorpay");
 const crypto = require("crypto");
 const { sendEmail } = require("../utils/emailService");
 const shipmozoService = require("../services/shipmozoService");
+const XLSX = require("xlsx");
 
 const razorpay = new Razorpay({
   key_id: process.env.RAZORPAY_KEY_ID,
@@ -1610,6 +1611,185 @@ const cancelOrder = async (req, res) => {
 
 
 // ===============================
+// EXPORT ORDERS TO EXCEL (Admin Only)
+// ===============================
+
+const exportOrdersToExcel = async (req, res) => {
+  try {
+    console.log("=".repeat(60));
+    console.log("📊 EXPORT ORDERS TO EXCEL");
+    console.log("=".repeat(60));
+
+    const { startDate, endDate } = req.body;
+
+    if (!startDate || !endDate) {
+      return res.status(400).json({ 
+        success: false, 
+        message: "Please provide both startDate and endDate" 
+      });
+    }
+
+    const start = new Date(startDate);
+    start.setHours(0, 0, 0, 0);
+
+    const end = new Date(endDate);
+    end.setHours(23, 59, 59, 999);
+
+    console.log(`📅 Date Range: ${start.toISOString()} to ${end.toISOString()}`);
+
+    // Fetch orders in date range
+    const orders = await Order.find({
+      createdAt: { $gte: start, $lte: end }
+    })
+      .populate("user", "name email")
+      .sort({ createdAt: -1 });
+
+    console.log(`✅ Found ${orders.length} orders`);
+
+    if (orders.length === 0) {
+      return res.status(404).json({ 
+        success: false, 
+        message: "No orders found in this date range" 
+      });
+    }
+
+    // Prepare Excel data
+    const excelData = orders.map((order, index) => {
+      const onlineDiscount = order.pricing?.onlineDiscount || 0;
+      const couponDiscount = order.discount || 0;
+      const totalDiscount = onlineDiscount + couponDiscount;
+
+      let paymentMethodDisplay = "—";
+      if (order.paymentInfo?.method === "RAZORPAY") paymentMethodDisplay = "Online (Full)";
+      else if (order.paymentInfo?.method === "COD") paymentMethodDisplay = "Cash on Delivery";
+      else if (order.paymentInfo?.method === "PARTIAL_COD") paymentMethodDisplay = "Partial COD";
+
+      let paymentStatusDisplay = "—";
+      if (order.paymentInfo?.status === "PAID") paymentStatusDisplay = "Paid";
+      else if (order.paymentInfo?.status === "PARTIALLY_PAID") paymentStatusDisplay = "Partially Paid";
+      else if (order.paymentInfo?.status === "PENDING") paymentStatusDisplay = "Pending";
+      else if (order.paymentInfo?.status === "REFUNDED") paymentStatusDisplay = "Refunded";
+
+      const shippingStatus = order.shippingStatus || "PENDING";
+
+      const awbNumber = order.shipmozoDetails?.awbNumber || order.trackingInfo?.awbCode || "—";
+
+      const courierName = order.shipmozoDetails?.courierCompany || order.trackingInfo?.courierName || "—";
+
+      const itemsList = order.items.map(item => 
+        `${item.name} (${item.quantity} × ₹${item.price})${item.isBulkProduct ? ' [BULK]' : ''}`
+      ).join(" | ");
+
+      const sizesList = order.items.map(item => item.size || "—").join(", ");
+
+      const colorsList = order.items.map(item => item.color || "—").join(", ");
+
+      return {
+        "Sr. No.": index + 1,
+        "Order Number": order.orderNumber,
+        "Order Date": new Date(order.createdAt).toLocaleString("en-IN", { 
+          day: "2-digit", 
+          month: "2-digit", 
+          year: "numeric",
+          hour: "2-digit",
+          minute: "2-digit"
+        }),
+        "Customer Name": order.shippingAddress?.fullName || "—",
+        "Phone": order.shippingAddress?.phoneNumber || "—",
+        "Email": order.shippingAddress?.email || order.user?.email || "—",
+        "Address": `${order.shippingAddress?.addressLine1 || ""} ${order.shippingAddress?.addressLine2 || ""}, ${order.shippingAddress?.city || ""}, ${order.shippingAddress?.state || ""} - ${order.shippingAddress?.pinCode || ""}`,
+        "Items": itemsList,
+        "Sizes": sizesList,
+        "Colors": colorsList,
+        "Quantity": order.items.reduce((sum, item) => sum + item.quantity, 0),
+        "Subtotal (₹)": order.subtotal || 0,
+        "Coupon Discount (₹)": couponDiscount,
+        "Online Discount (₹)": onlineDiscount,
+        "Total Discount (₹)": totalDiscount,
+        "Shipping Charges (₹)": order.shippingCharge || 0,
+        "Total Amount (₹)": order.total || 0,
+        "Payment Method": paymentMethodDisplay,
+        "Payment Status": paymentStatusDisplay,
+        "Order Status": order.status || "—",
+        "Shipping Status": shippingStatus,
+        "AWB Number": awbNumber,
+        "Courier Name": courierName,
+        "Tracking URL": order.shipmozoDetails?.trackingUrl || order.trackingInfo?.trackingUrl || "—",
+        "Cancel Reason": order.cancelReason || "—",
+        "Return Reason": order.returnReason || "—",
+      };
+    });
+
+    const worksheet = XLSX.utils.json_to_sheet(excelData);
+
+    // Auto-size columns (set column widths)
+    const colWidths = [
+      { wch: 8 },   // Sr. No.
+      { wch: 20 },  // Order Number
+      { wch: 20 },  // Order Date
+      { wch: 25 },  // Customer Name
+      { wch: 15 },  // Phone
+      { wch: 30 },  // Email
+      { wch: 50 },  // Address
+      { wch: 60 },  // Items
+      { wch: 15 },  // Sizes
+      { wch: 15 },  // Colors
+      { wch: 10 },  // Quantity
+      { wch: 15 },  // Subtotal
+      { wch: 15 },  // Coupon Discount
+      { wch: 15 },  // Online Discount
+      { wch: 15 },  // Total Discount
+      { wch: 15 },  // Shipping Charges
+      { wch: 15 },  // Total Amount
+      { wch: 18 },  // Payment Method
+      { wch: 15 },  // Payment Status
+      { wch: 15 },  // Order Status
+      { wch: 15 },  // Shipping Status
+      { wch: 20 },  // AWB Number
+      { wch: 20 },  // Courier Name
+      { wch: 40 },  // Tracking URL
+      { wch: 30 },  // Cancel Reason
+      { wch: 30 },  // Return Reason
+    ];
+    worksheet["!cols"] = colWidths;
+
+    const headerRange = XLSX.utils.decode_range(worksheet["!ref"] || "A1:Z1");
+    for (let C = headerRange.s.c; C <= headerRange.e.c; ++C) {
+      const address = XLSX.utils.encode_cell({ r: 0, c: C });
+      if (!worksheet[address]) continue;
+      worksheet[address].s = {
+        font: { bold: true, sz: 11 },
+        fill: { fgColor: { rgb: "D3D3D3" }, patternType: "solid" },
+        alignment: { horizontal: "center", vertical: "center" }
+      };
+    }
+
+    const workbook = XLSX.utils.book_new();
+    XLSX.utils.book_append_sheet(workbook, worksheet, `Orders_${startDate}_to_${endDate}`);
+
+    const excelBuffer = XLSX.write(workbook, { type: "buffer", bookType: "xlsx" });
+
+    const fileName = `orders_${startDate}_to_${endDate}.xlsx`;
+    res.setHeader("Content-Type", "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet");
+    res.setHeader("Content-Disposition", `attachment; filename=${fileName}`);
+
+    console.log(`✅ Excel file generated: ${fileName}`);
+    console.log("=".repeat(60));
+
+    return res.send(excelBuffer);
+
+  } catch (error) {
+    console.error("❌ Export orders error:", error);
+    res.status(500).json({ 
+      success: false, 
+      message: "Failed to export orders",
+      error: error.message 
+    });
+  }
+};
+
+
+// ===============================
 // Exports
 // ===============================
 
@@ -1626,5 +1806,6 @@ module.exports = {
   getPaymentMethodsHandler,
   createPartialCodOrder,
   verifyPartialCodPayment,
-  returnOrder
+  returnOrder,
+  exportOrdersToExcel
 };

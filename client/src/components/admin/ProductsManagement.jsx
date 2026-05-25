@@ -67,7 +67,7 @@ const ProductsManagement = () => {
   // ✅ Filter subcategories based on selected category
   const getSubcategories = (parentId) => {
     if (!parentId) return []
-    return categories.filter(cat => 
+    return categories.filter(cat =>
       cat.parentCategory && (
         cat.parentCategory === parentId ||
         cat.parentCategory?._id === parentId ||
@@ -427,11 +427,11 @@ const ProductsManagement = () => {
   }
 
   const addColor = () => {
-    setFormData({
-      ...formData,
-      colors: [...formData.colors, { name: "", code: "", images: [] }],
-    })
-  }
+  setFormData({
+    ...formData,
+    colors: [...formData.colors, { name: "", code: "#000000", images: [] }],
+  })
+}
 
   const updateColor = (index, field, value) => {
     const newColors = [...formData.colors]
@@ -750,13 +750,13 @@ const ProductsManagement = () => {
                   </div>
                   <div>
                     <label className="block mb-1 text-sm font-medium text-gray-700">Category</label>
-                    <select 
-                      value={formData.category} 
+                    <select
+                      value={formData.category}
                       onChange={(e) => {
                         setFormData({ ...formData, category: e.target.value, subcategory: "" })
-                      }} 
-                      className="w-full px-3 py-2 border rounded-md" 
-                      required 
+                      }}
+                      className="w-full px-3 py-2 border rounded-md"
+                      required
                       disabled={editingProduct}
                     >
                       <option value="">Select Category</option>
@@ -771,9 +771,9 @@ const ProductsManagement = () => {
                   {/* Subcategory Field */}
                   <div>
                     <label className="block mb-1 text-sm font-medium text-gray-700">Subcategory</label>
-                    <select 
-                      value={formData.subcategory} 
-                      onChange={(e) => setFormData({ ...formData, subcategory: e.target.value })} 
+                    <select
+                      value={formData.subcategory}
+                      onChange={(e) => setFormData({ ...formData, subcategory: e.target.value })}
                       className="w-full px-3 py-2 border rounded-md"
                       disabled={!formData.category || editingProduct}
                     >
@@ -851,6 +851,16 @@ const ProductsManagement = () => {
                       <option value="crop">Crop</option>
                       <option value="slim">Slim</option>
                       <option value="fitted">Fitted</option>
+                      <option value="Mom">Mom</option>
+                      <option value="Baggy">Baggy</option>
+                      <option value="Barel">Barel</option>
+                      <option value="Curve">Curve</option>
+                      <option value="Straight">Straight</option>
+                      <option value="Wide leg">Wide leg</option>
+                      <option value="Super baggy">Super baggy</option>
+                      <option value="Korean baggy">Korean baggy</option>
+                      <option value="Narrow">Narrow</option>
+                      <option value="Boot cut">Boot cut</option>
                     </select>
                   </div>
                   <div>
@@ -978,12 +988,41 @@ const ProductsManagement = () => {
                   <label className="block mb-2 text-sm font-medium text-gray-700">Colors</label>
                   {formData.colors.map((color, index) => (
                     <div key={index} className="flex items-center mb-2 space-x-2">
-                      <input type="text" placeholder="Color Name" value={color.name} onChange={(e) => updateColor(index, "name", e.target.value)} className="flex-1 px-3 py-2 border rounded-md" />
-                      <input type="text" placeholder="Color Code (#hex)" value={color.code} onChange={(e) => updateColor(index, "code", e.target.value)} className="w-32 px-3 py-2 border rounded-md" />
-                      <button type="button" onClick={() => removeColor(index)} className="text-red-600 hover:text-red-800"><Trash2 className="w-4 h-4" /></button>
+                      <input
+                        type="text"
+                        placeholder="Color Name"
+                        value={color.name}
+                        onChange={(e) => updateColor(index, "name", e.target.value)}
+                        className="flex-1 px-3 py-2 border rounded-md"
+                      />
+                      <input
+                        type="color"
+                        value={color.code || "#000000"}
+                        onChange={(e) => updateColor(index, "code", e.target.value)}
+                        className="w-12 h-10 p-1 border rounded-md cursor-pointer"
+                        title="Pick a color"
+                      />
+                      <div
+                        className="w-8 h-8 border rounded shadow"
+                        style={{ backgroundColor: color.code || "#ffffff" }}
+                        title={color.code || "No color selected"}
+                      />
+                      <button
+                        type="button"
+                        onClick={() => removeColor(index)}
+                        className="text-red-600 hover:text-red-800"
+                      >
+                        <Trash2 className="w-4 h-4" />
+                      </button>
                     </div>
                   ))}
-                  <button type="button" onClick={addColor} className="text-sm text-blue-600 hover:text-blue-800">+ Add Color</button>
+                  <button
+                    type="button"
+                    onClick={addColor}
+                    className="text-sm text-blue-600 hover:text-blue-800"
+                  >
+                    + Add Color
+                  </button>
                 </div>
 
                 {/* Tags Section */}

@@ -104,7 +104,7 @@ const UsersManagement = () => {
             <option value="">All Roles</option>
             <option value="user">Users</option>
             <option value="admin">Admins</option>
-            <option value="digitalMarketer">Digital Marketers</option>
+            {/* <option value="digitalMarketer">Digital Marketers</option> */}
           </select>
         </div>
       </div>
@@ -203,7 +203,7 @@ const UsersManagement = () => {
                         >
                           <option value="user">User</option>
                           <option value="admin">Admin</option>
-                          <option value="digitalMarketer">Digital Marketer</option>
+                          {/* <option value="digitalMarketer">Digital Marketer</option> */}
                         </select>
                         <button
                           onClick={() => handleDeleteUser(user._id)}

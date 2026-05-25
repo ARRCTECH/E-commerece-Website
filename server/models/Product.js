@@ -174,7 +174,7 @@ const productSchema = new mongoose.Schema(
     },
     fits: {
       type: String,
-      enum: ["regular", "slim", "oversized", "loose", "fitted", "crop"],
+      enum: ["regular", "slim", "oversized", "loose", "fitted", "crop", "Mom", "Baggy", "Barel", "Curve", "Straight", "Wide leg", "Super baggy", "Korean baggy", "Narrow", "Boot cut"],
       default: "regular",
     },
     modelSizeFit: {
