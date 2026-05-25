@@ -545,8 +545,8 @@ const ReferralManagement = () => {
                       </td>
                       <td data-label="Referred User"><strong>{entry.referredName}</strong></td>
                       <td data-label="Amount">
-                        ₹{entry.amount.toFixed(2)}
-                        {entry.type === 'percentage' && <span style={{ fontSize: '0.7rem', marginLeft: '0.25rem' }}>({entry.amount}%)</span>}
+                        {entry.type === 'fixed' && <span style={{ fontSize: '0.8rem', marginLeft: '0.35rem' }}>₹{entry.amount.toFixed(2)}</span>}
+                        {entry.type === 'percentage' && <span style={{ fontSize: '0.8rem', marginLeft: '0.35rem' }}>{entry.amount}%</span>}
                       </td>
                       <td data-label="Type">{entry.type === 'percentage' ? '% Commission' : 'Fixed'}</td>
                       <td data-label="Referral Date">{formatDate(entry.referredAt)}</td>
