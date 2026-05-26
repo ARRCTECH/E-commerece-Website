@@ -685,7 +685,7 @@ const getProfileDetails = async (req, res) => {
     return res.status(200).json({
       success: true,
       user: {
-        name: user.name,
+        name:name.trim(),
         phoneNumber: user?.phoneNumber || null,
         dateOfBirth: user?.dateOfBirth || null,
         gender: user?.gender || null,
