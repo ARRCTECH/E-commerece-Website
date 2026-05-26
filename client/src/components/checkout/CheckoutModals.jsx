@@ -25,7 +25,7 @@ export const PaymentModal = ({
   const onlineAmount = Math.round(baseAmountForPartial * (partialPercentage / 100));
   const codAmount = baseAmountForPartial - onlineAmount;
   const showCodTab = !showPartialCod;
-  const showPartialCodTab = showPartialCod-amountCOD;
+  const showPartialCodTab = showPartialCod;
   
   // ✅ COD amount after coupon discount
   const codDiscountedAmount = originalAmount-amountCOD ? originalAmount - discountAmount-amountCOD : amount-amountCOD;
