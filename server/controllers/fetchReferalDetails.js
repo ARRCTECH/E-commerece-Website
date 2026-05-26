@@ -39,6 +39,7 @@ exports.updateReferralDetails = async (req, res) => {
         let discountValue = 0;
         const keysArray = Array.from(user.referredTo.keys());
         let count = 0;
+        let totalreferral=0;
         for (const referrals of user.referredTo) {
             const referral=referrals[1]
             if (referral.creditStatus === true) {
@@ -46,7 +47,6 @@ exports.updateReferralDetails = async (req, res) => {
                 count++;
                 continue;
             }
-            console.log(keysArray)
             const orders = await Order.find({ user: `${keysArray[count++]}` });
             for (const order of orders) {
                 if (order.status !== "DELIVERED") {
@@ -73,27 +73,26 @@ exports.updateReferralDetails = async (req, res) => {
                 } else if (referral.type === "percentage") {
                     percentageValue += referral.amount || 0;
                 }
-                const userfind=User.findByIdAndUpdate(userId)
+              
 
                 referral.creditStatus = true;
                 count++;
+                totalreferral++;
             }
         }
         if (count > 0) {
             await user.save();
         }
-
         let referralDoc = await Referral.findOne({ userId });
-        const totalReferrals = keysArray.length;
         if (!referralDoc) {
             referralDoc = new Referral({
                 userId,
-                numberOfReferrals: totalReferrals,
+                numberOfReferrals: totalreferral,
                 percentageValue: percentageValue,
                 discountValue: discountValue,
             });
         } else {
-            referralDoc.numberOfReferrals = totalReferrals;
+            referralDoc.numberOfReferrals = totalreferral;
             referralDoc.percentageValue += percentageValue;
             referralDoc.discountValue += discountValue;
         }
