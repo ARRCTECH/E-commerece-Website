@@ -28,7 +28,7 @@ exports.getReferralDetails = async (req, res) => {
 exports.updateReferralDetails = async (req, res) => {
     try {
         const { userId } = req.body;
-        const user = await User.findById(userId);
+        const user = await User.findByIdAndUpdate(userId);
         if (!user) {
             return res.status(404).json({
                 success: false,
@@ -70,11 +70,11 @@ exports.updateReferralDetails = async (req, res) => {
                 }
                 if (referral.type === "fixed") {
                     discountValue += referral.amount || 0;
-                    console.log(discountValue);
                 } else if (referral.type === "percentage") {
                     percentageValue += referral.amount || 0;
-                    console.log(percentageValue);
                 }
+                const userfind=User.findByIdAndUpdate(userId)
+
                 referral.creditStatus = true;
                 count++;
             }

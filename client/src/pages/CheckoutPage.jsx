@@ -357,6 +357,10 @@ const CheckoutPage = () => {
     if (!calculateFinalPricing.referralDiscount) return;
     try {
       await axios.post(`${API_URL}/referral/forceZeroAfterPaymentDone`, { userId: user._id });
+      await axios.post(`${API_URL}/referral-total-earning/create`, {
+        userId: user._id,
+        amount: calculateFinalPricing.referralDiscount,
+      });
     } catch (error) {
       console.error("Failed to reset referral earnings", error);
     }
@@ -470,7 +474,7 @@ const CheckoutPage = () => {
     const originalAmount = calculateFinalPricing.originalSubtotal - calculateFinalPricing.referralDiscount;
     const onlineAmount = Math.round(originalAmount * partialPercentage / 100);
     const codAmount = originalAmount - onlineAmount;
-    
+
     const orderPayload = {
       items: getDisplayItems().map((item) => ({
         productId: item.product?._id,
