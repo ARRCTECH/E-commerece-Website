@@ -46,6 +46,7 @@ exports.updateReferralDetails = async (req, res) => {
                 count++;
                 continue;
             }
+            console.log(keysArray)
             const orders = await Order.find({ user: `${keysArray[count++]}` });
             for (const order of orders) {
                 if (order.status !== "DELIVERED") {
