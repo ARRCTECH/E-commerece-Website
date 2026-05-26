@@ -8,7 +8,8 @@ export const PaymentModal = ({
   onOnline, 
   onCOD, 
   onPartialCod, 
-  amount,           // discounted amount (Pay Online साठी)
+  amount,
+  amountCOD ,          // discounted amount (Pay Online साठी)
   originalAmount,   // original amount (COD आणि Partial COD साठी)
   showPartialCod, 
   partialPercentage, 
@@ -20,14 +21,14 @@ export const PaymentModal = ({
   if (!isOpen) return null;
   
   // Partial COD साठी original amount वरून calculate करा
-  const baseAmountForPartial = originalAmount || amount;
+  const baseAmountForPartial = originalAmount - amountCOD || amount - amountCOD;
   const onlineAmount = Math.round(baseAmountForPartial * (partialPercentage / 100));
   const codAmount = baseAmountForPartial - onlineAmount;
   const showCodTab = !showPartialCod;
-  const showPartialCodTab = showPartialCod;
+  const showPartialCodTab = showPartialCod-amountCOD;
   
   // ✅ COD amount after coupon discount
-  const codDiscountedAmount = originalAmount ? originalAmount - discountAmount : amount;
+  const codDiscountedAmount = originalAmount-amountCOD ? originalAmount - discountAmount-amountCOD : amount-amountCOD;
   
   const handleTabChange = (newTab) => {
     console.log("🔵 PaymentModal - tab changed to:", newTab);
@@ -100,6 +101,14 @@ export const PaymentModal = ({
                 <div className="text-center mb-2">
                   <p className="text-xs text-green-600">
                     Coupon "{couponCode}" applied: -₹{discountAmount}
+                  </p>
+                </div>
+              )}
+
+              {amountCOD && amountCOD > 0 && (
+                <div className="text-center mb-2">
+                  <p className="text-xs text-green-600">
+                    Referral "{codDiscountedAmount}" applied: -₹{amountCOD}
                   </p>
                 </div>
               )}
