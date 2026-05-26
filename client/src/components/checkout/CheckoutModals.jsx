@@ -104,15 +104,6 @@ export const PaymentModal = ({
                   </p>
                 </div>
               )}
-
-              {amountCOD && amountCOD > 0 && (
-                <div className="text-center mb-2">
-                  <p className="text-xs text-green-600">
-                    Referral "{codDiscountedAmount}" applied: -₹{amountCOD}
-                  </p>
-                </div>
-              )}
-              
               <p className="text-xs text-center text-red-500 mb-3">
                 *No online discount applicable on COD
               </p>
