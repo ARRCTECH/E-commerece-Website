@@ -366,6 +366,10 @@ const CheckoutPage = () => {
   const updateReferralEarnings = useCallback(async () => {
     if (!user?._id || !calculateFinalPricing.referralDiscount) return;
     try {
+      await axios.put(
+        `${API_URL}/referral/updatefetchReferral`,
+        { userId: user._id }
+      );
       await axios.post(`${API_URL}/referral/forceZeroAfterPaymentDone`, { userId: user._id });
       await axios.put(`${API_URL}/referral-total-earning/update`, {
         userId: user._id,
