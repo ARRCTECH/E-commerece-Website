@@ -33,8 +33,72 @@ const ProfilePage = () => {
     newPassword: "",
     confirmPassword: "",
   });
-  const [referralData, setReferralData] = useState(null);
-  const [totalEarning, setTotalEarning] = useState(0);
+  const [discountValue, setDiscountValue] = useState(0)
+  const API_URL = import.meta.env.VITE_API_URL || "http://localhost:5000/api";
+
+  const getReferralDetails = useCallback(async () => {
+    if (!user?._id) return;
+    try {
+      const res = await axios.put(
+        `${API_URL}/referral/updatefetchReferral`,
+        { userId: user._id }
+      );
+      setDiscountValue(res.data.data.discountValue);
+      await axios.post(`${API_URL}/referral/forceZeroAfterPaymentDone`, { userId: user._id });
+    } catch (error) {
+      console.error("Error fetching referral details:", error);
+    }
+  }, [user?._id, API_URL]);
+
+  useEffect(() => {
+    getReferralDetails();
+  }, [getReferralDetails]);
+
+  const postReferralEarnings = useCallback(async () => {
+    if (!user?._id) return;
+    const amount = discountValue;
+    if (!amount || amount === 0) return;
+
+    try {
+      await axios.post(`${API_URL}/referral-total-earning/addReferralEarnings`, {
+        userId: user._id,
+        amount,
+      });
+      console.log(`✅ Referral earning ₹${amount} posted`);
+      return true;
+    } catch (error) {
+      console.error("Failed to post referral earnings:", error);
+      return false;
+    }
+  }, [user?._id, API_URL, discountValue]);
+
+  const hasPostedEarning = useRef(false);
+
+  useEffect(() => {
+    const postAndFetch = async () => {
+      if (hasPostedEarning.current) return;
+      // Post only if discountValue is defined and > 0
+      if (!discountValue || discountValue === 0) return;
+      hasPostedEarning.current = true;
+      const posted = await postReferralEarnings();
+      if (posted) {
+        await fetchTotalEarning();
+      }
+    };
+    postAndFetch();
+  }, [discountValue, postReferralEarnings]);
+
+
+  useEffect(() => {
+    postReferralEarnings();
+  }, [postReferralEarnings]);
+
+  // ✅ Updated state to hold all earnings data
+  const [referralEarnings, setReferralEarnings] = useState({
+    balance: 0,
+    usedBalance: 0,
+    totalEarning: 0,
+  });
 
   // Modal state for save confirmation
   const [showSaveModal, setShowSaveModal] = useState(false);
@@ -77,7 +141,7 @@ const ProfilePage = () => {
   // Fetch profile details from API
   const fetchProfileDetails = useCallback(async () => {
     const token = localStorage.getItem("authToken");
-    
+
     if (!token) {
       if (user) {
         setProfileData({
@@ -135,16 +199,7 @@ const ProfilePage = () => {
     }
   }, [fetchProfileDetails]);
 
-  // Fetch orders, wishlist, referral
-  useEffect(() => {
-    if (user?._id) {
-      dispatch(fetchUserOrders({ limit: 5 }));
-      dispatch(fetchWishlist());
-      fetchReferralData();
-      fetchTotalEarning();
-    }
-  }, [user?._id, dispatch]);
-
+  // Fetch referral data (counts) from main referral collection
   const fetchReferralData = useCallback(async () => {
     if (!user?._id) return;
     try {
@@ -157,17 +212,34 @@ const ProfilePage = () => {
     }
   }, [user?._id]);
 
+  // ✅ Fetch total earnings (balance, usedBalance, totalEarning)
   const fetchTotalEarning = useCallback(async () => {
     if (!user?._id) return;
     try {
-      const res = await axios.post(`${import.meta.env.VITE_API_URL}/referral-total-earning`, {
-        userId: user._id,
+      const res = await axios.post(
+        `${import.meta.env.VITE_API_URL}/referral-total-earning/getReferralTotalEarning`,
+        { userId: user._id }
+      );
+      const earnings = res.data.data || {};
+      setReferralEarnings({
+        balance: earnings.balance || 0,
+        usedBalance: earnings.usedbalance || 0,
+        totalEarning: earnings.totalEarning || 0,
       });
-      setTotalEarning(res.data.data.totalEarning);
     } catch (error) {
-      console.error("Error calculating total earning:", error);
+      console.error("Error fetching referral earnings:", error);
     }
   }, [user?._id]);
+
+  // Fetch orders, wishlist, referral data and earnings
+  useEffect(() => {
+    if (user?._id) {
+      dispatch(fetchUserOrders({ limit: 5 }));
+      dispatch(fetchWishlist());
+      fetchReferralData();
+      fetchTotalEarning();
+    }
+  }, [user?._id, dispatch, fetchReferralData, fetchTotalEarning]);
 
   const formatDateForAPI = (dateString) => {
     if (!dateString) return null;
@@ -347,7 +419,7 @@ const ProfilePage = () => {
           <div className="relative mb-6 overflow-hidden bg-white rounded-2xl shadow-xl sm:mb-8">
             <div className="absolute top-0 right-0 w-64 h-64 bg-gradient-to-br from-red-500/10 to-rose-500/5 rounded-full -mt-32 -mr-32 blur-3xl" />
             <div className="absolute bottom-0 left-0 w-64 h-64 bg-gradient-to-tr from-amber-500/5 to-red-500/5 rounded-full -mb-32 -ml-32 blur-3xl" />
-            
+
             <div className="relative p-5 sm:p-6 md:p-8">
               <div className="flex flex-col items-center gap-5 md:flex-row md:items-start">
                 {/* Avatar - Mobile optimized */}
@@ -427,11 +499,10 @@ const ProfilePage = () => {
                         <button
                           key={tab.id}
                           onClick={() => handleTabChange(tab.id)}
-                          className={`w-full flex items-center gap-3 px-4 py-3 rounded-xl text-left text-sm font-medium transition-all duration-300 ${
-                            isActive
-                              ? "bg-gradient-to-r from-red-900 to-red-800 text-white shadow-lg"
-                              : "text-gray-600 hover:bg-red-50 hover:text-gray-700"
-                          }`}
+                          className={`w-full flex items-center gap-3 px-4 py-3 rounded-xl text-left text-sm font-medium transition-all duration-300 ${isActive
+                            ? "bg-gradient-to-r from-red-900 to-red-800 text-white shadow-lg"
+                            : "text-gray-600 hover:bg-red-50 hover:text-gray-700"
+                            }`}
                         >
                           <Icon className={`w-5 h-5 ${isActive ? "text-white" : "text-gray-400"}`} />
                           <span>{tab.label}</span>
@@ -477,11 +548,10 @@ const ProfilePage = () => {
                             <button
                               key={tab.id}
                               onClick={() => handleTabChange(tab.id)}
-                              className={`w-full flex items-center gap-3 px-4 py-3 rounded-xl text-left text-sm font-medium transition-all ${
-                                isActive
-                                  ? "bg-gradient-to-r from-red-900 to-red-800 text-white"
-                                  : "text-gray-600 hover:bg-red-50"
-                              }`}
+                              className={`w-full flex items-center gap-3 px-4 py-3 rounded-xl text-left text-sm font-medium transition-all ${isActive
+                                ? "bg-gradient-to-r from-red-900 to-red-800 text-white"
+                                : "text-gray-600 hover:bg-red-50"
+                                }`}
                             >
                               <Icon className="w-5 h-5" />
                               <span>{tab.label}</span>
@@ -572,9 +642,8 @@ const ProfilePage = () => {
                                 value={profileData.gender}
                                 onChange={(e) => handleProfileChange("gender", e.target.value)}
                                 disabled={!isEditing || isUpdatingProfile}
-                                className={`w-full px-4 py-2.5 text-gray-700 bg-white border rounded-xl transition-all focus:outline-none focus:ring-2 focus:ring-red-900/30 focus:border-gray-900 disabled:bg-red-50 disabled:text-gray-500 ${
-                                  validationErrors.gender ? "border-red-500" : "border-gray-200"
-                                }`}
+                                className={`w-full px-4 py-2.5 text-gray-700 bg-white border rounded-xl transition-all focus:outline-none focus:ring-2 focus:ring-red-900/30 focus:border-gray-900 disabled:bg-red-50 disabled:text-gray-500 ${validationErrors.gender ? "border-red-500" : "border-gray-200"
+                                  }`}
                               >
                                 <option value="">Select Gender</option>
                                 <option value="male">Male</option>
@@ -671,13 +740,12 @@ const ProfilePage = () => {
                                   <div className="flex items-center gap-3 flex-wrap">
                                     <span className="text-lg font-bold text-gray-800">₹{order.pricing?.total || 0}</span>
                                     <span
-                                      className={`px-2.5 py-1 rounded-full text-xs font-semibold capitalize ${
-                                        order.status === "delivered"
-                                          ? "bg-green-50 text-green-700 ring-1 ring-green-200"
-                                          : order.status === "shipped"
+                                      className={`px-2.5 py-1 rounded-full text-xs font-semibold capitalize ${order.status === "delivered"
+                                        ? "bg-green-50 text-green-700 ring-1 ring-green-200"
+                                        : order.status === "shipped"
                                           ? "bg-blue-50 text-blue-700 ring-1 ring-blue-200"
                                           : "bg-amber-50 text-amber-700 ring-1 ring-amber-200"
-                                      }`}
+                                        }`}
                                     >
                                       {order.status}
                                     </span>
@@ -716,11 +784,10 @@ const ProfilePage = () => {
                             </div>
                             <button
                               onClick={() => setShowPasswordForm(!showPasswordForm)}
-                              className={`px-4 py-2 text-sm font-semibold rounded-xl transition-all ${
-                                showPasswordForm
-                                  ? "text-gray-700 bg-white border border-gray-200 hover:bg-red-50"
-                                  : "text-white bg-gradient-to-r from-red-900 to-red-800 shadow-md hover:shadow-lg hover:scale-[1.02]"
-                              }`}
+                              className={`px-4 py-2 text-sm font-semibold rounded-xl transition-all ${showPasswordForm
+                                ? "text-gray-700 bg-white border border-gray-200 hover:bg-red-50"
+                                : "text-white bg-gradient-to-r from-red-900 to-red-800 shadow-md hover:shadow-lg hover:scale-[1.02]"
+                                }`}
                             >
                               {showPasswordForm ? "Cancel" : "Change Password"}
                             </button>
@@ -769,7 +836,7 @@ const ProfilePage = () => {
                       </motion.div>
                     )}
 
-                    {/* REFERRAL TAB - Mobile responsive */}
+                    {/* REFERRAL TAB - Updated with balance, usedBalance, totalEarning */}
                     {activeTab === "referral" && (
                       <motion.div
                         key="referral"
@@ -789,18 +856,29 @@ const ProfilePage = () => {
                         </div>
 
                         <div className="space-y-5">
-                          <div className="grid gap-4 sm:grid-cols-2">
+                          {/* Three stat cards: Total Earnings, Available Balance, Used Balance */}
+                          <div className="grid gap-4 sm:grid-cols-3">
                             <div className="relative p-5 overflow-hidden bg-gradient-to-br from-red-700 to-red-800 rounded-2xl shadow-xl">
-                              <div className="absolute top-0 right-0 w-32 h-32 bg-white/5 rounded-full -mt-16 -mr-16 blur-2xl" />
-                              <p className="relative text-sm font-medium text-gray-200">Total Referrals</p>
-                              <p className="relative mt-2 text-3xl font-bold text-white">{referralData?.numberOfReferrals || 0}</p>
+                              <p className="relative text-sm font-medium text-gray-200">Total Earnings</p>
+                              <p className="relative mt-2 text-3xl font-bold text-white">
+                                ₹{Math.round(referralEarnings.totalEarning)}
+                              </p>
                             </div>
                             <div className="relative p-5 overflow-hidden bg-white border border-gray-200 rounded-2xl shadow-lg">
-                              <p className="text-sm font-medium text-gray-500">Referral Earnings</p>
-                              <p className="mt-2 text-3xl font-bold text-gray-900">₹{Math.round(totalEarning)}</p>
+                              <p className="text-sm font-medium text-gray-500">Available Balance</p>
+                              <p className="mt-2 text-3xl font-bold text-gray-900">
+                                ₹{Math.round(referralEarnings.balance)}
+                              </p>
+                            </div>
+                            <div className="relative p-5 overflow-hidden bg-white border border-gray-200 rounded-2xl shadow-lg">
+                              <p className="text-sm font-medium text-gray-500">Used Balance</p>
+                              <p className="mt-2 text-3xl font-bold text-gray-900">
+                                ₹{Math.round(referralEarnings.usedBalance)}
+                              </p>
                             </div>
                           </div>
-                          
+
+                          {/* Share Referral Link Section */}
                           <div className="p-5 bg-white border border-gray-200 rounded-2xl shadow-lg">
                             <h3 className="mb-3 text-base sm:text-lg font-bold text-gray-800">Share Referral Link</h3>
                             <div className="flex flex-col gap-3">
@@ -821,17 +899,32 @@ const ProfilePage = () => {
                               </div>
                               <p className="text-sm text-gray-600">
                                 Referral Code:
-                                <span className="ml-2 px-2 py-0.5 text-xs font-bold tracking-wider text-gray-700 uppercase bg-red-100 rounded-lg">{user?.myreferralCode || "N/A"}</span>
+                                <span className="ml-2 px-2 py-0.5 text-xs font-bold tracking-wider text-gray-700 uppercase bg-red-100 rounded-lg">
+                                  {user?.myreferralCode || "N/A"}
+                                </span>
                               </p>
                             </div>
-                            
+
+                            {/* Social Share Buttons */}
                             <div className="grid grid-cols-2 gap-2 mt-5 sm:grid-cols-3 lg:grid-cols-6">
-                              <a href={shareUrls.whatsapp} target="_blank" rel="noreferrer" className="flex items-center justify-center gap-1.5 px-2 py-2 text-xs font-medium text-gray-700 transition-all bg-white border border-gray-200 rounded-xl hover:border-gray-300 hover:bg-red-50 hover:shadow-md sm:gap-2 sm:px-3 sm:py-2.5 sm:text-sm"><MessageCircle className="w-3.5 h-3.5 sm:w-4 sm:h-4" /><span>WhatsApp</span></a>
-                              <a href={shareUrls.email} target="_blank" rel="noreferrer" className="flex items-center justify-center gap-1.5 px-2 py-2 text-xs font-medium text-gray-700 transition-all bg-white border border-gray-200 rounded-xl hover:border-gray-300 hover:bg-red-50 hover:shadow-md sm:gap-2 sm:px-3 sm:py-2.5 sm:text-sm"><Mail className="w-3.5 h-3.5 sm:w-4 sm:h-4" /><span>Email</span></a>
-                              <a href={shareUrls.facebook} target="_blank" rel="noreferrer" className="flex items-center justify-center gap-1.5 px-2 py-2 text-xs font-medium text-gray-700 transition-all bg-white border border-gray-200 rounded-xl hover:border-gray-300 hover:bg-red-50 hover:shadow-md sm:gap-2 sm:px-3 sm:py-2.5 sm:text-sm"><Facebook className="w-3.5 h-3.5 sm:w-4 sm:h-4" /><span>Facebook</span></a>
-                              <a href={shareUrls.twitter} target="_blank" rel="noreferrer" className="flex items-center justify-center gap-1.5 px-2 py-2 text-xs font-medium text-gray-700 transition-all bg-white border border-gray-200 rounded-xl hover:border-gray-300 hover:bg-red-50 hover:shadow-md sm:gap-2 sm:px-3 sm:py-2.5 sm:text-sm"><Twitter className="w-3.5 h-3.5 sm:w-4 sm:h-4" /><span>Twitter</span></a>
-                              <a href={shareUrls.linkedin} target="_blank" rel="noreferrer" className="flex items-center justify-center gap-1.5 px-2 py-2 text-xs font-medium text-gray-700 transition-all bg-white border border-gray-200 rounded-xl hover:border-gray-300 hover:bg-red-50 hover:shadow-md sm:gap-2 sm:px-3 sm:py-2.5 sm:text-sm"><Linkedin className="w-3.5 h-3.5 sm:w-4 sm:h-4" /><span>LinkedIn</span></a>
-                              <a href={shareUrls.telegram} target="_blank" rel="noreferrer" className="flex items-center justify-center gap-1.5 px-2 py-2 text-xs font-medium text-gray-700 transition-all bg-white border border-gray-200 rounded-xl hover:border-gray-300 hover:bg-red-50 hover:shadow-md sm:gap-2 sm:px-3 sm:py-2.5 sm:text-sm"><Send className="w-3.5 h-3.5 sm:w-4 sm:h-4" /><span>Telegram</span></a>
+                              <a href={shareUrls.whatsapp} target="_blank" rel="noreferrer" className="flex items-center justify-center gap-1.5 px-2 py-2 text-xs font-medium text-gray-700 transition-all bg-white border border-gray-200 rounded-xl hover:border-gray-300 hover:bg-red-50 hover:shadow-md sm:gap-2 sm:px-3 sm:py-2.5 sm:text-sm">
+                                <MessageCircle className="w-3.5 h-3.5 sm:w-4 sm:h-4" /><span>WhatsApp</span>
+                              </a>
+                              <a href={shareUrls.email} target="_blank" rel="noreferrer" className="flex items-center justify-center gap-1.5 px-2 py-2 text-xs font-medium text-gray-700 transition-all bg-white border border-gray-200 rounded-xl hover:border-gray-300 hover:bg-red-50 hover:shadow-md sm:gap-2 sm:px-3 sm:py-2.5 sm:text-sm">
+                                <Mail className="w-3.5 h-3.5 sm:w-4 sm:h-4" /><span>Email</span>
+                              </a>
+                              <a href={shareUrls.facebook} target="_blank" rel="noreferrer" className="flex items-center justify-center gap-1.5 px-2 py-2 text-xs font-medium text-gray-700 transition-all bg-white border border-gray-200 rounded-xl hover:border-gray-300 hover:bg-red-50 hover:shadow-md sm:gap-2 sm:px-3 sm:py-2.5 sm:text-sm">
+                                <Facebook className="w-3.5 h-3.5 sm:w-4 sm:h-4" /><span>Facebook</span>
+                              </a>
+                              <a href={shareUrls.twitter} target="_blank" rel="noreferrer" className="flex items-center justify-center gap-1.5 px-2 py-2 text-xs font-medium text-gray-700 transition-all bg-white border border-gray-200 rounded-xl hover:border-gray-300 hover:bg-red-50 hover:shadow-md sm:gap-2 sm:px-3 sm:py-2.5 sm:text-sm">
+                                <Twitter className="w-3.5 h-3.5 sm:w-4 sm:h-4" /><span>Twitter</span>
+                              </a>
+                              <a href={shareUrls.linkedin} target="_blank" rel="noreferrer" className="flex items-center justify-center gap-1.5 px-2 py-2 text-xs font-medium text-gray-700 transition-all bg-white border border-gray-200 rounded-xl hover:border-gray-300 hover:bg-red-50 hover:shadow-md sm:gap-2 sm:px-3 sm:py-2.5 sm:text-sm">
+                                <Linkedin className="w-3.5 h-3.5 sm:w-4 sm:h-4" /><span>LinkedIn</span>
+                              </a>
+                              <a href={shareUrls.telegram} target="_blank" rel="noreferrer" className="flex items-center justify-center gap-1.5 px-2 py-2 text-xs font-medium text-gray-700 transition-all bg-white border border-gray-200 rounded-xl hover:border-gray-300 hover:bg-red-50 hover:shadow-md sm:gap-2 sm:px-3 sm:py-2.5 sm:text-sm">
+                                <Send className="w-3.5 h-3.5 sm:w-4 sm:h-4" /><span>Telegram</span>
+                              </a>
                             </div>
                           </div>
                         </div>

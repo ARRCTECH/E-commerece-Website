@@ -11,6 +11,14 @@ const finalReferralSchema = new mongoose.Schema({
     type: Number,
     default: 0  
   },
+  balance:{
+    type:Number,
+    default:0
+  },
+  usedbalance:{
+    type:Number,
+    default:0
+  }
 }, { timestamps: true });
 
 module.exports = mongoose.model("FinalReferral", finalReferralSchema);

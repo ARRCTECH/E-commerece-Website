@@ -2,12 +2,14 @@ const express = require('express');
 const router = express.Router();
 const {
   getReferralTotalEarning,
-  updateReferralTotalEarning,
+  addReferralEarnings,
+  useReferralBalance,
   createReferralTotalEarning
 } = require('../controllers/referraltotalearning');
 
-router.post('/', getReferralTotalEarning);
-router.put('/update', updateReferralTotalEarning);
-router.post('/create', createReferralTotalEarning);
+router.post('/getReferralTotalEarning',getReferralTotalEarning)
+router.post('/addReferralEarnings',addReferralEarnings)
+router.post('/useReferralBalance',useReferralBalance)
+router.post('/createReferralTotalEarning',createReferralTotalEarning)
 
 module.exports = router;

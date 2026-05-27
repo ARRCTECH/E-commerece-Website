@@ -97,13 +97,11 @@ const CheckoutPage = () => {
 
   const [partialPercentage, setPartialPercentage] = useState(30);
   const [partialCodEnabled, setPartialCodEnabled] = useState(false);
-  const [percentage, setPercentage] = useState(0);
-  const [discountValue, setDiscountValue] = useState(0);
   const [razorpayLoaded, setRazorpayLoaded] = useState(!!window.Razorpay);
+  const [referralAmountGiven, setReferralAmountGiven] = useState(0);
 
   const token = localStorage.getItem("authToken");
 
-  // Load Razorpay script if not present
   useEffect(() => {
     if (window.Razorpay) {
       setRazorpayLoaded(true);
@@ -120,7 +118,6 @@ const CheckoutPage = () => {
     };
   }, []);
 
-  // Fetch partial COD settings
   useEffect(() => {
     const fetchPartialCodSettings = async () => {
       try {
@@ -137,7 +134,6 @@ const CheckoutPage = () => {
     fetchPartialCodSettings();
   }, [API_URL]);
 
-  // Fetch all available coupons from backend
   useEffect(() => {
     const fetchCoupons = async () => {
       if (!token) return;
@@ -154,39 +150,17 @@ const CheckoutPage = () => {
     fetchCoupons();
   }, [token, API_URL, setCoupons]);
 
-  // Fetch user's own referral earnings (auto discount)
-  const getReferralDetails = useCallback(async () => {
-    if (!user?._id) return;
-    try {
-      const res = await axios.post(
-        `${API_URL}/referral/updatefetchReferralW`,
-        { userId: user._id }
-      );
-      setPercentage(res.data.data.percentageValue);
-      setDiscountValue(res.data.data.discountValue);
-    } catch (error) {
-      console.error("Error fetching referral details:", error);
-    }
-  }, [user?._id, API_URL]);
-
-  useEffect(() => {
-    getReferralDetails();
-  }, [getReferralDetails]);
-
-  // Fetch cart if not buy‑now mode and cart empty
   useEffect(() => {
     if (!isBuyNow && !cartItems.length) {
       dispatch(fetchCart());
     }
   }, [dispatch, cartItems.length, isBuyNow]);
 
-  // Clear any leftover errors on mount
   useEffect(() => {
     dispatch(clearError());
     dispatch(clearCouponError());
   }, [dispatch]);
 
-  // Cleanup on unmount: close Razorpay and clear timeouts
   useEffect(() => {
     return () => {
       if (rzpInstanceRef.current) {
@@ -199,7 +173,6 @@ const CheckoutPage = () => {
     };
   }, []);
 
-  // Show congratulations popup when a coupon is applied
   useEffect(() => {
     if (appliedCoupon && appliedCoupon.discountAmount > 0) {
       setCongratulationsData({
@@ -214,11 +187,11 @@ const CheckoutPage = () => {
     }
   }, [appliedCoupon, setCongratulationsData, setShowCongratulationsPopup]);
 
-  // ✅ Calculate final pricing – includes automated referral discount
+  // ✅ Calculate final pricing – includes referralAmountGiven (from balance)
   const calculateFinalPricing = useMemo(() => {
     const subtotal = isBuyNow && buyNowProduct
       ? buyNowProduct.product.price * buyNowProduct.quantity
-      : cartSummary.subtotal || 0;
+      : (cartSummary.subtotal || 0);
 
     // Calculate total quantity for online discount
     let totalQuantity = 0;
@@ -234,20 +207,13 @@ const CheckoutPage = () => {
     const ONLINE_DISCOUNT_PER_QUANTITY = 30;
     const onlineDiscountAmount = totalQuantity * ONLINE_DISCOUNT_PER_QUANTITY;
 
-    // Auto referral discount (from user's own earnings) - fixed rounding
-    let autoReferralDiscount = 0;
-    if (percentage || discountValue) {
-      const percentageDiscount = subtotal * (percentage / 100);
-      autoReferralDiscount = Math.round(percentageDiscount + discountValue);
-    }
-
     const shippingCharges = 0;
     const couponDiscount = appliedCoupon?.discountAmount || 0;
-    const freediscount = filterYCoupon[0]?.discountType === "flat"
-      ? filterYCoupon[0]?.discountValue
-      : Math.round(subtotal * (filterYCoupon[0]?.discountValue || 0) / 100);
+    const freediscount = filterYCoupon?.[0]?.discountType === "flat"
+      ? filterYCoupon[0].discountValue
+      : Math.round(subtotal * (filterYCoupon?.[0]?.discountValue || 0) / 100);
 
-    const totalDiscount = couponDiscount + freediscount + onlineDiscountAmount + autoReferralDiscount;
+    const totalDiscount = couponDiscount + freediscount + onlineDiscountAmount + referralAmountGiven;
     const totalValue = Math.round(subtotal + shippingCharges - totalDiscount);
     return {
       subtotal,
@@ -257,8 +223,7 @@ const CheckoutPage = () => {
       freediscount,
       onlineDiscount: onlineDiscountAmount,
       totalDiscount,
-      referralDiscount: autoReferralDiscount,
-      autoReferralDiscount,
+      referralDiscount: referralAmountGiven,
       total: totalValue > 0 ? totalValue : 0,
       totalQuantity,
     };
@@ -269,14 +234,14 @@ const CheckoutPage = () => {
     buyNowProduct,
     cartItems,
     filterYCoupon,
-    percentage,
-    discountValue,
+    referralAmountGiven,
   ]);
-
+  // ------------------------------
+  // 2. Run ONCE when totalEarning is truthy, then fetch referral details
+  // ------------------------------
   // Show free discount popup only once and with proper cleanup
   useEffect(() => {
     const code = filterYCoupon[0]?.code;
-    // Only show if we have a free discount, haven't shown it yet, and no regular coupon applied
     if (code && calculateFinalPricing.freediscount > 0 && !freeDiscountShownRef.current && !appliedCoupon) {
       freeDiscountShownRef.current = true;
       setCongratulationsData({
@@ -289,7 +254,6 @@ const CheckoutPage = () => {
         setShowCongratulationsPopup(false);
       }, 4000);
     }
-    // Reset the ref when free discount is no longer present (e.g., coupon removed)
     if (!code || calculateFinalPricing.freediscount === 0) {
       freeDiscountShownRef.current = false;
     }
@@ -362,23 +326,55 @@ const CheckoutPage = () => {
     };
   }, [displayItems, selectedAddress, appliedCoupon, isBuyNow]);
 
-  // Update referral earnings after successful order (reset user's own balance)
-  const updateReferralEarnings = useCallback(async () => {
-    if (!user?._id || !calculateFinalPricing.referralDiscount) return;
+  // ✅ Fetch available referral balance and set applicable discount
+  const fetchAvailableBalance = useCallback(async () => {
+    if (!user?._id) return;
     try {
-      await axios.put(
-        `${API_URL}/referral/updatefetchReferral`,
+      const res = await axios.post(
+        `${API_URL}/referral-total-earning/getReferralTotalEarning`,
         { userId: user._id }
       );
-      await axios.post(`${API_URL}/referral/forceZeroAfterPaymentDone`, { userId: user._id });
-      await axios.put(`${API_URL}/referral-total-earning/update`, {
-        userId: user._id,
-        amount: calculateFinalPricing.referralDiscount,
-      });
+      const balance = res.data?.data?.balance ?? 0;
+      const eligibleAmount = Math.max(
+        0,
+        calculateFinalPricing.subtotal
+        - calculateFinalPricing.couponDiscount
+        - calculateFinalPricing.freediscount
+        + calculateFinalPricing.shippingCharges
+      );
+      let applicableDiscount=0
+      if (eligibleAmount > balance) {
+        applicableDiscount=balance
+        setReferralAmountGiven(applicableDiscount);
+      }
+      else{
+        applicableDiscount=eligibleAmount
+        setReferralAmountGiven(applicableDiscount);
+      }
+      console.log(`Available balance: ₹${balance}, applying: ₹${applicableDiscount}`);
     } catch (error) {
-      console.error("Failed to reset referral earnings", error);
+      console.error("Failed to fetch referral balance:", error);
+      setReferralAmountGiven(0);
     }
-  }, [user?._id, calculateFinalPricing.referralDiscount, API_URL]);
+  })
+
+  useEffect(() => {
+    fetchAvailableBalance();
+  }, [calculateFinalPricing?.totalEarning, fetchAvailableBalance]);
+
+  // ✅ Deduct referral balance after successful order (only after payment confirmation)
+  const deductReferralBalance = useCallback(async () => {
+    if (!user?._id || referralAmountGiven === 0) return;
+    try {
+      await axios.post(`${API_URL}/referral-total-earning/useReferralBalance`, {
+        userId: user._id,
+        amount: referralAmountGiven,
+      });
+      console.log(`✅ Deducted ₹${referralAmountGiven} from referral balance`);
+    } catch (error) {
+      console.error("Failed to deduct referral balance:", error);
+    }
+  }, [referralAmountGiven]);
 
   // ------ ORDER HANDLERS ------
   const handlePlaceOrder = async () => {
@@ -394,12 +390,13 @@ const CheckoutPage = () => {
     const orderPayload = {
       amount: calculateFinalPricing.total,
       freediscount: calculateFinalPricing.freediscount,
-      referralDiscount: calculateFinalPricing.referralDiscount,
+      referralDiscount: referralAmountGiven,
       ...createOrderData(),
     };
 
     try {
       const result = await dispatch(createRazorpayOrder(orderPayload)).unwrap();
+      // ⚠️ DO NOT deduct here – wait for payment success
       const { razorpayOrder: razorpayOrderData, orderId, orderSummary } = result;
 
       const options = {
@@ -418,8 +415,11 @@ const CheckoutPage = () => {
                 razorpay_signature: response.razorpay_signature,
               })
             ).unwrap();
+
+            // ✅ Deduct referral balance only after successful verification
+            await deductReferralBalance();
+
             toast.success("Order placed successfully!");
-            await updateReferralEarnings();
             clearBuyNowData();
             navigate(`/order-confirmation/${verifyResult.order.id || orderId}`);
           } catch (err) {
@@ -455,18 +455,20 @@ const CheckoutPage = () => {
     if (!validateOrder()) return;
     dispatch(clearError());
     setShowPaymentModal(false);
+    await deductReferralBalance();
 
     const orderPayload = {
       amount: Math.round(calculateFinalPricing.subtotal || 0),
       freediscount: calculateFinalPricing.freediscount,
-      referralDiscount: calculateFinalPricing.referralDiscount,
+      referralDiscount: referralAmountGiven,
       ...createOrderData(),
     };
 
     try {
       const result = await dispatch(placeCodOrder(orderPayload)).unwrap();
+      // For COD, we deduct immediately because no separate payment verification
+      await deductReferralBalance();
       toast.success("COD order placed successfully!");
-      await updateReferralEarnings();
       clearBuyNowData();
       navigate(`/order-confirmation/${result.payload?.order?.id || result.order?.id}`);
     } catch (error) {
@@ -485,7 +487,6 @@ const CheckoutPage = () => {
     dispatch(clearError());
     setShowPaymentModal(false);
 
-    // FIX: Use the total payable amount after all discounts (including referral)
     const baseAmount = calculateFinalPricing.total;
     const onlineAmount = Math.round(baseAmount * (partialPercentage / 100));
     const codAmount = baseAmount - onlineAmount;
@@ -513,11 +514,12 @@ const CheckoutPage = () => {
       codAmount: codAmount,
       partialPercentage: partialPercentage,
       freediscount: calculateFinalPricing.freediscount,
-      referralDiscount: calculateFinalPricing.referralDiscount,
+      referralDiscount: referralAmountGiven,
     };
 
     try {
       const result = await dispatch(createPartialCodOrder(orderPayload)).unwrap();
+      // ⚠️ DO NOT deduct here – wait for online payment success
       const options = {
         key: import.meta.env.VITE_RAZORPAY_KEY_ID,
         amount: result.razorpayOrder.amount,
@@ -534,8 +536,12 @@ const CheckoutPage = () => {
                 razorpay_signature: response.razorpay_signature,
               })
             ).unwrap();
-            toast.success("Order placed successfully!");
+
+            // ✅ Deduct referral balance only after online payment success
+            await deductReferralBalance();
             await updateReferralEarnings();
+
+            toast.success("Order placed successfully!");
             clearBuyNowData();
             navigate(`/order-confirmation/${result.orderId}`);
           } catch (err) {
@@ -784,12 +790,12 @@ const CheckoutPage = () => {
                     <span>-₹{calculateFinalPricing.onlineDiscount}</span>
                   </div>
                 )}
-                {calculateFinalPricing.referralDiscount > 0 && (
+                {referralAmountGiven > 0 && (
                   <div className="flex justify-between text-indigo-600">
                     <span className="flex items-center gap-1">
                       Referral Earnings <Info className="w-3 h-3" title="Automatically applied from your referral balance" />
                     </span>
-                    <span>-₹{calculateFinalPricing.referralDiscount}</span>
+                    <span>-₹{referralAmountGiven}</span>
                   </div>
                 )}
                 <div className="flex justify-between">
@@ -854,7 +860,7 @@ const CheckoutPage = () => {
         onCOD={handlePlaceCodOrder}
         onPartialCod={handlePartialCodOrder}
         amount={calculateFinalPricing.total}
-        amountCOD={calculateFinalPricing.referralDiscount}
+        amountCOD={referralAmountGiven}
         originalAmount={calculateFinalPricing.originalSubtotal}
         showPartialCod={showPartialCodOption}
         partialPercentage={partialPercentage}
