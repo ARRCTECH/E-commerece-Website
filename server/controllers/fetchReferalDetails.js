@@ -28,7 +28,7 @@ exports.getReferralDetails = async (req, res) => {
 exports.updateReferralDetails = async (req, res) => {
     try {
         const { userId } = req.body;
-        const user = await User.findById(userId);
+        const user = await User.findByIdAndUpdate(userId);
         if (!user) {
             return res.status(404).json({
                 success: false,
@@ -40,7 +40,7 @@ exports.updateReferralDetails = async (req, res) => {
         const keysArray = Array.from(user.referredTo.keys());
         let count = 0;
         for (const referrals of user.referredTo) {
-            const referral=referrals[1]
+            const referral = referrals[1]
             if (referral.creditStatus === true) {
                 console.log(`Referral for order already credited`);
                 count++;
@@ -56,7 +56,7 @@ exports.updateReferralDetails = async (req, res) => {
                 const lastSync = new Date(order.shipmozoDetails.lastSyncAt);
                 const now = new Date();
                 const tenDaysInMs = 10 * 24 * 60 * 60 * 1000;
-                const diffMs = lastSync-now;
+                const diffMs = lastSync - now;
                 if (diffMs < tenDaysInMs) {
                     console.log('Last sync was more than 10 days ago');
                     count++;
@@ -69,10 +69,8 @@ exports.updateReferralDetails = async (req, res) => {
                 }
                 if (referral.type === "fixed") {
                     discountValue += referral.amount || 0;
-                    console.log(discountValue);
                 } else if (referral.type === "percentage") {
                     percentageValue += referral.amount || 0;
-                    console.log(percentageValue);
                 }
                 referral.creditStatus = true;
                 count++;
@@ -125,7 +123,7 @@ exports.updateReferralDetailsW = async (req, res) => {
         const keysArray = Array.from(user.referredTo.keys());
         let count = 0;
         for (const referrals of user.referredTo) {
-            const referral=referrals[1]
+            const referral = referrals[1]
             if (referral.creditStatus === true) {
                 console.log(`Referral for order already credited`);
                 count++;
@@ -141,7 +139,7 @@ exports.updateReferralDetailsW = async (req, res) => {
                 const lastSync = new Date(order.shipmozoDetails.lastSyncAt);
                 const now = new Date();
                 const tenDaysInMs = 10 * 24 * 60 * 60 * 1000;
-                const diffMs = lastSync-now;
+                const diffMs = lastSync - now;
                 if (diffMs < tenDaysInMs) {
                     console.log('Last sync was more than 10 days ago');
                     count++;

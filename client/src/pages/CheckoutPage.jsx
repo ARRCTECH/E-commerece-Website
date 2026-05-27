@@ -47,6 +47,7 @@ const CheckoutPage = () => {
   const location = useLocation();
   const rzpInstanceRef = useRef(null);
   const congratTimeoutRef = useRef(null);
+  const freeDiscountShownRef = useRef(false);
   const API_URL = import.meta.env.VITE_API_URL || "http://localhost:5000/api";
 
   const user = useSelector(selectUser);
@@ -233,13 +234,11 @@ const CheckoutPage = () => {
     const ONLINE_DISCOUNT_PER_QUANTITY = 30;
     const onlineDiscountAmount = totalQuantity * ONLINE_DISCOUNT_PER_QUANTITY;
 
-    // Auto referral discount (from user's own earnings)
+    // Auto referral discount (from user's own earnings) - fixed rounding
     let autoReferralDiscount = 0;
-    if (percentage) {
-      autoReferralDiscount += Math.round(subtotal * (percentage / 100));
-    }
-    if (discountValue) {
-      autoReferralDiscount += Math.round(discountValue);
+    if (percentage || discountValue) {
+      const percentageDiscount = subtotal * (percentage / 100);
+      autoReferralDiscount = Math.round(percentageDiscount + discountValue);
     }
 
     const shippingCharges = 0;
@@ -274,10 +273,12 @@ const CheckoutPage = () => {
     discountValue,
   ]);
 
-  // Show free discount popup
+  // Show free discount popup only once and with proper cleanup
   useEffect(() => {
     const code = filterYCoupon[0]?.code;
-    if (code) {
+    // Only show if we have a free discount, haven't shown it yet, and no regular coupon applied
+    if (code && calculateFinalPricing.freediscount > 0 && !freeDiscountShownRef.current && !appliedCoupon) {
+      freeDiscountShownRef.current = true;
       setCongratulationsData({
         couponCode: code,
         savingsAmount: calculateFinalPricing.freediscount,
@@ -288,9 +289,17 @@ const CheckoutPage = () => {
         setShowCongratulationsPopup(false);
       }, 4000);
     }
-  }, [filterYCoupon, calculateFinalPricing.freediscount]);
+    // Reset the ref when free discount is no longer present (e.g., coupon removed)
+    if (!code || calculateFinalPricing.freediscount === 0) {
+      freeDiscountShownRef.current = false;
+    }
+    return () => {
+      if (congratTimeoutRef.current) clearTimeout(congratTimeoutRef.current);
+    };
+  }, [filterYCoupon, calculateFinalPricing.freediscount, appliedCoupon]);
 
-  const getDisplayItems = useCallback(() => {
+  // Memoized display items
+  const displayItems = useMemo(() => {
     if (isBuyNow && buyNowProduct) {
       if (buyNowProduct.isBulkProduct) {
         return [{
@@ -320,18 +329,19 @@ const CheckoutPage = () => {
       toast.error("Please select a shipping address");
       return false;
     }
-    if (!getDisplayItems().length) {
+    if (!displayItems.length) {
       toast.error("No items to order");
       return false;
     }
     return true;
-  }, [selectedAddress, getDisplayItems]);
+  }, [selectedAddress, displayItems]);
 
   const createOrderData = useCallback(() => {
-    let phone = selectedAddress?.phoneNumber || "";
+    if (!selectedAddress) throw new Error("No address selected");
+    let phone = selectedAddress.phoneNumber || "";
     phone = phone.replace(/^\+91/, "");
     return {
-      items: getDisplayItems().map((item) => ({
+      items: displayItems.map((item) => ({
         productId: item.product?._id,
         quantity: item.quantity,
         size: item.size,
@@ -350,17 +360,25 @@ const CheckoutPage = () => {
       couponCode: appliedCoupon?.code || "",
       isBuyNow: isBuyNow,
     };
-  }, [getDisplayItems, selectedAddress, appliedCoupon, isBuyNow]);
+  }, [displayItems, selectedAddress, appliedCoupon, isBuyNow]);
 
   // Update referral earnings after successful order (reset user's own balance)
   const updateReferralEarnings = useCallback(async () => {
-    if (!calculateFinalPricing.referralDiscount) return;
+    if (!user?._id || !calculateFinalPricing.referralDiscount) return;
     try {
+      await axios.put(
+        `${API_URL}/referral/updatefetchReferral`,
+        { userId: user._id }
+      );
       await axios.post(`${API_URL}/referral/forceZeroAfterPaymentDone`, { userId: user._id });
+      await axios.put(`${API_URL}/referral-total-earning/update`, {
+        userId: user._id,
+        amount: calculateFinalPricing.referralDiscount,
+      });
     } catch (error) {
       console.error("Failed to reset referral earnings", error);
     }
-  }, [user._id, calculateFinalPricing.referralDiscount, API_URL]);
+  }, [user?._id, calculateFinalPricing.referralDiscount, API_URL]);
 
   // ------ ORDER HANDLERS ------
   const handlePlaceOrder = async () => {
@@ -467,12 +485,13 @@ const CheckoutPage = () => {
     dispatch(clearError());
     setShowPaymentModal(false);
 
-    const originalAmount = calculateFinalPricing.originalSubtotal - calculateFinalPricing.referralDiscount;
-    const onlineAmount = Math.round(originalAmount * partialPercentage / 100);
-    const codAmount = originalAmount - onlineAmount;
-    
+    // FIX: Use the total payable amount after all discounts (including referral)
+    const baseAmount = calculateFinalPricing.total;
+    const onlineAmount = Math.round(baseAmount * (partialPercentage / 100));
+    const codAmount = baseAmount - onlineAmount;
+
     const orderPayload = {
-      items: getDisplayItems().map((item) => ({
+      items: displayItems.map((item) => ({
         productId: item.product?._id,
         quantity: item.quantity,
         size: item.size,
@@ -489,7 +508,7 @@ const CheckoutPage = () => {
         phoneNumber: `+91${selectedAddress?.phoneNumber?.replace(/^\+91/, "")}`,
       },
       couponCode: appliedCoupon?.code || "",
-      totalAmount: originalAmount,
+      totalAmount: baseAmount,
       onlineAmount: onlineAmount,
       codAmount: codAmount,
       partialPercentage: partialPercentage,
@@ -575,7 +594,7 @@ const CheckoutPage = () => {
     return () => window.removeEventListener("popstate", onBackButtonEvent);
   }, []);
 
-  // ---------- HANDLE COUPON APPLY (FIXED) ----------
+  // ---------- HANDLE COUPON APPLY ----------
   const handleApplyCoupon = async () => {
     if (!couponCode.trim()) {
       toast.error("Please enter a coupon code");
@@ -589,19 +608,19 @@ const CheckoutPage = () => {
         })
       ).unwrap();
       toast.success(`Coupon "${result.code}" applied successfully!`);
-      setCouponCode(""); // Clear input field after successful apply
+      setCouponCode("");
     } catch (err) {
       toast.error(err?.message || "Invalid or expired coupon");
     }
   };
 
-  const displayItems = getDisplayItems();
   const hasItems = displayItems.length > 0;
   const showPartialCodOption =
     partialCodEnabled &&
     (isBulkBuyNow || displayItems.some((item) => item.isBulkProduct));
+  const isProcessingOrder = orderLoading?.creating === true;
 
-  if (!hasItems && !orderLoading.creating) {
+  if (!hasItems && !isProcessingOrder) {
     return (
       <div className="flex items-center justify-center min-h-screen">
         <div className="text-center">
@@ -668,7 +687,7 @@ const CheckoutPage = () => {
               />
             </div>
 
-            {/* Coupon Section - Fixed with working handler */}
+            {/* Coupon Section */}
             <div className="bg-white rounded-xl p-6 shadow-sm">
               <div className="flex items-center mb-4">
                 <Tag className="w-5 h-5 mr-2 text-red-600" />
@@ -791,9 +810,10 @@ const CheckoutPage = () => {
 
               <button
                 onClick={() => setShowPaymentModal(true)}
-                className="w-full mt-6 py-3 bg-red-600 text-white rounded-xl font-semibold hover:bg-red-700 transition"
+                disabled={isProcessingOrder}
+                className="w-full mt-6 py-3 bg-red-600 text-white rounded-xl font-semibold hover:bg-red-700 transition disabled:opacity-50 disabled:cursor-not-allowed"
               >
-                Proceed to Payment
+                {isProcessingOrder ? "Processing..." : "Proceed to Payment"}
               </button>
               <div className="mt-4 flex justify-center text-xs text-gray-500">
                 <Shield className="w-4 h-4 mr-1" /> Secure Checkout
@@ -806,9 +826,10 @@ const CheckoutPage = () => {
         <div className="fixed bottom-0 left-0 right-0 bg-white border-t p-4 md:hidden">
           <button
             onClick={() => setShowPaymentModal(true)}
-            className="w-full py-3 bg-red-600 text-white rounded-xl font-semibold"
+            disabled={isProcessingOrder}
+            className="w-full py-3 bg-red-600 text-white rounded-xl font-semibold disabled:opacity-50"
           >
-            Proceed to Payment
+            {isProcessingOrder ? "Processing..." : "Proceed to Payment"}
           </button>
         </div>
       </div>
