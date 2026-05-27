@@ -100,16 +100,6 @@ const useReferralBalance = async (req, res) => {
         message: "amount must be a positive number"
       });
     }
-
-    // 🚀 Enforce maximum ₹100 per order
-    const MAX_REFERRAL_USE_PER_ORDER = 100;
-    if (validAmount > MAX_REFERRAL_USE_PER_ORDER) {
-      return res.status(400).json({
-        success: false,
-        message: `Cannot use more than ₹${MAX_REFERRAL_USE_PER_ORDER} of referral balance per order`
-      });
-    }
-
     const referralEarning = await PartialCodSetting.findOne({ userId });
     if (!referralEarning) {
       return res.status(404).json({

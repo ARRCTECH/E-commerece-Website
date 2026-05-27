@@ -367,7 +367,8 @@ const CheckoutPage = () => {
   const deductReferralBalance = useCallback(async () => {
     if (!user?._id || referralAmountGiven === 0) return;
     try {
-      await axios.post(`${API_URL}/referral-total-earning/useReferralBalance`, {
+
+      const res=await axios.post(`${API_URL}/referral-total-earning/useReferralBalance`, {
         userId: user._id,
         amount: referralAmountGiven,
       });
@@ -540,7 +541,6 @@ const CheckoutPage = () => {
 
             // ✅ Deduct referral balance only after online payment success
             await deductReferralBalance();
-            await updateReferralEarnings();
 
             toast.success("Order placed successfully!");
             clearBuyNowData();
