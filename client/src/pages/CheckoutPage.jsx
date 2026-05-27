@@ -341,7 +341,6 @@ const CheckoutPage = () => {
         - calculateFinalPricing.couponDiscount
         - calculateFinalPricing.freediscount
         + calculateFinalPricing.shippingCharges
-        - calculateFinalPricing.onlineDiscount
       );
       let applicableDiscount=0
       if (eligibleAmount > balance) {
