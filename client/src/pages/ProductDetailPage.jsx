@@ -104,7 +104,7 @@ const ProductDetailPage = () => {
     }
   }, [currentProduct, isBulkProduct])
 
-<<<<<<< HEAD
+
   useEffect(() => {
     if (isBulkProduct && currentProduct?.colors?.length > 0) {
       const allColors = currentProduct.colors.map(color => color.name);
@@ -112,8 +112,6 @@ const ProductDetailPage = () => {
     }
   }, [isBulkProduct, currentProduct?._id]);
 
-=======
->>>>>>> a1f24f3011d30cc9043db051ea270d48fe834d02
   const getDiscountPercentage = () => {
     if (isBulkProduct) {
       const original = currentProduct?.bulkConfig?.originalPricePerSet
@@ -1212,7 +1210,7 @@ const ProductDetailPage = () => {
           </motion.div>)}
       </AnimatePresence>
       <AnimatePresence>
-<<<<<<< HEAD
+
         {showSizeGuide && (
           <motion.div
             className="fixed inset-0 bg-black bg-opacity-50 z-50 flex items-center justify-center p-4"
@@ -1238,7 +1236,6 @@ const ProductDetailPage = () => {
             </motion.div>
           </motion.div>
         )}
-=======
        {showSizeGuide && (
   <motion.div
     className="fixed inset-0 bg-black bg-opacity-80 z-50 flex items-center justify-center p-4"
@@ -1311,7 +1308,7 @@ const ProductDetailPage = () => {
     </motion.div>
   </motion.div>
 )}
->>>>>>> a1f24f3011d30cc9043db051ea270d48fe834d02
+
       </AnimatePresence>
       <div className="lg:hidden fixed bottom-0 left-0 right-0 bg-white border-t border-gray-200 p-4 z-40 shadow-lg">
         <div className="flex gap-3">
@@ -1333,11 +1330,9 @@ const ProductDetailPage = () => {
           </button>
         </div>
       </div>
-<<<<<<< HEAD
     </div>
   );
 }
-=======
-    </div>)}
->>>>>>> a1f24f3011d30cc9043db051ea270d48fe834d02
+
+   
 export default ProductDetailPage
