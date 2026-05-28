@@ -1,7 +1,7 @@
 const Product = require("../models/Product");
 const Category = require("../models/Category");
 const Counter = require('../models/Counter');
-const { uploadToCloudinary, uploadToCloudinaryVideo, deleteFromCloudinary } = require("../utils/cloudinary");
+const { uploadToCloudinary, deleteFromCloudinary, uploadToCloudinaryVideoWithRetry } = require("../utils/cloudinary");
 const mongoose = require("mongoose");
 
 
@@ -638,23 +638,28 @@ const updateProduct = async (req, res) => {
         }
       }
       
-      if (req.files['videos'] && req.files['videos'].length > 0) {
+           if (req.files['videos'] && req.files['videos'].length > 0) {
+        console.log(`📹 Processing ${req.files['videos'].length} video(s) with retry logic...`);
         const newVideos = [];
-        for (const file of req.files['videos']) {
+        for (let i = 0; i < req.files['videos'].length; i++) {
+          const file = req.files['videos'][i];
+          console.log(`📹 Uploading video ${i + 1}/${req.files['videos'].length}...`);
           try {
-            const result = await uploadToCloudinaryVideo(file.buffer, "productsvideo");
+            const result = await uploadToCloudinaryVideoWithRetry(file.buffer, "productsvideo", 3);
             newVideos.push({
               url: result.secure_url
             });
+            console.log(`✅ Video ${i + 1} uploaded successfully`);
           } catch (uploadError) {
-            console.error("❌ Video upload failed:", uploadError);
+            console.error(`❌ Video ${i + 1} upload failed after retries:`, uploadError.message);
           }
         }
         if (newVideos.length > 0) {
           updateData.videos = [...existingProduct.videos, ...newVideos];
+          console.log(`✅ Added ${newVideos.length} new video(s) to product`);
         }
       }
-    }
+    } 
 
     if (updateData.imageOrder && updateData.imageOrder.length > 0) {
       const orderedImages = [];
