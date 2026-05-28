@@ -104,7 +104,6 @@ const ProductDetailPage = () => {
     }
   }, [currentProduct, isBulkProduct])
 
-<<<<<<< HEAD
   useEffect(() => {
     if (isBulkProduct && currentProduct?.colors?.length > 0) {
       const allColors = currentProduct.colors.map(color => color.name);
@@ -112,8 +111,6 @@ const ProductDetailPage = () => {
     }
   }, [isBulkProduct, currentProduct?._id]);
 
-=======
->>>>>>> a1f24f3011d30cc9043db051ea270d48fe834d02
   const getDiscountPercentage = () => {
     if (isBulkProduct) {
       const original = currentProduct?.bulkConfig?.originalPricePerSet
