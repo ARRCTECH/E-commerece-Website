@@ -90,6 +90,7 @@ export const fetchUserOrders = createAsyncThunk(
   async ({ page = 1, limit = 10 } = {}, { rejectWithValue }) => {
     try {
       const response = await orderAPI.getUserOrders(page, limit);
+      console.log("fetch orders res",response.data);
       return response.data;
     } catch (error) {
       return rejectWithValue(error.response?.data?.message || "Failed to fetch orders");
@@ -131,6 +132,19 @@ export const exportOrdersToExcel = createAsyncThunk(
       return { data: response.data, startDate, endDate };
     } catch (error) {
       return rejectWithValue(error.response?.data?.message || "Failed to export orders");
+    }
+  }
+);
+
+
+export const placeFreeOrder = createAsyncThunk(
+  "order/placeFreeOrder",
+  async (orderData, { rejectWithValue }) => {
+    try {
+      const response = await orderAPI.placeFreeOrder(orderData);
+      return response.data;
+    } catch (error) {
+      return rejectWithValue(error.response?.data?.message || "Failed to place free order");
     }
   }
 );

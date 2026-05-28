@@ -673,6 +673,10 @@ const OrdersManagement = () => {
                             <span className="text-gray-500">Tax:</span>
                             <span>{formatCurrency(selectedOrder.pricing.tax || 0)}</span>
                           </div>
+                          <div className="flex justify-between">
+                            <span className="text-gray-500">Referal:</span>
+                            <span>{formatCurrency(selectedOrder.referralDiscount)}</span>
+                          </div>
                           {(selectedOrder.pricing.discount || 0) > 0 && (
                             <div className="flex justify-between text-green-600">
                               <span>Discount:</span>
