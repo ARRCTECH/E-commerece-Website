@@ -659,7 +659,7 @@ const updateProduct = async (req, res) => {
           console.log(`✅ Added ${newVideos.length} new video(s) to product`);
         }
       }
-    }
+    } 
 
     if (updateData.imageOrder && updateData.imageOrder.length > 0) {
       const orderedImages = [];
