@@ -1,5 +1,4 @@
 import React, { useState, useEffect, useCallback } from "react";
-import axios from "axios";
 
 // ============================================================
 // Environment‑safe API base URL
@@ -17,26 +16,26 @@ const getApiBase = () => {
 const API_BASE = getApiBase();
 
 // ============================================================
-// Helper functions (from second code)
+// Helper functions
 // ============================================================
 const isValidNumber = (val) =>
   val && !isNaN(parseFloat(val)) && parseFloat(val) > 0;
 
-const sanitizeNumberInput = (value, isPercentage = false) => {
+// Simplified: only for fixed amount (no percentage special case)
+const sanitizeNumberInput = (value) => {
   if (value === "") return "";
   let cleaned = value.replace(/[^0-9.]/g, "");
   const parts = cleaned.split(".");
   if (parts.length > 2) cleaned = parts[0] + "." + parts.slice(1).join("");
-  if (isPercentage) {
-    cleaned = cleaned.split(".")[0];
-  }
   return cleaned;
 };
 
+// Constants: always active and fixed discount type
+const REFERRER_ACTIVE = true;
+const DISCOUNT_TYPE = "fixed";
+
 const ReferralConfiguration = () => {
-  // UI state (same as first design)
-  const [referrerActive, setReferrerActive] = useState(true);
-  const [discountType, setDiscountType] = useState("percentage"); // 'percentage' or 'fixed'
+  // UI state (only amount and expiry)
   const [amountValue, setAmountValue] = useState("");
   const [expiryDays, setExpiryDays] = useState("180");
 
@@ -45,17 +44,18 @@ const ReferralConfiguration = () => {
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState(null);
   const [successMsg, setSuccessMsg] = useState(null);
+  const [typeWarning, setTypeWarning] = useState(null); // warns if backend type != "fixed"
 
   // Validation errors
   const [amountError, setAmountError] = useState(null);
   const [expiryError, setExpiryError] = useState(null);
 
-  // ---------- API calls (from second code) ----------
-  // Fetch current config from backend
+  // ---------- API calls ----------
   const fetchConfig = useCallback(async () => {
     try {
       setLoading(true);
       setError(null);
+      setTypeWarning(null);
       const response = await fetch(`${API_BASE}/referralconfig`);
 
       if (!response.ok) {
@@ -70,8 +70,12 @@ const ReferralConfiguration = () => {
       const referralData = data.referredBy || data.referralby;
 
       if (referralData) {
-        setReferrerActive(referralData.active ?? true);
-        setDiscountType(referralData.type ?? "percentage");
+        // Enforce fixed discount type: if backend returns something else, show warning
+        if (referralData.type && referralData.type !== DISCOUNT_TYPE) {
+          setTypeWarning(
+            `⚠️ Backend discount type is "${referralData.type}" but this UI only supports "${DISCOUNT_TYPE}". The value will be treated as a fixed amount. Save to convert.`
+          );
+        }
         setAmountValue(referralData.value?.toString() ?? "");
         setExpiryDays(referralData.daysUntilExpiry?.toString() ?? "180");
       }
@@ -83,33 +87,12 @@ const ReferralConfiguration = () => {
     }
   }, []);
 
-  // Fetch users (example from second code – kept as is)
-  const handleUserFetch = useCallback(async () => {
-    try {
-      const response = await axios.get(`${API_BASE}/admin/users`, {
-        headers: {
-          Authorization: `Bearer ${localStorage.getItem("authToken")}`,
-        },
-      });
-      console.log("Users fetched:", response.data);
-      // You can store users in state if needed
-    } catch (err) {
-      console.error("Failed to fetch users:", err);
-    }
-  }, []);
-
-  // Save configuration (PUT to /referralconfig/referral)
   const saveConfiguration = async () => {
-    // Validate
     let isValid = true;
 
     const numAmount = parseFloat(amountValue);
     if (!isValidNumber(amountValue)) {
-      setAmountError(
-        discountType === "percentage"
-          ? "Percentage must be greater than 0"
-          : "Amount must be greater than 0"
-      );
+      setAmountError("Amount must be greater than 0");
       isValid = false;
     } else {
       setAmountError(null);
@@ -128,11 +111,12 @@ const ReferralConfiguration = () => {
     setSaving(true);
     setError(null);
     setSuccessMsg(null);
+    setTypeWarning(null);
 
     const payload = {
       referredBy: {
-        active: referrerActive,
-        type: discountType,
+        active: REFERRER_ACTIVE,
+        type: DISCOUNT_TYPE,
         value: parseFloat(amountValue),
         daysUntilExpiry: parseInt(expiryDays, 10),
       },
@@ -153,8 +137,6 @@ const ReferralConfiguration = () => {
       const updatedData = await response.json();
       const saved = updatedData.referredBy || updatedData.referralby;
       if (saved) {
-        setReferrerActive(saved.active);
-        setDiscountType(saved.type);
         setAmountValue(saved.value?.toString() ?? "");
         setExpiryDays(saved.daysUntilExpiry?.toString() ?? "180");
       }
@@ -169,14 +151,12 @@ const ReferralConfiguration = () => {
     }
   };
 
-  // Load config on mount & optionally fetch users
   useEffect(() => {
     fetchConfig();
-    handleUserFetch(); // optional – remove if not needed
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
-  // ---------- UI Helpers (same as first design) ----------
+  // ---------- UI Helpers ----------
   const computeValidUntil = (days) => {
     if (isNaN(days) || days <= 0) return "Not set";
     const date = new Date();
@@ -192,14 +172,12 @@ const ReferralConfiguration = () => {
 
   const discountPreview = () => {
     const rawValue = parseFloat(amountValue) || 0;
-    if (discountType === "percentage") return `${rawValue}%`;
     return `₮ ${rawValue.toLocaleString()}`;
   };
 
   const handleAmountChange = (e) => {
     const val = e.target.value;
-    const isPercentage = discountType === "percentage";
-    const sanitized = sanitizeNumberInput(val, isPercentage);
+    const sanitized = sanitizeNumberInput(val);
     setAmountValue(sanitized);
     setAmountError(null);
   };
@@ -212,7 +190,6 @@ const ReferralConfiguration = () => {
     }
   };
 
-  // Loading skeleton
   if (loading) {
     return (
       <div className="max-w-5xl mx-auto p-6 animate-pulse">
@@ -229,112 +206,51 @@ const ReferralConfiguration = () => {
     );
   }
 
-  // Main render – original beautiful two‑column layout
   return (
     <div className="min-h-screen bg-gradient-to-br from-slate-50 to-blue-50/30 py-10 px-4 font-sans">
       <div className="max-w-5xl mx-auto">
-        {/* Header */}
         <div className="mb-8 text-center md:text-left">
           <h1 className="text-3xl md:text-4xl font-bold bg-gradient-to-r from-slate-800 to-slate-600 bg-clip-text text-transparent">
             Referral Discount Engine
           </h1>
           <p className="text-slate-500 mt-2 text-sm">
-            Configure discount for referrers • Values saved to backend
+            Fixed discount for referrers • Always active
           </p>
         </div>
 
-        {/* Main Card */}
         <div className="bg-white/80 backdrop-blur-sm rounded-2xl shadow-xl border border-white/40 overflow-hidden">
           <div className="grid md:grid-cols-2 gap-0 divide-y md:divide-y-0 md:divide-x divide-slate-200">
             {/* LEFT PANEL - Form */}
             <div className="p-6 md:p-8 space-y-6">
-              {/* Active Toggle */}
-              <div className="flex items-center justify-between border-b border-slate-100 pb-4">
-                <div>
-                  <h2 className="text-lg font-semibold text-slate-800">
-                    Referred By (Referrer)
-                  </h2>
-                  <p className="text-sm text-slate-500">
-                    Toggle status & discount rules
-                  </p>
-                </div>
-                <label className="relative inline-flex items-center cursor-pointer">
-                  <input
-                    type="checkbox"
-                    className="sr-only peer"
-                    checked={referrerActive}
-                    onChange={(e) => setReferrerActive(e.target.checked)}
-                  />
-                  <div className="w-11 h-6 bg-gray-200 peer-focus:outline-none peer-focus:ring-2 peer-focus:ring-slate-300 rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-slate-700"></div>
-                  <span className="ml-3 text-sm font-medium text-slate-700">
-                    {referrerActive ? "Active" : "Inactive"}
-                  </span>
-                </label>
-              </div>
-
-              {/* Discount Type Buttons */}
-              <div className="space-y-3">
-                <label className="block text-sm font-semibold text-slate-700 uppercase tracking-wide">
-                  DISCOUNT TYPE
-                </label>
-                <div className="flex gap-4 bg-slate-100 p-1.5 rounded-xl w-fit">
-                  <button
-                    type="button"
-                    onClick={() => setDiscountType("percentage")}
-                    className={`px-5 py-2 rounded-lg text-sm font-medium transition-all flex items-center gap-2 ${
-                      discountType === "percentage"
-                        ? "bg-white shadow-md text-slate-800 ring-1 ring-slate-200"
-                        : "text-slate-500 hover:text-slate-700"
-                    }`}
-                  >
-                    <span>%</span> Percentage (%)
-                  </button>
-                  <button
-                    type="button"
-                    onClick={() => setDiscountType("fixed")}
-                    className={`px-5 py-2 rounded-lg text-sm font-medium transition-all flex items-center gap-2 ${
-                      discountType === "fixed"
-                        ? "bg-white shadow-md text-slate-800 ring-1 ring-slate-200"
-                        : "text-slate-500 hover:text-slate-700"
-                    }`}
-                  >
-                    <span>₮</span> Fixed Amount (₮)
-                  </button>
-                </div>
+              <div className="border-b border-slate-100 pb-4">
+                <h2 className="text-lg font-semibold text-slate-800">
+                  Fixed Amount Discount
+                </h2>
+                <p className="text-sm text-slate-500">
+                  Referrer discount is always active (type: fixed)
+                </p>
               </div>
 
               {/* Amount Input */}
               <div className="space-y-2">
                 <label className="block text-sm font-semibold text-slate-700 uppercase tracking-wide">
-                  {discountType === "percentage" ? "PERCENTAGE (%)" : "AMOUNT (₮)"}
+                  AMOUNT (₮)
                 </label>
                 <div className="relative">
-                  {discountType === "fixed" && (
-                    <span className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-500 font-medium">
-                      ₮
-                    </span>
-                  )}
-                  {discountType === "percentage" && (
-                    <span className="absolute right-4 top-1/2 -translate-y-1/2 text-slate-500 font-medium">
-                      %
-                    </span>
-                  )}
+                  <span className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-500 font-medium">
+                    ₮
+                  </span>
                   <input
                     type="text"
                     inputMode="decimal"
                     value={amountValue}
                     onChange={handleAmountChange}
-                    disabled={!referrerActive}
                     className={`w-full px-4 py-3 rounded-xl border ${
                       amountError
                         ? "border-red-300 bg-red-50"
                         : "border-slate-200 focus:border-slate-400"
-                    } bg-white focus:outline-none focus:ring-2 focus:ring-slate-200 transition-all ${
-                      discountType === "fixed" ? "pl-8" : "pr-8"
-                    } ${!referrerActive ? "opacity-60 cursor-not-allowed" : ""}`}
-                    placeholder={
-                      discountType === "percentage" ? "e.g., 15" : "e.g., 500"
-                    }
+                    } bg-white focus:outline-none focus:ring-2 focus:ring-slate-200 transition-all pl-8`}
+                    placeholder="e.g., 500"
                   />
                 </div>
                 {amountError && (
@@ -353,14 +269,11 @@ const ReferralConfiguration = () => {
                     inputMode="numeric"
                     value={expiryDays}
                     onChange={handleExpiryChange}
-                    disabled={!referrerActive}
                     className={`w-full px-4 py-3 rounded-xl border ${
                       expiryError
                         ? "border-red-300 bg-red-50"
                         : "border-slate-200"
-                    } bg-white focus:outline-none focus:ring-2 focus:ring-slate-200 ${
-                      !referrerActive ? "opacity-60 cursor-not-allowed" : ""
-                    }`}
+                    } bg-white focus:outline-none focus:ring-2 focus:ring-slate-200`}
                     placeholder="Days until expiry"
                   />
                   <span className="absolute right-4 top-1/2 -translate-y-1/2 text-slate-400 text-sm">
@@ -370,24 +283,22 @@ const ReferralConfiguration = () => {
                 {expiryError && (
                   <p className="text-xs text-red-500 mt-1">{expiryError}</p>
                 )}
-                {referrerActive && (
-                  <div className="flex items-center gap-2 text-sm text-slate-500 mt-1">
-                    <svg
-                      className="w-4 h-4"
-                      fill="none"
-                      stroke="currentColor"
-                      viewBox="0 0 24 24"
-                    >
-                      <path
-                        strokeLinecap="round"
-                        strokeLinejoin="round"
-                        strokeWidth="1.5"
-                        d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z"
-                      />
-                    </svg>
-                    <span>✔ Valid until {validUntilDate}</span>
-                  </div>
-                )}
+                <div className="flex items-center gap-2 text-sm text-slate-500 mt-1">
+                  <svg
+                    className="w-4 h-4"
+                    fill="none"
+                    stroke="currentColor"
+                    viewBox="0 0 24 24"
+                  >
+                    <path
+                      strokeLinecap="round"
+                      strokeLinejoin="round"
+                      strokeWidth="1.5"
+                      d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z"
+                    />
+                  </svg>
+                  <span>✔ Valid until {validUntilDate}</span>
+                </div>
               </div>
             </div>
 
@@ -412,45 +323,44 @@ const ReferralConfiguration = () => {
                 </h3>
 
                 <div className="bg-white rounded-xl border border-slate-100 shadow-sm p-5 space-y-4">
-                  <div className="flex justify-between items-center border-b border-slate-100 pb-3">
-                    <span className="text-slate-500 text-sm">
-                      Referred By (Referrer)
-                    </span>
-                    <span
-                      className={`px-2 py-0.5 rounded-full text-xs font-semibold ${
-                        referrerActive
-                          ? "bg-emerald-100 text-emerald-700"
-                          : "bg-gray-100 text-gray-500"
-                      }`}
-                    >
-                      {referrerActive ? "Active" : "Inactive"}
+                  <div className="flex justify-between items-center">
+                    <span className="text-slate-500 text-sm">Discount</span>
+                    <span className="font-mono font-bold text-slate-800 text-lg">
+                      {discountPreview()}
                     </span>
                   </div>
-                  {referrerActive && (
-                    <>
-                      <div className="flex justify-between items-center">
-                        <span className="text-slate-500 text-sm">Discount</span>
-                        <span className="font-mono font-bold text-slate-800 text-lg">
-                          {discountPreview()}
-                        </span>
-                      </div>
-                      <div className="flex justify-between items-center">
-                        <span className="text-slate-500 text-sm">
-                          Expires after
-                        </span>
-                        <span className="font-medium text-slate-700">
-                          {expiryDays || "0"} days
-                        </span>
-                      </div>
-                      <div className="flex justify-between items-center pt-2 text-xs text-slate-400 border-t border-dashed border-slate-200">
-                        <span>Valid until</span>
-                        <span>{validUntilDate}</span>
-                      </div>
-                    </>
-                  )}
+                  <div className="flex justify-between items-center">
+                    <span className="text-slate-500 text-sm">Expires after</span>
+                    <span className="font-medium text-slate-700">
+                      {expiryDays || "0"} days
+                    </span>
+                  </div>
+                  <div className="flex justify-between items-center pt-2 text-xs text-slate-400 border-t border-dashed border-slate-200">
+                    <span>Valid until</span>
+                    <span>{validUntilDate}</span>
+                  </div>
                 </div>
 
-                {/* Feedback messages */}
+                {/* Type warning from backend */}
+                {typeWarning && (
+                  <div className="bg-amber-50 border border-amber-200 rounded-xl p-3 flex items-center gap-2 text-amber-700 text-sm">
+                    <svg
+                      className="w-5 h-5"
+                      fill="none"
+                      stroke="currentColor"
+                      viewBox="0 0 24 24"
+                    >
+                      <path
+                        strokeLinecap="round"
+                        strokeLinejoin="round"
+                        strokeWidth="2"
+                        d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z"
+                      />
+                    </svg>
+                    {typeWarning}
+                  </div>
+                )}
+
                 {error && (
                   <div className="bg-red-50 border border-red-200 rounded-xl p-3 flex items-center gap-2 text-red-700 text-sm">
                     <svg
@@ -491,12 +401,9 @@ const ReferralConfiguration = () => {
 
                 <button
                   onClick={saveConfiguration}
-                  disabled={
-                    saving || (referrerActive && !isValidNumber(amountValue))
-                  }
+                  disabled={saving || !isValidNumber(amountValue)}
                   className={`w-full py-3.5 rounded-xl font-semibold text-white shadow-md transition-all transform active:scale-[0.98] flex items-center justify-center gap-2 ${
-                    saving ||
-                    (referrerActive && !isValidNumber(amountValue))
+                    saving || !isValidNumber(amountValue)
                       ? "bg-slate-400 cursor-not-allowed"
                       : "bg-slate-800 hover:bg-slate-900 hover:shadow-lg"
                   }`}
@@ -553,7 +460,6 @@ const ReferralConfiguration = () => {
           </div>
         </div>
 
-        {/* API hint */}
         <div className="mt-6 text-center text-xs text-slate-400 bg-white/40 rounded-lg py-2 px-4 inline-block w-full">
           <span className="flex items-center justify-center gap-1">
             <svg

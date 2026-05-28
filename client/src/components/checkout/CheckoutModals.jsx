@@ -1,6 +1,8 @@
+import { useState, useEffect, useMemo, useRef, useCallback } from "react";
+import { CreditCard, X } from "lucide-react";
 import { motion } from "framer-motion";
-import { X, CreditCard } from "lucide-react";
-import { useState } from "react";
+
+
 
 export const PaymentModal = ({ 
   isOpen, 
@@ -9,29 +11,71 @@ export const PaymentModal = ({
   onCOD, 
   onPartialCod, 
   amount,
-  amountCOD ,          // discounted amount (Pay Online साठी)
-  originalAmount,   // original amount (COD आणि Partial COD साठी)
+  amountCOD,
+  originalAmount,
   showPartialCod, 
   partialPercentage, 
   isBulkProduct,
-  discountAmount = 0,    // ✅ NEW: Coupon discount amount
-  couponCode = null      // ✅ NEW: Applied coupon code
+  discountAmount = 0,
+  couponCode = null,
+  onlineDiscount = 0,        // ✅ NEW: Separate online discount
+  couponDiscount = 0,        // ✅ NEW: Separate coupon discount
+  freeDiscount = 0           // ✅ NEW: Separate free discount
 }) => {
-  const [tab, setTab] = useState("online");
-  if (!isOpen) return null;
+  console.log("💜💜💜 PaymentModal RENDERED 💜💜💜");
+  console.log("   Props received:", {
+    isOpen,
+    amount,
+    amountCOD,
+    originalAmount,
+    showPartialCod,
+    partialPercentage,
+    discountAmount,
+    couponCode,
+    onlineDiscount,
+    couponDiscount,
+    freeDiscount
+  });
   
-  // Partial COD साठी original amount वरून calculate करा
+  const [tab, setTab] = useState("online");
+  
+  useEffect(() => {
+    console.log("💜 PaymentModal - tab changed to:", tab);
+  }, [tab]);
+  
+  if (!isOpen) {
+    console.log("💜 PaymentModal - Not open, returning null");
+    return null;
+  }
+  
+  console.log("💜 PaymentModal - Rendering modal (isOpen = true)");
+  
+  // Partial COD calculation
   const baseAmountForPartial = originalAmount - amountCOD || amount - amountCOD;
   const onlineAmount = Math.round(baseAmountForPartial * (partialPercentage / 100));
   const codAmount = baseAmountForPartial - onlineAmount;
   const showCodTab = !showPartialCod;
   const showPartialCodTab = showPartialCod;
   
-  // ✅ COD amount after coupon discount
-  const codDiscountedAmount = originalAmount-amountCOD ? originalAmount - discountAmount-amountCOD : amount-amountCOD;
+  console.log("💜 Partial COD calculation:");
+  console.log("   baseAmountForPartial:", baseAmountForPartial);
+  console.log("   onlineAmount:", onlineAmount);
+  console.log("   codAmount:", codAmount);
+  
+  // ✅ FIXED: COD amount calculation WITHOUT online discount
+  // COD la online discount apply NAYI karaycha (only coupon + free discount)
+  const codDiscountedAmount = (originalAmount || amount) - (couponDiscount + freeDiscount) - (amountCOD || 0);
+  
+  console.log("💜 COD Calculation Fix:");
+  console.log("   originalAmount:", originalAmount);
+  console.log("   couponDiscount:", couponDiscount);
+  console.log("   freeDiscount:", freeDiscount);
+  console.log("   amountCOD:", amountCOD);
+  console.log("   onlineDiscount (NOT used in COD):", onlineDiscount);
+  console.log("   codDiscountedAmount:", codDiscountedAmount);
   
   const handleTabChange = (newTab) => {
-    console.log("🔵 PaymentModal - tab changed to:", newTab);
+    console.log("💜 PaymentModal - Tab changed from", tab, "to", newTab);
     setTab(newTab);
   };
   
@@ -40,7 +84,13 @@ export const PaymentModal = ({
       <div className="bg-white rounded-xl shadow-2xl p-6 max-w-md w-full mx-4">
         <div className="flex justify-between items-center mb-4">
           <h2 className="text-xl font-bold">Select Payment Method</h2>
-          <button onClick={() => { console.log("🔵 PaymentModal - Close button clicked"); onClose(); }} className="p-1 text-gray-400 hover:text-gray-600">
+          <button 
+            onClick={() => { 
+              console.log("💜 PaymentModal - Close button clicked"); 
+              onClose(); 
+            }} 
+            className="p-1 text-gray-400 hover:text-gray-600"
+          >
             <X className="w-5 h-5" />
           </button>
         </div>
@@ -81,12 +131,33 @@ export const PaymentModal = ({
                   Coupon "{couponCode}" applied: -₹{discountAmount}
                 </p>
               )}
-              <button 
-                onClick={() => { console.log("🔵 PaymentModal - Online payment clicked, amount:", amount); onOnline(); }} 
-                className="flex items-center justify-center w-full py-2 text-white bg-red-600 rounded-lg hover:bg-red-700 transition-colors"
-              >
-                <CreditCard className="mr-2 w-4 h-4" /> Pay ₹{amount}
-              </button>
+              
+              {amount === 0 ? (
+                <div className="text-center">
+                  <p className="text-green-600 mb-3 font-semibold">
+                    🎉 Your total is ₹0! No payment needed.
+                  </p>
+                  <button 
+                    onClick={() => { 
+                      console.log("💜 PaymentModal - FREE ORDER button clicked (amount = 0)"); 
+                      onOnline(); 
+                    }} 
+                    className="flex items-center justify-center w-full py-2 text-white bg-green-600 rounded-lg hover:bg-green-700 transition-colors"
+                  >
+                    <CreditCard className="mr-2 w-4 h-4" /> Place Free Order
+                  </button>
+                </div>
+              ) : (
+                <button 
+                  onClick={() => { 
+                    console.log("💜 PaymentModal - ONLINE PAYMENT button clicked, amount:", amount); 
+                    onOnline(); 
+                  }} 
+                  className="flex items-center justify-center w-full py-2 text-white bg-red-600 rounded-lg hover:bg-red-700 transition-colors"
+                >
+                  <CreditCard className="mr-2 w-4 h-4" /> Pay ₹{amount}
+                </button>
+              )}
             </>
           )}
           
@@ -96,11 +167,10 @@ export const PaymentModal = ({
                 Amount: ₹{codDiscountedAmount} (Pay on delivery)
               </p>
               
-              {/* Show coupon savings if applied */}
-              {couponCode && discountAmount > 0 && (
+              {couponCode && (couponDiscount + freeDiscount) > 0 && (
                 <div className="text-center mb-2">
                   <p className="text-xs text-green-600">
-                    Coupon "{couponCode}" applied: -₹{discountAmount}
+                    Coupon "{couponCode}" applied: -₹{couponDiscount + freeDiscount}
                   </p>
                 </div>
               )}
@@ -108,7 +178,10 @@ export const PaymentModal = ({
                 *No online discount applicable on COD
               </p>
               <button 
-                onClick={() => { console.log("🔵 PaymentModal - COD clicked, amount:", codDiscountedAmount); onCOD(); }} 
+                onClick={() => { 
+                  console.log("💜 PaymentModal - COD button clicked, amount:", codDiscountedAmount); 
+                  onCOD(); 
+                }} 
                 className="w-full py-2 text-white bg-red-600 rounded-lg hover:bg-red-700 transition-colors"
               >
                 Confirm COD • ₹{codDiscountedAmount}
@@ -132,10 +205,9 @@ export const PaymentModal = ({
               </p>
               <button 
                 onClick={() => { 
-                  console.log("🔵 PaymentModal - Partial COD clicked");
+                  console.log("💜 PaymentModal - PARTIAL COD button clicked");
                   console.log("   Online Amount:", onlineAmount);
                   console.log("   COD Amount:", codAmount);
-                  console.log("   Percentage:", partialPercentage);
                   onPartialCod(); 
                 }} 
                 className="w-full py-2 text-white bg-red-600 rounded-lg hover:bg-red-700 transition-colors"
@@ -151,7 +223,9 @@ export const PaymentModal = ({
 };
 
 export const CongratulationsModal = ({ isOpen, onClose, couponCode, savingsAmount }) => {
+  console.log("🎉🎉🎉 CongratulationsModal RENDERED, isOpen:", isOpen);
   if (!isOpen) return null;
+  
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/50 backdrop-blur-sm">
       <motion.div 
@@ -170,7 +244,10 @@ export const CongratulationsModal = ({ isOpen, onClose, couponCode, savingsAmoun
           <span className="block text-2xl font-bold text-green-600 mt-1">₹{savingsAmount} OFF</span>
         </div>
         <button 
-          onClick={() => { console.log("🔵 CongratulationsModal - Close button clicked"); onClose(); }} 
+          onClick={() => { 
+            console.log("🎉 CongratulationsModal - Close button clicked"); 
+            onClose(); 
+          }} 
           className="w-full py-3 bg-green-500 text-white rounded-xl font-semibold hover:bg-green-600 transition-colors"
         >
           Continue
@@ -185,7 +262,11 @@ export const ExitWarningModal = ({ isOpen, onContinue, onExit, message, type = "
   const [selectedReasons, setSelectedReasons] = useState([]);
   const [othersText, setOthersText] = useState("");
   const [isOthersSelected, setIsOthersSelected] = useState(false);
+  
+  console.log("⚠️ ExitWarningModal RENDERED, isOpen:", isOpen, "type:", type);
+  
   if (!isOpen) return null;
+  
   const reasons = [
     "Don't want to share mobile number",
     "Need to modify cart",
@@ -196,6 +277,7 @@ export const ExitWarningModal = ({ isOpen, onContinue, onExit, message, type = "
     "Just browsing",
     "Others"
   ];
+  
   const handleSubmit = (e) => {
     e.preventDefault();
     let finalReasons = [...selectedReasons];
@@ -203,10 +285,12 @@ export const ExitWarningModal = ({ isOpen, onContinue, onExit, message, type = "
       finalReasons = finalReasons.filter(r => r !== "Others");
       finalReasons.push(othersText || "Others");
     }
+    console.log("⚠️ ExitWarningModal - Submitting reasons:", finalReasons);
     onExit(finalReasons);
   };
 
   const handleReasonChange = (reason, isChecked) => {
+    console.log(`⚠️ Reason "${reason}" checked:`, isChecked);
     if (isChecked) {
       setSelectedReasons([...selectedReasons, reason]);
       if (reason === "Others") setIsOthersSelected(true);
@@ -253,7 +337,7 @@ export const ExitWarningModal = ({ isOpen, onContinue, onExit, message, type = "
                 type="text" 
                 value={othersText} 
                 onChange={(e) => {
-                  console.log("🔵 ExitWarningModal - Others text changed:", e.target.value);
+                  console.log("⚠️ Others text changed:", e.target.value);
                   setOthersText(e.target.value);
                 }} 
                 placeholder="Please specify..." 
@@ -264,7 +348,10 @@ export const ExitWarningModal = ({ isOpen, onContinue, onExit, message, type = "
             <div className="flex gap-3">
               <button 
                 type="button" 
-                onClick={() => { console.log("🔵 ExitWarningModal - Keep Shopping clicked"); onContinue(); }} 
+                onClick={() => { 
+                  console.log("⚠️ Keep Shopping clicked"); 
+                  onContinue(); 
+                }} 
                 className="flex-1 px-4 py-2 bg-gray-900 text-white rounded-lg hover:bg-gray-800 transition-colors"
               >
                 Keep Shopping
@@ -300,13 +387,19 @@ export const ExitWarningModal = ({ isOpen, onContinue, onExit, message, type = "
         <p className="text-gray-600 mb-4">{message?.description || "You're about to leave behind an exclusive FREE GIFT!"}</p>
         <div className="flex gap-3">
           <button 
-            onClick={() => { console.log("🔵 ExitWarningModal - Continue clicked"); onContinue(); }} 
+            onClick={() => { 
+              console.log("⚠️ Continue clicked"); 
+              onContinue(); 
+            }} 
             className="flex-1 px-4 py-2 bg-green-500 text-white rounded-lg hover:bg-green-600 transition-colors"
           >
             Continue
           </button>
           <button 
-            onClick={() => { console.log("🔵 ExitWarningModal - Exit Anyway clicked"); onExit(); }} 
+            onClick={() => { 
+              console.log("⚠️ Exit Anyway clicked"); 
+              onExit(); 
+            }} 
             className="flex-1 px-4 py-2 bg-gray-900 text-white rounded-lg hover:bg-gray-800 transition-colors"
           >
             Exit Anyway

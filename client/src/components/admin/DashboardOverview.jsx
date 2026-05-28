@@ -241,7 +241,7 @@ const DashboardOverview = () => {
                   <div className="relative flex-1 w-full flex items-end">
                     <div
                       className="w-full bg-gradient-to-t from-red-600 via-rose-500 to-red-400 rounded-t-lg shadow-md group-hover:shadow-red-300/60 group-hover:from-red-700 group-hover:to-rose-400 transition-all duration-300 relative"
-                      style={{ height: `${heightPct}%`, minHeight: "8px" }}
+                      style={{ height: `${heightPct}%`, minHeight: "100px" }}
                     >
                       <div className="absolute -top-9 left-1/2 -translate-x-1/2 bg-gray-900 text-white text-[10px] font-semibold px-2 py-1 rounded opacity-0 group-hover:opacity-100 transition-opacity whitespace-nowrap pointer-events-none">
                         {formatCurrency(day.sales)}
@@ -251,7 +251,7 @@ const DashboardOverview = () => {
                   <p className="text-[10px] sm:text-xs font-medium text-gray-600">
                     {new Date(day._id).toLocaleDateString("en-IN", { weekday: "short" })}
                   </p>
-                  <p className="text-[10px] text-gray-400">{day.orders} ord</p>
+                  <p className="text-[10px] text-gray-800">{day.orders} ord</p>
                 </div>
               )
             })}

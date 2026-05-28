@@ -792,6 +792,13 @@ const placeCodOrder = async (req, res) => {
     const userId = req.user?.userId || null;
     const { items, shippingAddress, couponCode, selectedShippingRate, amount, freediscount, referralDiscount } = req.body;
 
+    console.log("🟢 COD ORDER REQUEST:", {
+      itemsCount: items?.length,
+      referralDiscount,
+      freediscount,
+      amount
+    });
+
     if (!items || !Array.isArray(items) || items.length === 0) {
       return res.status(400).json({ success: false, message: "Cart items are required" });
     }
@@ -830,7 +837,7 @@ const placeCodOrder = async (req, res) => {
       });
     }
 
-    // ✅ COD साठी फक्त coupon discount (ONLINE DISCOUNT नाही)
+    // ✅ Coupon discount calculation
     let discount = 0;
     let couponDetails = null;
     if (couponCode) {
@@ -844,11 +851,22 @@ const placeCodOrder = async (req, res) => {
     }
 
     const shippingCharges = 0;
-    // ✅ COD साठी TOTAL = subtotal - coupon discount (कोणताही online discount नाही)
-    const total = Math.round(subtotal + shippingCharges - discount);
+    
+    // ✅ FIXED: Include referralDiscount in total calculation
+    const totalDiscount = discount + (freediscount || 0) + (referralDiscount || 0);
+    const total = Math.round(Math.max(0, subtotal + shippingCharges - totalDiscount));
+    
     const orderNumber = `FH-${Date.now()}`;
 
-    console.log("💰 COD Order Summary:", { subtotal, shippingCharges, discount, total });
+    console.log("💰 COD Order Summary:", { 
+      subtotal, 
+      shippingCharges, 
+      discount,
+      freediscount: freediscount || 0,
+      referralDiscount: referralDiscount || 0,
+      totalDiscount,
+      total 
+    });
 
     const order = new Order({
       user: userId,
@@ -859,7 +877,7 @@ const placeCodOrder = async (req, res) => {
       shippingCharge: shippingCharges,
       freediscount: freediscount || 0,
       referralDiscount: referralDiscount || 0,
-      discount,  // ✅ फक्त coupon discount
+      discount,  // Only coupon discount
       total,
       pricing: {
         subtotal,
@@ -867,8 +885,8 @@ const placeCodOrder = async (req, res) => {
         tax: 0,
         discount,
         total,
-        freediscount,
-        referralDiscount,
+        freediscount: freediscount || 0,
+        referralDiscount: referralDiscount || 0,
         selectedShippingRate
       },
       coupon: couponDetails,
@@ -881,6 +899,7 @@ const placeCodOrder = async (req, res) => {
 
     await order.save();
     console.log("✅ COD Order saved:", order._id);
+    console.log("   Total with referral:", order.total);
 
     await Promise.all(validatedItems.map(it =>
       Product.findByIdAndUpdate(it.product, { $inc: { stock: -it.quantity } })
@@ -896,7 +915,7 @@ const placeCodOrder = async (req, res) => {
       console.error("Email sending failed:", emailError);
     }
 
-    // ✅ Send response immediately
+    // Send response
     res.json({
       success: true,
       message: "COD order placed successfully",
@@ -911,20 +930,17 @@ const placeCodOrder = async (req, res) => {
           discount: order.discount,
           total: order.total,
           freediscount: order.freediscount,
-          referralDiscount: order.pricing?.referralDiscount || 0
+          referralDiscount: order.referralDiscount
         },
         isGuest: !userId,
         orderId: order._id.toString()
       },
     });
 
-    // ✅ BACKGROUND: Push order to Shipmozo (DRAFT mode)
+    // Background Shipmozo push (keep as is)
     setImmediate(async () => {
       try {
-        console.log(`🟢 Background: Pushing COD order to Shipmozo (DRAFT) for ${order.orderNumber}`);
-
         const freshOrder = await Order.findById(order._id);
-
         const shipmozoData = {
           orderNumber: freshOrder.orderNumber,
           customer: {
@@ -944,13 +960,11 @@ const placeCodOrder = async (req, res) => {
             quantity: item.quantity,
             price: item.price
           })),
-          totalAmount: freshOrder.total,  // ₹100 (original - coupon)
+          totalAmount: freshOrder.total,
           paymentType: "COD",
           weight: 200
         };
-
         const pushResult = await shipmozoService.pushOrder(shipmozoData);
-
         if (pushResult.success) {
           freshOrder.shipmozoDetails = {
             orderId: pushResult.orderId,
@@ -959,12 +973,10 @@ const placeCodOrder = async (req, res) => {
             lastSyncAt: new Date()
           };
           await freshOrder.save();
-          console.log(`✅ COD order pushed to Shipmozo (DRAFT). Order ID: ${pushResult.orderId}`);
-        } else {
-          console.error(`❌ Shipmozo push failed for COD:`, pushResult.error);
+          console.log(`✅ COD order pushed to Shipmozo`);
         }
       } catch (bgError) {
-        console.error("❌ Background Shipmozo error for COD:", bgError);
+        console.error("❌ Background Shipmozo error:", bgError);
       }
     });
 
@@ -1185,6 +1197,78 @@ async function returnOrder(req, res) {
 }
 
 // ===============================
+// Cleanup Temp Orders for User
+// ===============================
+const cleanupTempOrdersForUser = async (userId) => {
+  try {
+    console.log("🧹 Cleaning up temp orders for user:", userId);
+    
+    // Find all PENDING_PAYMENT or PLACED orders (temp orders)
+    const tempOrders = await Order.find({
+      user: userId,
+      status: { $in: ["PLACED", "PENDING_PAYMENT", "ABANDONED"] }
+    });
+    
+    if (tempOrders.length === 0) {
+      console.log("✅ No temp orders found for user");
+      return { deleted: 0, restored: 0 };
+    }
+    
+    console.log(`📦 Found ${tempOrders.length} temp orders to cleanup`);
+    
+    let restoredStockCount = 0;
+    let deletedCount = 0;
+    
+    for (const order of tempOrders) {
+      console.log(`   Processing order: ${order.orderNumber}, Status: ${order.status}`);
+      
+      // ✅ Restore stock
+      for (const item of order.items) {
+        if (!item.isBulkProduct && item.product) {
+          await Product.findByIdAndUpdate(item.product, { $inc: { stock: item.quantity } });
+          restoredStockCount++;
+          console.log(`      Restored ${item.quantity} units of ${item.name}`);
+        }
+      }
+      
+      // ✅ Restore coupon usage if applied
+      if (order.coupon?.code && order.user) {
+        try {
+          const coupon = await Coupon.findOne({ code: order.coupon.code });
+          if (coupon) {
+            coupon.usedCount = Math.max(0, coupon.usedCount - 1);
+            const userUsage = coupon.usedBy.find(u => u.user.toString() === userId);
+            if (userUsage) {
+              userUsage.usedCount = Math.max(0, userUsage.usedCount - 1);
+              if (userUsage.usedCount === 0) {
+                coupon.usedBy = coupon.usedBy.filter(u => u.user.toString() !== userId);
+              }
+            }
+            await coupon.save();
+            console.log(`      Coupon ${order.coupon.code} usage restored`);
+          }
+        } catch (couponErr) {
+          console.error("      Failed to restore coupon:", couponErr);
+        }
+      }
+      
+      // ✅ Delete the temp order
+      await Order.deleteOne({ _id: order._id });
+      deletedCount++;
+      console.log(`      ✅ Deleted temp order`);
+    }
+    
+    console.log(`✅ Cleanup complete: ${deletedCount} orders deleted, ${restoredStockCount} items restored`);
+    
+    return { deleted: deletedCount, restored: restoredStockCount };
+    
+  } catch (error) {
+    console.error("❌ Cleanup temp orders error:", error);
+    return { deleted: 0, restored: 0, error: error.message };
+  }
+};
+
+// ===============================
 // Get User Orders
 // ===============================
 
@@ -1195,13 +1279,31 @@ const getUserOrders = async (req, res) => {
     const limit = parseInt(req.query.limit) || 10;
     const skip = (page - 1) * limit;
 
-    const orders = await Order.find({ user: userId })
+    console.log("📋 GET USER ORDERS for user:", userId);
+    
+    // ✅ STEP 1: Cleanup temp orders for this user (background - don't await if you want faster response)
+    // Option A: Wait for cleanup (slower but guaranteed)
+    await cleanupTempOrdersForUser(userId);
+    
+    // Option B: Don't wait (faster, but cleanup happens async)
+    // cleanupTempOrdersForUser(userId).catch(console.error);
+    
+    // ✅ STEP 2: Fetch ONLY confirmed orders (not temp orders)
+    const orders = await Order.find({ 
+      user: userId,
+      status: { $in: ["CONFIRMED", "SHIPPED", "DELIVERED", "CANCELLED", "RETURNED"] }
+    })
       .populate("items.product", "name images price")
       .sort({ createdAt: -1 })
       .skip(skip)
       .limit(limit);
 
-    const totalOrders = await Order.countDocuments({ user: userId });
+    const totalOrders = await Order.countDocuments({ 
+      user: userId,
+      status: { $in: ["CONFIRMED", "SHIPPED", "DELIVERED", "CANCELLED", "RETURNED"] }
+    });
+
+    console.log(`✅ Found ${orders.length} confirmed orders for user`);
 
     res.json({
       success: true,
@@ -1386,7 +1488,6 @@ const getShippingRates = async (req, res) => {
     res.status(500).json({ success: false, message: "Failed to get shipping rates" });
   }
 };
-
 // ===============================
 // Public Order Lookup
 // ===============================
@@ -1764,6 +1865,352 @@ const exportOrdersToExcel = async (req, res) => {
 
 
 // ===============================
+// Place Free Order (₹0)
+// ===============================
+const placeFreeOrder = async (req, res) => {
+  try {
+    console.log("=".repeat(60));
+    console.log("🟢🟢🟢 PLACE FREE ORDER FUNCTION STARTED 🟢🟢🟢");
+    console.log("=".repeat(60));
+    
+    const userId = req.user?.userId || null;
+    const { items, shippingAddress, couponCode, selectedShippingRate, freediscount, referralDiscount, amount } = req.body;
+
+    console.log("📋 REQUEST BODY:", {
+      userId,
+      itemsCount: items?.length,
+      couponCode,
+      freediscount,
+      referralDiscount,
+      amountPassed: amount
+    });
+
+    console.log("🔍 Step 1: Validating request...");
+    
+    if (!items || !Array.isArray(items) || items.length === 0) {
+      console.log("❌ Validation failed: No items in order");
+      return res.status(400).json({ success: false, message: "Cart items are required" });
+    }
+
+    if (!shippingAddress || !shippingAddress.fullName || !shippingAddress.phoneNumber || !shippingAddress.pinCode) {
+      console.log("❌ Validation failed: Incomplete shipping address");
+      return res.status(400).json({ success: false, message: "Complete shipping address is required" });
+    }
+
+    console.log("✅ Validation passed");
+
+    console.log("🔍 Step 2: Processing items and calculating subtotal...");
+    let subtotal = 0;
+    let totalQuantity = 0;
+    let validatedItems = [];
+
+    for (let idx = 0; idx < items.length; idx++) {
+      const it = items[idx];
+      console.log(`   Processing item ${idx + 1}:`, { productId: it.productId, quantity: it.quantity });
+      
+      const product = await Product.findById(it.productId);
+      if (!product) {
+        console.log(`❌ Product not found: ${it.productId}`);
+        return res.status(400).json({ success: false, message: `Product not found: ${it.productId}` });
+      }
+
+      const quantity = Number(it.quantity || 1);
+      const price = Number(product.price || 0);
+      const itemTotal = price * quantity;
+      subtotal += itemTotal;
+      totalQuantity += quantity;
+
+      console.log(`   Item ${idx + 1} details:`, {
+        name: product.name,
+        price,
+        quantity,
+        itemTotal,
+        runningSubtotal: subtotal
+      });
+
+      validatedItems.push({
+        product: product._id,
+        name: product.name,
+        price,
+        quantity,
+        size: it.size || "",
+        color: it.color || "Default",
+        image: product.images?.[0],
+        itemTotal,
+        isBulkProduct: product.isBulkProduct === true
+      });
+    }
+
+    console.log("📊 Subtotal calculated:", subtotal);
+    console.log("📊 Total Quantity:", totalQuantity);
+
+    // ✅ Calculate online discount (₹30 per quantity)
+    const ONLINE_DISCOUNT_PER_QUANTITY = 30;
+    const onlineDiscountAmount = totalQuantity * ONLINE_DISCOUNT_PER_QUANTITY;
+    console.log(`📊 Online Discount Amount: ₹${onlineDiscountAmount}`);
+
+    console.log("🔍 Step 3: Calculating coupon discount...");
+    let discount = 0;
+    let couponDetails = null;
+    if (couponCode) {
+      console.log(`   Checking coupon: ${couponCode}`);
+      const coupon = await Coupon.findOne({ code: couponCode, isActive: true });
+      if (coupon && new Date() <= coupon.validUntil && subtotal >= (coupon.minOrderValue || 0)) {
+        discount = coupon.discountType === "percentage"
+          ? Math.min((subtotal * coupon.discountValue) / 100, coupon.maxDiscountAmount || Infinity)
+          : coupon.discountValue || 0;
+        couponDetails = { code: coupon.code, discountAmount: discount, discountType: coupon.discountType };
+        console.log(`   Coupon applied: ₹${discount}`);
+      } else {
+        console.log(`   Coupon not applicable or expired`);
+      }
+    } else {
+      console.log("   No coupon code provided");
+    }
+
+    const shippingCharges = 0;
+    console.log("📊 Shipping charges:", shippingCharges);
+
+    // ✅ Calculate total payable after all discounts (what customer would pay without referral)
+    const totalDiscount = discount + onlineDiscountAmount + (freediscount || 0);
+    const totalPayableBeforeReferral = Math.max(0, subtotal + shippingCharges - totalDiscount);
+    
+    // ✅ Calculate ORDER TOTAL for database (without online discount, because FREE orders get online discount)
+    // Formula: subtotal - couponDiscount - freeDiscount (online discount is separate)
+    const orderTotalForDB = Math.max(0, subtotal - discount - (freediscount || 0));
+    
+    // ✅ Referral discount applied (actual deduction from wallet)
+    const referralApplied = Math.min(referralDiscount || 0, totalPayableBeforeReferral);
+    const finalCustomerPay = Math.max(0, totalPayableBeforeReferral - referralApplied);
+    
+    console.log("🔍 Step 4: Calculating total with all discounts...");
+    console.log(`   Discount (coupon): ${discount}`);
+    console.log(`   Freediscount: ${freediscount || 0}`);
+    console.log(`   Online Discount: ${onlineDiscountAmount}`);
+    console.log(`   Total Discount: ${totalDiscount}`);
+    console.log(`   Total Payable (before referral): ${totalPayableBeforeReferral}`);
+    console.log(`   Order Total for DB (without online discount): ${orderTotalForDB}`);
+    console.log(`   Referral Discount Applied: ${referralApplied}`);
+    console.log(`   Final Customer Pay: ${finalCustomerPay}`);
+    
+    // ✅ Verify this is a free order (customer pays ₹0)
+    if (finalCustomerPay !== 0) {
+      console.log(`❌ This route requires finalCustomerPay to be 0. Got: ${finalCustomerPay}`);
+      return res.status(400).json({ 
+        success: false, 
+        message: "This route is only for orders that become ₹0 after referral discount",
+        details: { totalPayableBeforeReferral, referralApplied, finalCustomerPay }
+      });
+    }
+    
+    const orderNumber = `FREE-${Date.now()}`;
+
+    console.log("💰 FREE Order Summary:", { 
+      subtotal, 
+      shippingCharges, 
+      discount,
+      onlineDiscount: onlineDiscountAmount,
+      freediscount: freediscount || 0,
+      referralDiscountApplied: referralApplied,
+      totalDiscount,
+      orderTotalForDB,
+      finalCustomerPay
+    });
+
+    console.log("🔍 Step 5: Creating order in database...");
+    const order = new Order({
+      user: userId,
+      orderNumber,
+      items: validatedItems,
+      shippingAddress,
+      subtotal,
+      shippingCharge: shippingCharges,
+      freediscount: freediscount || 0,
+      referralDiscount: referralApplied,
+      discount: discount,  // ✅ Only coupon discount (not online discount)
+      total: orderTotalForDB,  // ✅ Store amount without online discount
+      pricing: {
+        subtotal,
+        shippingCharges,
+        tax: 0,
+        discount: discount,  // ✅ Only coupon discount
+        total: orderTotalForDB,
+        freediscount: freediscount || 0,
+        referralDiscount: referralApplied,
+        onlineDiscount: onlineDiscountAmount,  // ✅ Store online discount separately
+        selectedShippingRate
+      },
+      coupon: couponDetails,
+      paymentInfo: { 
+        method: "FREE",  // ✅ FREE payment method
+        status: "PAID",  // ✅ Already paid via referral
+        razorpayOrderId: orderNumber,
+        paidAt: new Date()
+      },
+      status: "CONFIRMED",
+      shippingStatus: "PROCESSING",
+      shipmozoDetails: { status: "PENDING" },
+      trackingInfo: { awbStatus: "PENDING" },
+    });
+
+    await order.save();
+    console.log("✅ FREE Order saved successfully!");
+    console.log(`   Order ID: ${order._id}`);
+    console.log(`   Order Number: ${order.orderNumber}`);
+    console.log(`   Total in DB: ₹${order.total}`);
+    console.log(`   Payment Method: ${order.paymentInfo.method}`);
+    console.log(`   Payment Status: ${order.paymentInfo.status}`);
+
+    console.log("🔍 Step 6: Updating stock...");
+    let stockUpdateCount = 0;
+    for (const it of validatedItems) {
+      if (!it.isBulkProduct) {
+        await Product.findByIdAndUpdate(it.product, { $inc: { stock: -it.quantity } });
+        stockUpdateCount++;
+        console.log(`   Updated stock for product ${it.product}: -${it.quantity}`);
+      }
+    }
+    console.log(`✅ Stock updated for ${stockUpdateCount} items`);
+
+    if (userId) {
+      console.log(`🔍 Step 7: Clearing cart for user ${userId}`);
+      await User.findByIdAndUpdate(userId, { cart: [] });
+      console.log("✅ Cart cleared");
+    } else {
+      console.log("ℹ️ Guest user - No cart to clear");
+    }
+
+    // ✅ Update coupon usage if coupon applied
+    if (userId && couponDetails && couponDetails.code) {
+      console.log(`🔍 Step 8: Updating coupon usage...`);
+      try {
+        const coupon = await Coupon.findOne({ code: couponDetails.code });
+        if (coupon) {
+          coupon.usedCount += 1;
+          const userUsage = coupon.usedBy.find(u => u.user.toString() === userId);
+          if (userUsage) {
+            userUsage.usedCount += 1;
+          } else {
+            coupon.usedBy.push({ user: userId, usedCount: 1, lastUsed: new Date() });
+          }
+          await coupon.save();
+          console.log(`✅ Coupon usage updated for ${couponDetails.code}`);
+        }
+      } catch (couponError) {
+        console.error("❌ Failed to update coupon usage:", couponError);
+      }
+    }
+
+    // ✅ Push to Shipmozo with original amount (without online discount)
+    console.log("🔍 Step 9: Pushing to Shipmozo...");
+    setImmediate(async () => {
+      try {
+        console.log(`🟢 Pushing FREE order to Shipmozo: ${orderNumber}, Amount: ₹${orderTotalForDB}`);
+        
+        const shipmozoData = {
+          orderNumber: order.orderNumber,
+          customer: {
+            name: order.shippingAddress.fullName,
+            phone: order.shippingAddress.phoneNumber,
+            email: order.shippingAddress.email || ""
+          },
+          address: {
+            addressLine1: order.shippingAddress.addressLine1,
+            addressLine2: order.shippingAddress.addressLine2 || "",
+            pinCode: order.shippingAddress.pinCode,
+            city: order.shippingAddress.city,
+            state: order.shippingAddress.state
+          },
+          items: order.items.map(item => ({
+            name: item.name,
+            quantity: item.quantity,
+            price: item.price
+          })),
+          totalAmount: order.total,  // ✅ ₹30 (original without online discount)
+          paymentType: "PREPAID",    // ✅ Already paid via referral
+          weight: 200
+        };
+        
+        const pushResult = await shipmozoService.pushOrder(shipmozoData);
+        if (pushResult.success) {
+          order.shipmozoDetails = {
+            orderId: pushResult.orderId,
+            referenceId: pushResult.referenceId,
+            status: "ORDER_PUSHED",
+            lastSyncAt: new Date()
+          };
+          await order.save();
+          console.log(`✅ FREE order pushed to Shipmozo with ₹${order.total}`);
+        } else {
+          console.error(`❌ Shipmozo push failed:`, pushResult.error);
+          order.shipmozoDetails = {
+            status: "FAILED",
+            errorMessage: pushResult.error,
+            lastSyncAt: new Date()
+          };
+          await order.save();
+        }
+      } catch (bgError) {
+        console.error("❌ Background Shipmozo error:", bgError);
+      }
+    });
+
+    console.log("🔍 Step 10: Sending confirmation email...");
+    try {
+      await sendOrderConfirmationEmail(order.user, order);
+      console.log("✅ Order confirmation email sent successfully");
+    } catch (emailError) {
+      console.error("❌ Email sending failed:", emailError.message);
+    }
+
+    console.log("🔍 Step 11: Preparing response...");
+    const responseData = {
+      success: true,
+      message: "Free order placed successfully! 🎉",
+      order: {
+        id: order._id,
+        orderNumber: order.orderNumber,
+        total: order.total,
+        status: order.status,
+        paymentMethod: "FREE",
+        paymentStatus: "PAID",
+        pricing: {
+          subtotal: order.subtotal,
+          shipping: order.shippingCharge,
+          discount: order.discount,
+          total: order.total,
+          freediscount: order.freediscount,
+          referralDiscount: order.referralDiscount,
+          onlineDiscount: order.pricing?.onlineDiscount || 0
+        },
+        isGuest: !userId,
+        orderId: order._id.toString()
+      },
+    };
+
+    console.log("📨 Response being sent:", JSON.stringify(responseData, null, 2));
+    console.log("=".repeat(60));
+    console.log("✅✅✅ FREE ORDER PLACED SUCCESSFULLY ✅✅✅");
+    console.log("=".repeat(60));
+
+    res.json(responseData);
+
+  } catch (error) {
+    console.error("=".repeat(60));
+    console.error("❌❌❌ CREATE FREE ORDER ERROR ❌❌❌");
+    console.error("=".repeat(60));
+    console.error("Error Message:", error.message);
+    console.error("Error Stack:", error.stack);
+    console.error("=".repeat(60));
+    
+    res.status(500).json({ 
+      success: false, 
+      message: "Failed to create free order",
+      error: error.message 
+    });
+  }
+};
+// ===============================
 // Exports
 // ===============================
 
@@ -1781,5 +2228,6 @@ module.exports = {
   createPartialCodOrder,
   verifyPartialCodPayment,
   returnOrder,
-  exportOrdersToExcel
+  exportOrdersToExcel,
+  placeFreeOrder
 };

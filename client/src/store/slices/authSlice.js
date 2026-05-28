@@ -381,8 +381,10 @@ export const registerWithEmail = createAsyncThunk(
   async (userData, { rejectWithValue }) => {
     try {
       const response = await axios.post(`${API_BASE_URL}/auth/register/email`, userData);
-      // Assuming response contains { token, user }
+      // Store user data with expiry
+      localStorage.setItem("user", JSON.stringify(response.data.user));
       localStorage.setItem("authToken", response.data.jwtToken);
+      localStorage.setItem("fashionhub_token", response.data.jwtToken);
       return response.data;
     } catch (error) {
       return rejectWithValue(error.response?.data || { message: error.message });

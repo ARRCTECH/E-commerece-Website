@@ -152,10 +152,8 @@ exports.updateReferralDetailsW = async (req, res) => {
                 }
                 if (referral.type === "fixed") {
                     discountValue += referral.amount || 0;
-                    console.log(discountValue);
                 } else if (referral.type === "percentage") {
                     percentageValue += referral.amount || 0;
-                    console.log(percentageValue);
                 }
                 referral.creditStatus = true;
                 count++;

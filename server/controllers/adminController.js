@@ -141,7 +141,6 @@ const shapeOrderForAdmin = (o) => {
 
 const { uploadToCloudinary } = require("../utils/cloudinary")
 
-// Dashboard Overview Stats
 const getDashboardStats = async (req, res) => {
   try {
     const now = new Date()
@@ -149,42 +148,66 @@ const getDashboardStats = async (req, res) => {
     const startOfWeek = new Date(now.setDate(now.getDate() - now.getDay()))
     const startOfMonth = new Date(now.getFullYear(), now.getMonth(), 1)
 
-    // Total counts
+    // Total counts - Only confirmed orders (exclude temp orders)
     const totalUsers = await User.countDocuments({ role: "user" })
     const totalProducts = await Product.countDocuments({ isActive: true })
-    const totalOrders = await Order.countDocuments()
-    const pendingOrders = await Order.countDocuments({ status: { $in: ["pending", "confirmed", "processing"] } })
+    
+    // ✅ Total orders - exclude temp orders (PLACED, PENDING_PAYMENT)
+    const totalOrders = await Order.countDocuments({ 
+      status: { $nin: ["PLACED", "PENDING_PAYMENT", "ABANDONED"] }
+    })
+    
+    // ✅ Pending orders - exclude temp orders
+    const pendingOrders = await Order.countDocuments({ 
+      status: { $in: ["CONFIRMED", "PROCESSING", "SHIPPED"] }
+    })
 
-    // Sales stats
+    // ✅ Sales stats - exclude cancelled AND temp orders
     const totalSales = await Order.aggregate([
-      { $match: { status: { $ne: "cancelled" } } },
+      { $match: { 
+        status: { $nin: ["CANCELLED", "PLACED", "PENDING_PAYMENT", "ABANDONED"] }
+      } },
       { $group: { _id: null, total: { $sum: "$pricing.total" } } },
     ])
 
     const dailySales = await Order.aggregate([
-      { $match: { createdAt: { $gte: startOfDay }, status: { $ne: "cancelled" } } },
+      { $match: { 
+        createdAt: { $gte: startOfDay }, 
+        status: { $nin: ["CANCELLED", "PLACED", "PENDING_PAYMENT", "ABANDONED"] }
+      } },
       { $group: { _id: null, total: { $sum: "$pricing.total" }, count: { $sum: 1 } } },
     ])
 
     const weeklySales = await Order.aggregate([
-      { $match: { createdAt: { $gte: startOfWeek }, status: { $ne: "cancelled" } } },
+      { $match: { 
+        createdAt: { $gte: startOfWeek }, 
+        status: { $nin: ["CANCELLED", "PLACED", "PENDING_PAYMENT", "ABANDONED"] }
+      } },
       { $group: { _id: null, total: { $sum: "$pricing.total" }, count: { $sum: 1 } } },
     ])
 
     const monthlySales = await Order.aggregate([
-      { $match: { createdAt: { $gte: startOfMonth }, status: { $ne: "cancelled" } } },
+      { $match: { 
+        createdAt: { $gte: startOfMonth }, 
+        status: { $nin: ["CANCELLED", "PLACED", "PENDING_PAYMENT", "ABANDONED"] }
+      } },
       { $group: { _id: null, total: { $sum: "$pricing.total" }, count: { $sum: 1 } } },
     ])
 
-    // Recent orders
-    const recentOrders = await Order.find()
+    // ✅ Recent orders - exclude temp orders (only confirmed orders)
+    const recentOrders = await Order.find({ 
+      status: { $in: ["CONFIRMED", "SHIPPED", "DELIVERED", "PROCESSING"] }
+    })
       .populate("user", "name phoneNumber")
       .populate("items.product", "name")
       .sort({ createdAt: -1 })
       .limit(10)
 
-    // Popular products
+    // ✅ Popular products - exclude temp orders
     const popularProducts = await Order.aggregate([
+      { $match: { 
+        status: { $nin: ["CANCELLED", "PLACED", "PENDING_PAYMENT", "ABANDONED"] }
+      } },
       { $unwind: "$items" },
       { $group: { _id: "$items.product", totalSold: { $sum: "$items.quantity" } } },
       { $sort: { totalSold: -1 } },
@@ -193,12 +216,12 @@ const getDashboardStats = async (req, res) => {
       { $unwind: "$product" },
     ])
 
-    // Sales chart data (last 7 days)
+    // ✅ Sales chart data - exclude temp orders
     const salesChart = await Order.aggregate([
       {
         $match: {
           createdAt: { $gte: new Date(Date.now() - 7 * 24 * 60 * 60 * 1000) },
-          status: { $ne: "cancelled" },
+          status: { $nin: ["CANCELLED", "PLACED", "PENDING_PAYMENT", "ABANDONED"] }
         },
       },
       {
@@ -400,15 +423,18 @@ const deleteUser = async (req, res) => {
   }
 }
 
-// Order Management
 const getAllOrders = async (req, res) => {
   try {
     const { page = 1, limit = 20, status, search, startDate, endDate } = req.query
     const skip = (page - 1) * limit
 
     const query = {}
+    
+    // ✅ Admin साठी पण फक्त confirmed orders दाखवा
+    query.status = { $in: ["CONFIRMED", "SHIPPED", "DELIVERED", "CANCELLED", "RETURNED"] }
+    
     if (status) {
-      query.status = status.toUpperCase()
+      query.status = status.toUpperCase()  // Override if specific status requested
     }
     if (search) {
       query.$or = [

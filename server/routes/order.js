@@ -10,7 +10,8 @@ const {
   verifyPartialCodPayment,    
   getPaymentMethodsHandler,
   returnOrder ,
-  exportOrdersToExcel
+  exportOrdersToExcel,
+  placeFreeOrder
 } = require("../controllers/orderController");
 const { protect, optionalProtect } = require("../middleware/auth");
 
@@ -33,6 +34,8 @@ router.post("/verify-partial-cod-payment", optionalProtect, verifyPartialCodPaym
 router.post("/create-razorpay-order", optionalProtect, createRazorpayOrder);
 router.post("/cod", optionalProtect, placeCodOrder);
 router.post("/verify-payment", optionalProtect, verifyPaymentAndCreateOrder);
+
+router.post("/free-order", optionalProtect, placeFreeOrder);
 
 // ===============================
 // Order Management Routes

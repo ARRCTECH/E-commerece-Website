@@ -111,4 +111,6 @@ createPartialCodOrder: (orderData) =>
     api.post("/orders/export-orders", { startDate, endDate }, {
       responseType: "blob"  // Important for file download
     }),
+  placeFreeOrder: (orderData) =>
+    api.post("/orders/free-order", orderData),
 };

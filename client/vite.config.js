@@ -3,7 +3,7 @@ import react from '@vitejs/plugin-react';
 import viteCompression from 'vite-plugin-compression';
 import path from 'path';
 
-export default defineConfig({
+export default defineConfig(({ mode }) => ({
   plugins: [
     react(),
     // Gzip compression
@@ -43,9 +43,9 @@ export default defineConfig({
     assetsInlineLimit: 0, // Disable inlining assets to avoid data:base64 URL issues
     terserOptions: {
       compress: {
-        drop_console: true,
-        drop_debugger: true,
-        pure_funcs: ['console.log']
+        drop_console: true,      // ✅ Removes all console statements in production
+        drop_debugger: true,     // ✅ Removes debugger statements
+        pure_funcs: ['console.log', 'console.info', 'console.debug', 'console.warn']  // ✅ Specifically targets console methods
       }
     },
     rollupOptions: {
@@ -87,7 +87,8 @@ export default defineConfig({
       '@api': path.resolve(process.cwd(), './src/api')
     }
   },
+  // ✅ Browser console disable for production only (development madhe console dikhayla)
   esbuild: {
-    // drop: ['console', 'debugger'],
+    drop: mode === 'production' ? ['console', 'debugger'] : [],  // Production madhe console remove, development madhe thev
   },
-});
+}));
