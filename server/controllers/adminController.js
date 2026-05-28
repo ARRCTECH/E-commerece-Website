@@ -11,7 +11,7 @@ const sendOrderStatusUpdateEmail = async (order, status) => {
   try {
     const customerName = order.user?.name || order.shippingAddress?.fullName || "Customer";
     const customerEmail = order.user?.email || order.shippingAddress?.email;
-    
+
     if (!customerEmail) {
       console.warn("⚠️ No customer email found for status update notification");
       return;
@@ -27,7 +27,7 @@ const sendOrderStatusUpdateEmail = async (order, status) => {
 
     const statusColors = {
       shipped: "#0369a1",
-      delivered: "#059669", 
+      delivered: "#059669",
       cancelled: "#dc2626",
       processing: "#ea580c",
       confirmed: "#7c3aed"
@@ -331,30 +331,30 @@ const deleteSingleReferralDetails = async (req, res) => {
   try {
     const { userId, referralId } = req.body;
     if (!userId || !referralId) {
-      return res.status(400).json({ 
-        success: false, 
-        message: "Missing userId or referralId" 
+      return res.status(400).json({
+        success: false,
+        message: "Missing userId or referralId"
       });
     }
     const updatedUser = await User.findByIdAndUpdate(
       userId,
-      { 
-        $unset: { 
-          [`referredTo.${referralId}`]: 1 
-        } 
+      {
+        $unset: {
+          [`referredTo.${referralId}`]: 1
+        }
       },
-      { new: true } 
+      { new: true }
     );
     if (!updatedUser) {
-      return res.status(404).json({ 
-        success: false, 
-        message: "User not found" 
+      return res.status(404).json({
+        success: false,
+        message: "User not found"
       });
     }
     res.status(200).json({
       success: true,
       message: "Referral deleted successfully",
-      data: updatedUser 
+      data: updatedUser
     });
   } catch (error) {
     console.error("Error deleting referral:", error);
@@ -400,15 +400,18 @@ const deleteUser = async (req, res) => {
   }
 }
 
-// Order Management
 const getAllOrders = async (req, res) => {
   try {
     const { page = 1, limit = 20, status, search, startDate, endDate } = req.query
     const skip = (page - 1) * limit
 
     const query = {}
+
+    // ✅ Admin साठी पण फक्त confirmed orders दाखवा
+    query.status = { $in: ["CONFIRMED", "SHIPPED", "DELIVERED", "CANCELLED", "RETURNED"] }
+
     if (status) {
-      query.status = status.toUpperCase()
+      query.status = status.toUpperCase()  // Override if specific status requested
     }
     if (search) {
       query.$or = [
@@ -725,7 +728,7 @@ const updateReferralDetails = async (req, res) => {
           [`referredTo.${referralId}.type`]: newType
         }
       },
-      { new: true } 
+      { new: true }
     );
     if (!updatedUser) {
       return res.status(404).json({
