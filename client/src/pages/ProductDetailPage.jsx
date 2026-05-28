@@ -105,11 +105,11 @@ const ProductDetailPage = () => {
   }, [currentProduct, isBulkProduct])
 
   useEffect(() => {
-  if (isBulkProduct && currentProduct?.colors?.length > 0) {
-    const allColors = currentProduct.colors.map(color => color.name);
-    setSelectedColors(allColors);
-  }
-}, [isBulkProduct, currentProduct?._id]);
+    if (isBulkProduct && currentProduct?.colors?.length > 0) {
+      const allColors = currentProduct.colors.map(color => color.name);
+      setSelectedColors(allColors);
+    }
+  }, [isBulkProduct, currentProduct?._id]);
 
   const getDiscountPercentage = () => {
     if (isBulkProduct) {
@@ -424,13 +424,13 @@ const ProductDetailPage = () => {
               <Heart id="wish" className={`w-5 h-5 ${isInWishlist ? "fill-current" : ""}`} />
             </button>
             {user && (
-  <button
-    onClick={handleReferralShare}
-    className="absolute top-3 right-12 z-10 p-2 rounded-full bg-white/80 backdrop-blur-sm shadow-md"
-  >
-    <Share2 className="w-5 h-5 text-gray-700" />
-  </button>
-)}
+              <button
+                onClick={handleReferralShare}
+                className="absolute top-3 right-12 z-10 p-2 rounded-full bg-white/80 backdrop-blur-sm shadow-md"
+              >
+                <Share2 className="w-5 h-5 text-gray-700" />
+              </button>
+            )}
             <Swiper spaceBetween={0} pagination={{ clickable: true, dynamicBullets: true }} modules={[Pagination]} className="rounded-xl">
               {mediaItems.map((item, idx) => (
                 <SwiperSlide key={idx}>
@@ -508,13 +508,13 @@ const ProductDetailPage = () => {
               <div className="flex-1">
                 <div className="relative bg-gray-50 rounded-xl overflow-hidden group">
                   {user && (
-  <button
-    onClick={handleReferralShare}
-    className="absolute top-4 right-4 z-10 p-2 rounded-full bg-white/80 backdrop-blur-sm shadow-md hover:bg-white transition"
-  >
-    <Share2 className="w-5 h-5 text-gray-700" />
-  </button>
-)}
+                    <button
+                      onClick={handleReferralShare}
+                      className="absolute top-4 right-4 z-10 p-2 rounded-full bg-white/80 backdrop-blur-sm shadow-md hover:bg-white transition"
+                    >
+                      <Share2 className="w-5 h-5 text-gray-700" />
+                    </button>
+                  )}
                   {mediaItems[selectedMediaIndex]?.type === 'image' ? (
                     <motion.img
                       src={mediaItems[selectedMediaIndex]?.url}
@@ -1217,22 +1217,23 @@ const ProductDetailPage = () => {
             exit={{ opacity: 0 }}
             onClick={() => setShowSizeGuide(false)}>
             <motion.div
-              className="relative bg-white rounded-xl w-full max-w-md max-h-[80vh] overflow-y-auto"
+              className="relative bg-white rounded-xl w-full max-w-4xl max-h-[90vh] overflow-y-auto"
               initial={{ scale: 0.9, y: 20 }}
               animate={{ scale: 1, y: 0 }}
               exit={{ scale: 0.9, y: 20 }}
               onClick={e => e.stopPropagation()}>
-              <div className="p-4">
-                <div className="flex items-center justify-between mb-3">
-                  <h3 className="text-lg font-bold text-gray-900">Size Guide</h3>
-                  <button onClick={() => setShowSizeGuide(false)} className="p-1 rounded-full hover:bg-gray-100">
-                    <X className="w-5 h-5 text-gray-700" />
+              <div className="p-6">
+                <div className="flex items-center justify-between mb-4">
+                  <h3 className="text-2xl font-bold text-gray-900">Size Guide</h3>
+                  <button onClick={() => setShowSizeGuide(false)} className="p-2 rounded-full hover:bg-gray-100">
+                    <X className="w-6 h-6 text-gray-700" />
                   </button>
                 </div>
                 <img src="/6.webp" alt="Size Guide" className="w-full h-auto rounded-lg" />
               </div>
             </motion.div>
-          </motion.div>)}
+          </motion.div>
+        )}
       </AnimatePresence>
       <div className="lg:hidden fixed bottom-0 left-0 right-0 bg-white border-t border-gray-200 p-4 z-40 shadow-lg">
         <div className="flex gap-3">
@@ -1255,6 +1256,6 @@ const ProductDetailPage = () => {
         </div>
       </div>
     </div>
-    );
-  }
+  );
+}
 export default ProductDetailPage
