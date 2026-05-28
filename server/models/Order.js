@@ -45,7 +45,7 @@ const paymentInfoSchema = new mongoose.Schema(
   {
     method: { 
       type: String, 
-      enum: ["COD", "RAZORPAY", "PARTIAL_COD"],
+      enum: ["COD", "RAZORPAY", "PARTIAL_COD","FREE"],
       required: true 
     },
     status: {
