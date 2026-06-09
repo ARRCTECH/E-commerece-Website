@@ -42,6 +42,83 @@ import {
   ExitWarningModal,
 } from "../components/checkout/CheckoutModals";
 
+// ✅ Helper function to get product image (supports new schema)
+const getProductImage = (product) => {
+  if (!product) return "/placeholder.svg";
+  
+  // Check commonImages (new schema)
+  if (product.commonImages && product.commonImages.length > 0) {
+    return product.commonImages[0].url || product.commonImages[0];
+  }
+  
+  // Check first color's images (new schema)
+  if (product.colors && product.colors.length > 0) {
+    const firstColor = product.colors[0];
+    if (firstColor.images && firstColor.images.length > 0) {
+      return firstColor.images[0].url || firstColor.images[0];
+    }
+  }
+  
+  // Fallback to old images array (if exists)
+  if (product.images && product.images.length > 0) {
+    return product.images[0].url || product.images[0];
+  }
+  
+  return "/placeholder.svg";
+};
+
+// ✅ Helper function to get product price
+const getProductPrice = (item) => {
+  if (!item) return 0;
+  if (item.isBulkProduct) {
+    return item.pricePerSet || item.product?.bulkConfig?.pricePerSet || item.product?.price || 0;
+  }
+  return item.product?.price || item.price || 0;
+};
+
+// ✅ Helper function to get product name
+const getProductName = (item) => {
+  if (!item) return "Product";
+  return item.product?.name || item.name || "Product";
+};
+
+// ✅ Helper function to get quantity
+const getProductQuantity = (item) => {
+  if (!item) return 1;
+  if (item.isBulkProduct) {
+    return item.totalSets || item.quantity || 1;
+  }
+  return item.quantity || 1;
+};
+
+// ✅ Helper function to get size
+const getProductSize = (item) => {
+  if (!item) return "-";
+  if (item.size) return item.size;
+  if (item.isBulkProduct) return "BULK PACK";
+  return "M";
+};
+
+// ✅ Helper function to get color
+const getProductColor = (item) => {
+  if (!item) return "-";
+  if (item.color) {
+    if (typeof item.color === 'object') return item.color.name || "-";
+    return item.color;
+  }
+  if (item.isBulkProduct && item.selectedColors) {
+    return item.selectedColors.join(", ");
+  }
+  return "-";
+};
+
+// ✅ Helper function to get item total
+const getItemTotal = (item) => {
+  const price = getProductPrice(item);
+  const quantity = getProductQuantity(item);
+  return price * quantity;
+};
+
 const CheckoutPage = () => {
   console.log("🔷🔷🔷 CheckoutPage RENDERED 🔷🔷🔷");
 
@@ -248,7 +325,7 @@ const CheckoutPage = () => {
   const pricingWithoutReferral = useMemo(() => {
     console.log("🔄 Calculating pricing without referral...");
     const subtotal = isBuyNow && buyNowProduct
-      ? (buyNowProduct.product?.price || 0) * (buyNowProduct.quantity || 0)
+      ? getItemTotal(buyNowProduct)
       : (cartSummary.subtotal || 0);
 
     console.log("📊 Subtotal:", subtotal);
@@ -332,16 +409,9 @@ const CheckoutPage = () => {
       amountBeforeReferral = pricingWithoutReferral.amountForCOD;
       console.log("   Using COD amount before referral:", amountBeforeReferral);
 
-      // ✅ FIX: COD madhe expected final total = 30 (as per your requirement)
-      // Expected pay amount for COD (customer needs to pay on delivery)
       const EXPECTED_COD_FINAL_TOTAL = 30;
-
-      // Calculate how much referral discount to apply to reach EXPECTED_COD_FINAL_TOTAL
       let applicableReferral = Math.max(0, amountBeforeReferral - EXPECTED_COD_FINAL_TOTAL);
-
-      // But cannot apply more than available referral balance
       applicableReferral = Math.min(applicableReferral, referralBalance);
-
       const finalTotal = Math.max(0, amountBeforeReferral - applicableReferral);
 
       console.log(`   Referral balance: ${referralBalance}, Applicable: ${applicableReferral}`);
@@ -354,16 +424,12 @@ const CheckoutPage = () => {
       };
     }
     else {
-      // Default to ONLINE
       amountBeforeReferral = pricingWithoutReferral.amountForOnline;
       console.log("   Using default ONLINE amount before referral:", amountBeforeReferral);
-
       const applicableReferral = Math.min(referralBalance, amountBeforeReferral);
       const finalTotal = Math.max(0, amountBeforeReferral - applicableReferral);
-
       console.log(`   Referral balance: ${referralBalance}, Applicable: ${applicableReferral}`);
       console.log(`   Final total after referral: ${finalTotal}`);
-
       return {
         amountBeforeReferral,
         applicableReferral,
@@ -384,7 +450,7 @@ const CheckoutPage = () => {
   const displayItems = useMemo(() => {
     console.log("🔄 Calculating display items...");
     if (isBuyNow && buyNowProduct) {
-      console.log("   Buy Now mode, product:", buyNowProduct.product?.name);
+      console.log("   Buy Now mode, product:", getProductName(buyNowProduct));
       if (buyNowProduct.isBulkProduct) {
         return [{
           product: buyNowProduct.product,
@@ -487,7 +553,6 @@ const CheckoutPage = () => {
       return;
     }
 
-    // Calculate for ONLINE payment
     console.log("📊 Calculating for ONLINE payment...");
     const { amountBeforeReferral, applicableReferral, finalTotal } = calculateFinalTotal('ONLINE');
     console.log("📊 ONLINE Calculation Results:");
@@ -499,53 +564,53 @@ const CheckoutPage = () => {
     setReferralAmountGiven(applicableReferral);
     console.log("✅ Updated referralAmountGiven to:", applicableReferral);
 
-// Handle ₹0 payment - Use FREE order API
-if (finalTotal === 0) {
-  console.log("🎉 Final total is ₹0 - Handling FREE ORDER");
-  dispatch(clearError());
-  setShowPaymentModal(false);
+    // Handle ₹0 payment
+    if (finalTotal === 0) {
+      console.log("🎉 Final total is ₹0 - Handling FREE ORDER");
+      dispatch(clearError());
+      setShowPaymentModal(false);
 
-  const orderPayload = {
-    items: displayItems.map((item) => ({
-      productId: item.product?._id,
-      quantity: item.quantity,
-      size: item.size,
-      color: item.color,
-      isBulkProduct: item.isBulkProduct || false,
-      selectedColors: item.selectedColors,
-      totalSets: item.quantity,
-      totalPieces: item.totalPieces,
-      piecesPerSet: item.piecesPerSet,
-      pricePerSet: item.pricePerSet,
-    })),
-    shippingAddress: {
-      ...selectedAddress,
-      phoneNumber: `+91${selectedAddress?.phoneNumber?.replace(/^\+91/, "")}`,
-    },
-    couponCode: appliedCoupon?.code || "",
-    isBuyNow: isBuyNow,
-    amount: 0,  // ✅ CRITICAL: Pass amount 0
-    freediscount: pricingWithoutReferral.freediscount,
-    referralDiscount: applicableReferral,
-  };
+      const orderPayload = {
+        items: displayItems.map((item) => ({
+          productId: item.product?._id,
+          quantity: item.quantity,
+          size: item.size,
+          color: item.color,
+          isBulkProduct: item.isBulkProduct || false,
+          selectedColors: item.selectedColors,
+          totalSets: item.quantity,
+          totalPieces: item.totalPieces,
+          piecesPerSet: item.piecesPerSet,
+          pricePerSet: item.pricePerSet,
+        })),
+        shippingAddress: {
+          ...selectedAddress,
+          phoneNumber: `+91${selectedAddress?.phoneNumber?.replace(/^\+91/, "")}`,
+        },
+        couponCode: appliedCoupon?.code || "",
+        isBuyNow: isBuyNow,
+        amount: 0,
+        freediscount: pricingWithoutReferral.freediscount,
+        referralDiscount: applicableReferral,
+      };
 
-  console.log("📦 FREE order payload:", orderPayload);
+      console.log("📦 FREE order payload:", orderPayload);
 
-  try {
-    console.log("🚀 Dispatching placeFreeOrder...");
-    const result = await dispatch(placeFreeOrder(orderPayload)).unwrap();
-    console.log("✅ Free order result:", result);
-    await deductReferralBalance();
-    toast.success("Free order placed successfully! 🎉");
-    clearBuyNowData();
-    navigate(`/order-confirmation/${result.order.id}`);
-  } catch (error) {
-    console.error("❌ Failed to place free order:", error);
-    toast.error(error?.message || "Failed to place order");
-    setShowPaymentModal(true);
-  }
-  return;
-}
+      try {
+        console.log("🚀 Dispatching placeFreeOrder...");
+        const result = await dispatch(placeFreeOrder(orderPayload)).unwrap();
+        console.log("✅ Free order result:", result);
+        await deductReferralBalance();
+        toast.success("Free order placed successfully! 🎉");
+        clearBuyNowData();
+        navigate(`/order-confirmation/${result.order.id}`);
+      } catch (error) {
+        console.error("❌ Failed to place free order:", error);
+        toast.error(error?.message || "Failed to place order");
+        setShowPaymentModal(true);
+      }
+      return;
+    }
 
     // Normal online payment
     if (!razorpayLoaded) {
@@ -637,7 +702,6 @@ if (finalTotal === 0) {
 
     if (!validateOrder()) return;
 
-    // Calculate for COD payment (NO online discount)
     console.log("📊 Calculating for COD payment...");
     const { amountBeforeReferral, applicableReferral, finalTotal } = calculateFinalTotal('COD');
     console.log("📊 COD Calculation Results:");
@@ -1034,19 +1098,22 @@ if (finalTotal === 0) {
               <div className="space-y-3 max-h-60 overflow-y-auto mb-4">
                 {displayItems.map((item, idx) => (
                   <div key={idx} className="flex gap-3 p-2 bg-gray-50 rounded-lg">
+                    {/* ✅ UPDATED: Use getProductImage helper */}
                     <img
-                      src={item.product?.images?.[0]?.url}
+                      src={getProductImage(item.product)}
                       className="w-16 h-16 object-cover rounded"
-                      alt={item.product?.name}
+                      alt={getProductName(item)}
+                      onError={(e) => {
+                        e.target.src = "/placeholder.svg";
+                      }}
                     />
                     <div>
-                      <h3 className="font-semibold">{item.product?.name}</h3>
+                      <h3 className="font-semibold">{getProductName(item)}</h3>
                       <p className="text-sm text-gray-600">
-                        Qty: {item.quantity} | Size: {item.size || "M"} | Color:{" "}
-                        {item.color || "-"}
+                        Qty: {getProductQuantity(item)} | Size: {getProductSize(item)} | Color: {getProductColor(item)}
                       </p>
                       <p className="font-bold">
-                        ₹{item.product?.price * item.quantity}
+                        ₹{getItemTotal(item)}
                       </p>
                     </div>
                   </div>
@@ -1176,9 +1243,9 @@ if (finalTotal === 0) {
         isBulkProduct={isBulkBuyNow || displayItems.some((item) => item.isBulkProduct)}
         discountAmount={pricingWithoutReferral.couponDiscount + pricingWithoutReferral.freediscount + pricingWithoutReferral.onlineDiscount}
         couponCode={appliedCoupon?.code || filterYCoupon?.[0]?.code}
-        onlineDiscount={pricingWithoutReferral.onlineDiscount}      // ✅ NEW - Online discount amount (₹30)
-        couponDiscount={pricingWithoutReferral.couponDiscount}      // ✅ NEW - Coupon discount amount
-        freeDiscount={pricingWithoutReferral.freediscount}          // ✅ NEW - Free discount amount
+        onlineDiscount={pricingWithoutReferral.onlineDiscount}
+        couponDiscount={pricingWithoutReferral.couponDiscount}
+        freeDiscount={pricingWithoutReferral.freediscount}
       />
 
       <CongratulationsModal

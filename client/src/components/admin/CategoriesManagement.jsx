@@ -17,6 +17,26 @@ import {
 const inputCls = "w-full px-3 py-2 text-sm bg-white border border-gray-200 rounded-lg shadow-sm transition focus:outline-none focus:ring-2 focus:ring-red-500/30 focus:border-red-500"
 const labelCls = "block mb-1.5 text-xs font-semibold text-gray-700 uppercase tracking-wide"
 
+// ✅ Helper function to get category image URL (supports multiple schema formats)
+const getCategoryImageUrl = (category) => {
+  if (!category) return null;
+  
+  // Check if image exists
+  if (!category.image) return null;
+  
+  // If image is an object with url property
+  if (typeof category.image === 'object' && category.image.url) {
+    return category.image.url;
+  }
+  
+  // If image is a direct string URL
+  if (typeof category.image === 'string') {
+    return category.image;
+  }
+  
+  return null;
+}
+
 const CategoriesManagement = ({ products = [] }) => {
   const dispatch = useDispatch()
   const { categories, isLoading, error } = useSelector((state) => state.categories)
@@ -115,7 +135,9 @@ const CategoriesManagement = ({ products = [] }) => {
       showOnHomepage: category.showOnHomepage,
       sortOrder: category.sortOrder,
     })
-    setImagePreview(category.image?.url || "")
+    // ✅ Use helper function to get image URL
+    const imageUrl = getCategoryImageUrl(category)
+    setImagePreview(imageUrl || "")
     setShowModal(true)
   }
 
@@ -283,59 +305,65 @@ const CategoriesManagement = ({ products = [] }) => {
             </div>
           ) : (
             <div className="divide-y divide-gray-100">
-              {paginatedCategories.map((category) => (
-                <div key={category._id} className="p-4 hover:bg-rose-50/40 transition">
-                  <div className="flex items-start gap-3">
-                    <div className="flex-shrink-0 w-16 h-16">
-                      {category.image?.url ? (
-                        <img
-                          className="object-cover w-16 h-16 rounded-xl ring-1 ring-gray-200"
-                          src={category.image.url || "/placeholder.svg"}
-                          alt={category.name}
-                        />
-                      ) : (
-                        <div className="flex items-center justify-center w-16 h-16 bg-gradient-to-br from-gray-100 to-gray-200 rounded-xl">
-                          <ImageIcon className="w-8 h-8 text-gray-400" />
-                        </div>
-                      )}
-                    </div>
-                    <div className="flex-1 min-w-0">
-                      <div className="text-sm font-semibold text-gray-900">{category.name}</div>
-                      <div className="text-xs text-gray-500 mt-0.5">{category.slug}</div>
-                      <div className="mt-1.5 flex flex-wrap gap-1">
-                        <span className="inline-flex items-center px-2 py-0.5 text-[10px] font-semibold rounded-full bg-rose-50 text-rose-700 ring-1 ring-rose-100">
-                          {category.parentCategory?.name || "Main Category"}
-                        </span>
+              {paginatedCategories.map((category) => {
+                const categoryImage = getCategoryImageUrl(category)
+                return (
+                  <div key={category._id} className="p-4 hover:bg-rose-50/40 transition">
+                    <div className="flex items-start gap-3">
+                      <div className="flex-shrink-0 w-16 h-16">
+                        {categoryImage ? (
+                          <img
+                            className="object-cover w-16 h-16 rounded-xl ring-1 ring-gray-200"
+                            src={categoryImage || "/placeholder.svg"}
+                            alt={category.name}
+                            onError={(e) => {
+                              e.target.src = "/placeholder.svg"
+                            }}
+                          />
+                        ) : (
+                          <div className="flex items-center justify-center w-16 h-16 bg-gradient-to-br from-gray-100 to-gray-200 rounded-xl">
+                            <ImageIcon className="w-8 h-8 text-gray-400" />
+                          </div>
+                        )}
                       </div>
-                      <div className="mt-2 flex items-center justify-between">
-                        <div className="flex items-center gap-2">
-                          <span className="inline-flex items-center gap-1 text-xs text-gray-600">
-                            <Package className="w-3 h-3" /> {getProductCountForCategory(category)}
+                      <div className="flex-1 min-w-0">
+                        <div className="text-sm font-semibold text-gray-900">{category.name}</div>
+                        <div className="text-xs text-gray-500 mt-0.5">{category.slug}</div>
+                        <div className="mt-1.5 flex flex-wrap gap-1">
+                          <span className="inline-flex items-center px-2 py-0.5 text-[10px] font-semibold rounded-full bg-rose-50 text-rose-700 ring-1 ring-rose-100">
+                            {category.parentCategory?.name || "Main Category"}
                           </span>
-                          {category.showOnHomepage && (
-                            <span className="inline-flex items-center gap-1 text-xs text-green-600">
-                              <Home className="w-3 h-3" /> Home
-                            </span>
-                          )}
                         </div>
-                        <span className={`inline-flex px-2 py-0.5 text-[10px] font-semibold rounded-full ${
-                          category.isActive ? "bg-emerald-50 text-emerald-700 ring-1 ring-emerald-200" : "bg-red-50 text-red-700 ring-1 ring-red-200"
-                        }`}>
-                          {category.isActive ? "Active" : "Inactive"}
-                        </span>
-                      </div>
-                      <div className="mt-3 flex justify-end gap-2">
-                        <button onClick={() => openEditModal(category)} className="p-2 text-red-600 bg-red-50 rounded-lg hover:bg-red-100 transition">
-                          <Edit className="w-4 h-4" />
-                        </button>
-                        <button onClick={() => handleDelete(category._id)} className="p-2 text-white bg-gradient-to-r from-red-600 to-rose-600 rounded-lg hover:shadow-lg transition">
-                          <Trash2 className="w-4 h-4" />
-                        </button>
+                        <div className="mt-2 flex items-center justify-between">
+                          <div className="flex items-center gap-2">
+                            <span className="inline-flex items-center gap-1 text-xs text-gray-600">
+                              <Package className="w-3 h-3" /> {getProductCountForCategory(category)}
+                            </span>
+                            {category.showOnHomepage && (
+                              <span className="inline-flex items-center gap-1 text-xs text-green-600">
+                                <Home className="w-3 h-3" /> Home
+                              </span>
+                            )}
+                          </div>
+                          <span className={`inline-flex px-2 py-0.5 text-[10px] font-semibold rounded-full ${
+                            category.isActive ? "bg-emerald-50 text-emerald-700 ring-1 ring-emerald-200" : "bg-red-50 text-red-700 ring-1 ring-red-200"
+                          }`}>
+                            {category.isActive ? "Active" : "Inactive"}
+                          </span>
+                        </div>
+                        <div className="mt-3 flex justify-end gap-2">
+                          <button onClick={() => openEditModal(category)} className="p-2 text-red-600 bg-red-50 rounded-lg hover:bg-red-100 transition">
+                            <Edit className="w-4 h-4" />
+                          </button>
+                          <button onClick={() => handleDelete(category._id)} className="p-2 text-white bg-gradient-to-r from-red-600 to-rose-600 rounded-lg hover:shadow-lg transition">
+                            <Trash2 className="w-4 h-4" />
+                          </button>
+                        </div>
                       </div>
                     </div>
                   </div>
-                </div>
-              ))}
+                )
+              })}
             </div>
           )}
         </div>
@@ -359,8 +387,8 @@ const CategoriesManagement = ({ products = [] }) => {
                 <tr>
                   <td colSpan="7" className="px-6 py-12 text-center">
                     <div className="flex justify-center"><div className="w-8 h-8 border-2 border-red-200 border-t-red-600 rounded-full animate-spin"></div></div>
-                  </td>
-                </tr>
+                   </td>
+                 </tr>
               ) : paginatedCategories.length === 0 ? (
                 <tr>
                   <td colSpan="7" className="px-6 py-12 text-center text-gray-500">
@@ -369,69 +397,75 @@ const CategoriesManagement = ({ products = [] }) => {
                   </td>
                 </tr>
               ) : (
-                paginatedCategories.map((category) => (
-                  <tr key={category._id} className="hover:bg-rose-50/40 transition">
-                    <td className="px-6 py-4">
-                      <div className="flex items-center">
-                        <div className="flex-shrink-0 w-12 h-12">
-                          {category.image?.url ? (
-                            <img
-                              className="object-cover w-12 h-12 rounded-xl ring-1 ring-gray-200"
-                              src={category.image.url || "/placeholder.svg"}
-                              alt={category.name}
-                            />
-                          ) : (
-                            <div className="flex items-center justify-center w-12 h-12 bg-gradient-to-br from-gray-100 to-gray-200 rounded-xl">
-                              <ImageIcon className="w-6 h-6 text-gray-400" />
-                            </div>
-                          )}
+                paginatedCategories.map((category) => {
+                  const categoryImage = getCategoryImageUrl(category)
+                  return (
+                    <tr key={category._id} className="hover:bg-rose-50/40 transition">
+                      <td className="px-6 py-4">
+                        <div className="flex items-center">
+                          <div className="flex-shrink-0 w-12 h-12">
+                            {categoryImage ? (
+                              <img
+                                className="object-cover w-12 h-12 rounded-xl ring-1 ring-gray-200"
+                                src={categoryImage || "/placeholder.svg"}
+                                alt={category.name}
+                                onError={(e) => {
+                                  e.target.src = "/placeholder.svg"
+                                }}
+                              />
+                            ) : (
+                              <div className="flex items-center justify-center w-12 h-12 bg-gradient-to-br from-gray-100 to-gray-200 rounded-xl">
+                                <ImageIcon className="w-6 h-6 text-gray-400" />
+                              </div>
+                            )}
+                          </div>
+                          <div className="ml-4">
+                            <div className="text-sm font-semibold text-gray-900">{category.name}</div>
+                            <div className="text-xs text-gray-500 mt-0.5">{category.slug}</div>
+                          </div>
                         </div>
-                        <div className="ml-4">
-                          <div className="text-sm font-semibold text-gray-900">{category.name}</div>
-                          <div className="text-xs text-gray-500 mt-0.5">{category.slug}</div>
-                        </div>
-                      </div>
-                    </td>
-                    <td className="px-6 py-4">
-                      <span className="inline-flex items-center px-2.5 py-1 text-xs font-semibold rounded-full bg-rose-50 text-rose-700 ring-1 ring-rose-100">
-                        {category.parentCategory?.name || "Main Category"}
-                      </span>
-                    </td>
-                    <td className="px-6 py-4">
-                      <span className="inline-flex items-center gap-1 px-2.5 py-1 text-xs font-semibold rounded-full bg-gray-100 text-gray-700">
-                        <Package className="w-3 h-3" /> {getProductCountForCategory(category)}
-                      </span>
-                    </td>
-                    <td className="px-6 py-4">
-                      <span className={`inline-flex items-center px-2.5 py-1 text-xs font-semibold rounded-full ${
-                        category.isActive ? "bg-emerald-50 text-emerald-700 ring-1 ring-emerald-200" : "bg-red-50 text-red-700 ring-1 ring-red-200"
-                      }`}>
-                        {category.isActive ? <Eye className="w-3 h-3 mr-1" /> : <EyeOff className="w-3 h-3 mr-1" />}
-                        {category.isActive ? "Active" : "Inactive"}
-                      </span>
-                    </td>
-                    <td className="px-6 py-4">
-                      {category.showOnHomepage ? (
-                        <span className="inline-flex items-center gap-1 px-2.5 py-1 text-xs font-semibold rounded-full bg-green-50 text-green-700 ring-1 ring-green-200">
-                          <Home className="w-3 h-3" /> Yes
+                      </td>
+                      <td className="px-6 py-4">
+                        <span className="inline-flex items-center px-2.5 py-1 text-xs font-semibold rounded-full bg-rose-50 text-rose-700 ring-1 ring-rose-100">
+                          {category.parentCategory?.name || "Main Category"}
                         </span>
-                      ) : (
-                        <span className="inline-flex px-2.5 py-1 text-xs font-semibold rounded-full bg-gray-100 text-gray-500">No</span>
-                      )}
-                    </td>
-                    <td className="px-6 py-4 text-sm text-gray-700">{category.sortOrder || 0}</td>
-                    <td className="px-6 py-4 text-right">
-                      <div className="flex justify-end gap-2">
-                        <button onClick={() => openEditModal(category)} className="p-2 text-red-600 bg-red-50 rounded-lg hover:bg-red-100 hover:scale-105 transition">
-                          <Edit className="w-4 h-4" />
-                        </button>
-                        <button onClick={() => handleDelete(category._id)} className="p-2 text-white bg-gradient-to-r from-red-600 to-rose-600 rounded-lg hover:shadow-lg hover:scale-105 transition">
-                          <Trash2 className="w-4 h-4" />
-                        </button>
-                      </div>
-                    </td>
-                  </tr>
-                ))
+                      </td>
+                      <td className="px-6 py-4">
+                        <span className="inline-flex items-center gap-1 px-2.5 py-1 text-xs font-semibold rounded-full bg-gray-100 text-gray-700">
+                          <Package className="w-3 h-3" /> {getProductCountForCategory(category)}
+                        </span>
+                      </td>
+                      <td className="px-6 py-4">
+                        <span className={`inline-flex items-center px-2.5 py-1 text-xs font-semibold rounded-full ${
+                          category.isActive ? "bg-emerald-50 text-emerald-700 ring-1 ring-emerald-200" : "bg-red-50 text-red-700 ring-1 ring-red-200"
+                        }`}>
+                          {category.isActive ? <Eye className="w-3 h-3 mr-1" /> : <EyeOff className="w-3 h-3 mr-1" />}
+                          {category.isActive ? "Active" : "Inactive"}
+                        </span>
+                      </td>
+                      <td className="px-6 py-4">
+                        {category.showOnHomepage ? (
+                          <span className="inline-flex items-center gap-1 px-2.5 py-1 text-xs font-semibold rounded-full bg-green-50 text-green-700 ring-1 ring-green-200">
+                            <Home className="w-3 h-3" /> Yes
+                          </span>
+                        ) : (
+                          <span className="inline-flex px-2.5 py-1 text-xs font-semibold rounded-full bg-gray-100 text-gray-500">No</span>
+                        )}
+                      </td>
+                      <td className="px-6 py-4 text-sm text-gray-700">{category.sortOrder || 0}</td>
+                      <td className="px-6 py-4 text-right">
+                        <div className="flex justify-end gap-2">
+                          <button onClick={() => openEditModal(category)} className="p-2 text-red-600 bg-red-50 rounded-lg hover:bg-red-100 hover:scale-105 transition">
+                            <Edit className="w-4 h-4" />
+                          </button>
+                          <button onClick={() => handleDelete(category._id)} className="p-2 text-white bg-gradient-to-r from-red-600 to-rose-600 rounded-lg hover:shadow-lg hover:scale-105 transition">
+                            <Trash2 className="w-4 h-4" />
+                          </button>
+                        </div>
+                      </td>
+                    </tr>
+                  )
+                })
               )}
             </tbody>
           </table>
@@ -625,6 +659,9 @@ const CategoriesManagement = ({ products = [] }) => {
                           src={imagePreview || "/placeholder.svg"}
                           alt="Preview"
                           className="object-cover w-24 h-24 rounded-xl ring-2 ring-red-200"
+                          onError={(e) => {
+                            e.target.src = "/placeholder.svg"
+                          }}
                         />
                       </div>
                     )}

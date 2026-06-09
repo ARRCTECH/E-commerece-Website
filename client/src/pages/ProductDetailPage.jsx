@@ -17,6 +17,7 @@ import { addToWishlist, removeFromWishlist, optimisticAddToWishlist, optimisticR
 import ProductReviews from "../components/ProductReviews"
 import RelatedProducts from "../components/RelatedProducts"
 import toast from "react-hot-toast"
+
 const ProductDetailPage = () => {
   const { slug } = useParams()
   const dispatch = useDispatch()
@@ -27,9 +28,10 @@ const ProductDetailPage = () => {
   const isAddingToCart = useSelector(selectIsAddingToCart)
   const isAddingToWishlist = useSelector(selectIsAddingToWishlist)
   const isRemovingFromWishlist = useSelector(selectIsRemovingFromWishlist)
-  const [selectedMediaIndex, setSelectedMediaIndex] = useState(0) // unified index for images+videos
+  
+  const [selectedMediaIndex, setSelectedMediaIndex] = useState(0)
   const [selectedSize, setSelectedSize] = useState("")
-  const [selectedColor, setSelectedColor] = useState("")
+  const [selectedColor, setSelectedColor] = useState(null)
   const [quantity, setQuantity] = useState(1)
   const [showImageModal, setShowImageModal] = useState(false)
   const [showSizeGuide, setShowSizeGuide] = useState(false)
@@ -40,24 +42,61 @@ const ProductDetailPage = () => {
   const [showBulkModal, setShowBulkModal] = useState(false)
   const [selectedColors, setSelectedColors] = useState([])
   const [bulkQuantity, setBulkQuantity] = useState(1)
+  
   const isInWishlist = wishlistItems.some((item) => item._id === currentProduct?._id)
   const isBulkProduct = currentProduct?.isBulkProduct === true
+
+  // 🆕 Get colors from product (new structure)
+  const productColors = currentProduct?.colors || []
+  
+  // 🆕 Get selected color object
+  const selectedColorObj = productColors.find(c => c.name === selectedColor)
+  
+  // 🆕 Get sizes for selected color
+  const sizesForSelectedColor = selectedColorObj?.sizes || []
+  
+  // 🆕 Get images for selected color
+  const imagesForSelectedColor = selectedColorObj?.images || []
+  
+  // 🆕 Get common images
+  const commonImages = currentProduct?.commonImages || []
+  
+  // 🆕 Build unified media array (color images first, then common images, then videos)
+  const mediaItems = [
+    ...imagesForSelectedColor.map(img => ({ type: 'image', url: img.url, alt: `${currentProduct?.name} - ${selectedColor}`, id: img._id })),
+    ...commonImages.map(img => ({ type: 'image', url: img.url, alt: currentProduct?.name, id: img._id })),
+    ...(currentProduct?.videos?.map(vid => ({ type: 'video', url: vid.url, alt: currentProduct?.name, id: vid._id })) || [])
+  ]
+
+  // 🆕 Get stock for selected color and size
+  const getSelectedSizeStock = () => {
+    if (!selectedSize || !selectedColorObj) return 0
+    const sizeData = sizesForSelectedColor.find((s) => s.size === selectedSize)
+    return sizeData?.stock || 0
+  }
+
+  // 🆕 Get all unique sizes across all colors (for display)
+  const getAllUniqueSizes = () => {
+    const sizesSet = new Set()
+    productColors.forEach(color => {
+      color.sizes?.forEach(size => {
+        sizesSet.add(size.size)
+      })
+    })
+    return Array.from(sizesSet)
+  }
+
   const piecesPerSet = isBulkProduct
-    ? (currentProduct?.sizes?.length || 0) * (currentProduct?.bulkConfig?.piecesPerSize || 1)
+    ? (sizesForSelectedColor?.length || 0) * (currentProduct?.bulkConfig?.piecesPerSize || 1)
     : 0
-  const totalColors = isBulkProduct ? currentProduct?.colors?.length || 0 : 0
+  
+  const totalColors = productColors.length || 0
   const minColors = isBulkProduct ? currentProduct?.bulkConfig?.minColorsToSelect || 1 : 1
   const maxColors = isBulkProduct ? currentProduct?.bulkConfig?.maxColorsToSelect || totalColors : totalColors
 
   const totalSets = selectedColors.length * bulkQuantity
   const totalPieces = piecesPerSet * totalSets
   const totalPrice = (currentProduct?.bulkConfig?.pricePerSet || currentProduct?.price) * totalSets
-
-  // Build unified media array (images first, then videos)
-  const mediaItems = [
-    ...(currentProduct?.images?.map(img => ({ type: 'image', url: img?.url, alt: currentProduct.name, id: img._id })) || []),
-    ...(currentProduct?.videos?.map(vid => ({ type: 'video', url: vid?.url, alt: currentProduct.name, id: vid._id })) || [])
-  ];
 
   const formatDescription = (description) => {
     if (!description) return "";
@@ -69,7 +108,6 @@ const ProductDetailPage = () => {
       .join('\n');
   };
 
-  // REFERRAL SHARE HANDLER
   const handleReferralShare = () => {
     if (!user) {
       toast.error("Please login to get your referral link")
@@ -94,27 +132,28 @@ const ProductDetailPage = () => {
     }
   }, [dispatch, slug])
 
-  useEffect(() => {
-    setSelectedSize("")
-  }, [currentProduct?._id])
-
+  // 🆕 Reset selections when product changes
   useEffect(() => {
     if (currentProduct && !isBulkProduct) {
-      if (currentProduct.colors?.length > 0) setSelectedColor(currentProduct.colors[0].name)
+      if (productColors.length > 0) {
+        setSelectedColor(productColors[0].name)
+      }
+      setSelectedSize("")
     }
-  }, [currentProduct, isBulkProduct])
+  }, [currentProduct, isBulkProduct, productColors])
 
-<<<<<<< HEAD
-
-=======
->>>>>>> 5216e08af9f17574dd3b2bf8847b436aeb51de5e
+  // 🆕 Reset selected size when color changes
   useEffect(() => {
-    if (isBulkProduct && currentProduct?.colors?.length > 0) {
-      const allColors = currentProduct.colors.map(color => color.name);
+    setSelectedSize("")
+    setSelectedMediaIndex(0)
+  }, [selectedColor])
+
+  useEffect(() => {
+    if (isBulkProduct && productColors.length > 0) {
+      const allColors = productColors.map(color => color.name);
       setSelectedColors(allColors);
     }
-  }, [isBulkProduct, currentProduct?._id]);
-  
+  }, [isBulkProduct, currentProduct?._id, productColors]);
 
   const getDiscountPercentage = () => {
     if (isBulkProduct) {
@@ -131,11 +170,6 @@ const ProductDetailPage = () => {
     return 0
   }
 
-  const getSelectedSizeStock = () => {
-    if (!selectedSize || !currentProduct?.sizes) return currentProduct?.stock || 0
-    const sizeData = currentProduct.sizes.find((s) => s.size === selectedSize)
-    return sizeData?.stock || 0
-  }
   const handleColorToggle = (colorName) => {
     if (selectedColors.includes(colorName)) {
       setSelectedColors(selectedColors.filter(c => c !== colorName))
@@ -147,16 +181,17 @@ const ProductDetailPage = () => {
       setSelectedColors([...selectedColors, colorName])
     }
   }
+
   const handleAddToCartClick = () => {
     if (isBulkProduct) {
       setShowBulkModal(true)
       return
     }
-    if (currentProduct.sizes?.length > 0 && !selectedSize) {
+    if (sizesForSelectedColor.length > 0 && !selectedSize) {
       setShowAddToCartSizeModal(true)
       return false
     }
-    if (currentProduct.colors?.length && !selectedColor) {
+    if (productColors.length && !selectedColor) {
       toast.error("Please select a color")
       return false
     }
@@ -216,8 +251,22 @@ const ProductDetailPage = () => {
       return
     }
 
-    const payload = { productId: currentProduct._id, quantity, size: selectedSize, color: selectedColor }
-    dispatch(optimisticAddToCart({ product: currentProduct, quantity, size: selectedSize, color: selectedColor }))
+    const payload = { 
+      productId: currentProduct._id, 
+      quantity, 
+      size: selectedSize, 
+      color: selectedColor,
+      colorId: selectedColorObj?._id
+    }
+    
+    dispatch(optimisticAddToCart({ 
+      product: currentProduct, 
+      quantity, 
+      size: selectedSize, 
+      color: selectedColor,
+      colorImage: imagesForSelectedColor[0]?.url
+    }))
+    
     toast.success(`${currentProduct.name} added to cart!`)
 
     const bag = document.querySelector("#bag")
@@ -257,8 +306,8 @@ const ProductDetailPage = () => {
             totalPrice: (currentProduct?.bulkConfig?.pricePerSet || currentProduct?.price) * selectedColors.length * bulkQuantity,
             isBulkProduct: true,
             bulkConfig: currentProduct?.bulkConfig,
-            availableSizes: currentProduct?.sizes,
-            availableColors: currentProduct?.colors,
+            availableSizes: sizesForSelectedColor,
+            availableColors: productColors,
             pricePerSet: currentProduct?.bulkConfig?.pricePerSet || currentProduct?.price
           }
         }
@@ -266,12 +315,12 @@ const ProductDetailPage = () => {
       return;
     }
 
-    if (currentProduct.sizes?.length > 0 && !selectedSize) {
+    if (sizesForSelectedColor.length > 0 && !selectedSize) {
       setShowBuyNowSizeModal(true);
       return;
     }
 
-    if (currentProduct.colors?.length && !selectedColor) {
+    if (productColors.length && !selectedColor) {
       toast.error("Please select a color");
       return;
     }
@@ -292,6 +341,7 @@ const ProductDetailPage = () => {
         quantity,
         size: selectedSize,
         color: selectedColor,
+        colorImage: imagesForSelectedColor[0]?.url,
         buyNow: true,
         buyNowProduct: {
           product: currentProduct,
@@ -300,7 +350,7 @@ const ProductDetailPage = () => {
           color: selectedColor,
           price: currentProduct.price,
           originalPrice: currentProduct.originalPrice,
-          images: currentProduct.images,
+          images: imagesForSelectedColor.length > 0 ? imagesForSelectedColor : commonImages,
           name: currentProduct.name,
           brand: currentProduct.brand
         }
@@ -387,7 +437,6 @@ const ProductDetailPage = () => {
     )
   }
 
-  // Bulk product price display
   const displayPrice = isBulkProduct
     ? (currentProduct?.bulkConfig?.pricePerSet || currentProduct?.price)
     : currentProduct?.price
@@ -398,7 +447,7 @@ const ProductDetailPage = () => {
 
   return (
     <div className="min-h-screen bg-gray-50 pb-24 sm:pb-0">
-      {/* Desktop Breadcrumb - Hidden on mobile */}
+      {/* Desktop Breadcrumb */}
       <div className="hidden sm:block bg-white py-5 shadow-sm">
         <div className="mx-auto px-2 sm:px-6">
           <nav className="flex items-center text-sm text-gray-600 space-x-2 overflow-x-auto whitespace-nowrap">
@@ -419,7 +468,7 @@ const ProductDetailPage = () => {
       <div className="">
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 p-4 sm:p-4">
 
-          {/* LEFT COLUMN - IMAGES+VIDEOS (MOBILE SWIPER) */}
+          {/* LEFT COLUMN - IMAGES (MOBILE) */}
           <div className="lg:hidden relative -mx-4 rounded-xl">
             <button
               onClick={handleWishlistToggle}
@@ -453,7 +502,7 @@ const ProductDetailPage = () => {
                         src={item?.url}
                         controls
                         className="w-full h-auto aspect-square object-cover -mb-8"
-                        poster={currentProduct.images?.[0]?.url || ''}
+                        poster={imagesForSelectedColor[0]?.url || commonImages[0]?.url || ''}
                         onClick={(e) => e.stopPropagation()}
                       />
                     )}
@@ -476,11 +525,13 @@ const ProductDetailPage = () => {
               </div>
             </div>
           </div>
+
+          {/* LEFT COLUMN - DESKTOP */}
           <div className="hidden lg:block">
             <div className="flex gap-4">
               {/* Vertical Thumbnails */}
               <div className="flex flex-col gap-2 w-20">
-                {mediaItems.map((item, idx) => (
+                {mediaItems.slice(0, 6).map((item, idx) => (
                   <button
                     key={idx}
                     onClick={() => setSelectedMediaIndex(idx)}
@@ -536,11 +587,11 @@ const ProductDetailPage = () => {
                       src={mediaItems[selectedMediaIndex]?.url}
                       controls
                       className="w-full h-auto max-w-full object-contain"
-                      poster={currentProduct.images?.[0]?.url || ''}
+                      poster={imagesForSelectedColor[0]?.url || commonImages[0]?.url || ''}
                       autoPlay={false}
                     />
                   )}
-                  {getSelectedSizeStock() === 0 && !isBulkProduct && (
+                  {getSelectedSizeStock() === 0 && !isBulkProduct && selectedSize && (
                     <div className="absolute inset-0 flex items-center justify-center bg-black bg-opacity-30">
                       <span className="bg-white text-gray-800 px-4 py-2 rounded-full font-medium">Out of Stock</span>
                     </div>
@@ -549,6 +600,8 @@ const ProductDetailPage = () => {
               </div>
             </div>
           </div>
+
+          {/* RIGHT COLUMN - MOBILE */}
           <div className="lg:hidden space-y-4 px-2 mt-24">
             <div>
               <div className={`text-gray-600 text-sm leading-relaxed ${showFullDescription ? "" : "line-clamp-3"}`}>
@@ -574,18 +627,20 @@ const ProductDetailPage = () => {
                 </div>
               </div>
             </div>
+
+            {/* 🆕 COLORS - Mobile */}
             {!isBulkProduct ? (
-              currentProduct.colors?.length > 0 && (
+              productColors.length > 0 && (
                 <div className="pt-2">
-                  <h3 className="text-base font-semibold text-gray-800 mb-3">Color: <span className="font-normal">{selectedColor}</span></h3>
+                  <h3 className="text-base font-semibold text-gray-800 mb-3">Color: <span className="font-normal">{selectedColor || "Select"}</span></h3>
                   <div className="flex flex-wrap gap-2">
-                    {currentProduct.colors.map((color) => (
+                    {productColors.map((color) => (
                       <button
                         key={color.name}
                         onClick={() => setSelectedColor(color.name)}
                         className={`flex items-center gap-2 px-3 py-2 rounded-full border ${selectedColor === color.name ? "border-primary bg-primary/5" : "border-gray-200"}`}
                       >
-                        <div className="w-5 h-5 rounded-full border border-gray-200" style={{ backgroundColor: color.hex || color.name.toLowerCase() }} />
+                        <div className="w-5 h-5 rounded-full border border-gray-200" style={{ backgroundColor: color.code || color.name.toLowerCase() }} />
                         <span className="text-sm">{color.name}</span>
                       </button>
                     ))}
@@ -599,13 +654,13 @@ const ProductDetailPage = () => {
                     Select Colors <span className="text-sm text-gray-500 font-normal">(Min {minColors} | Max {maxColors})</span>
                   </h3>
                   <div className="flex flex-wrap gap-2">
-                    {currentProduct.colors.map((color) => (
+                    {productColors.map((color) => (
                       <button
                         key={color.name}
                         onClick={() => handleColorToggle(color.name)}
                         className={`flex items-center gap-2 px-3 py-2 rounded-full border ${selectedColors.includes(color.name) ? "border-primary bg-primary/5" : "border-gray-200"}`}
                       >
-                        <div className="w-5 h-5 rounded-full border border-gray-200" style={{ backgroundColor: color.hex || color.name.toLowerCase() }} />
+                        <div className="w-5 h-5 rounded-full border border-gray-200" style={{ backgroundColor: color.code || color.name.toLowerCase() }} />
                         <span className="text-sm">{color.name}</span>
                       </button>
                     ))}
@@ -616,57 +671,60 @@ const ProductDetailPage = () => {
                 </div>
               )
             )}
-            {!isBulkProduct ? (
-              currentProduct.sizes?.length > 0 && (
-                <div data-size-section>
-                  <div className="flex items-center justify-between mb-3 pt-1">
-                    <h3 className="text-base font-semibold text-gray-800">Size: <span className={`font-normal ${!selectedSize ? "text-red-500" : ""}`}>{selectedSize || "Please select"}</span></h3>
-                    <button onClick={() => setShowSizeGuide(true)} className="text-sm rounded-xl font-medium text-primary flex items-center">
-                      <Ruler className="w-4 h-4 mr-1" /> Size Guide
-                    </button>
-                  </div>
-                  {!selectedSize && (
-                    <div className="mb-3 p-3 bg-red-50 border border-red-200 rounded-xl">
-                      <p className="text-sm text-red-600 font-medium">⚠️ Please select a size to continue</p>
-                    </div>
-                  )}
-                  <div className="grid grid-cols-4 gap-2">
-                    {currentProduct.sizes.map((s) => (
-                      <button
-                        key={s.size}
-                        onClick={() => setSelectedSize(s.size)}
-                        disabled={s.stock === 0}
-                        className={`px-3 py-3 rounded-xl border font-medium text-sm ${selectedSize === s.size ? "border-primary bg-primary/10 text-primary" : s.stock === 0 ? "border-gray-200 bg-gray-100 text-gray-400" : "border-gray-300 hover:border-primary"}`}
-                      >
-                        {s.size}
-                      </button>
-                    ))}
-                  </div>
-                  <span className="text-sm py-3 mb-3 font-medium text-gray-600 block">
-                    {selectedSize ? `${getSelectedSizeStock()} available in ${selectedSize}` : "Select a size to see availability"}
-                  </span>
+
+            {/* 🆕 SIZES - Mobile (for selected color) */}
+            {!isBulkProduct && selectedColor && sizesForSelectedColor.length > 0 && (
+              <div data-size-section>
+                <div className="flex items-center justify-between mb-3 pt-1">
+                  <h3 className="text-base font-semibold text-gray-800">Size: <span className={`font-normal ${!selectedSize ? "text-red-500" : ""}`}>{selectedSize || "Please select"}</span></h3>
+                  <button onClick={() => setShowSizeGuide(true)} className="text-sm rounded-xl font-medium text-primary flex items-center">
+                    <Ruler className="w-4 h-4 mr-1" /> Size Guide
+                  </button>
                 </div>
-              )
-            ) : (
-              currentProduct.sizes?.length > 0 && (
-                <div data-size-section>
-                  <div className="flex items-center justify-between mb-3 pt-1">
-                    <h3 className="text-base font-semibold text-gray-800">Sizes Included:</h3>
-                    <button onClick={() => setShowSizeGuide(true)} className="text-sm rounded-xl font-medium text-primary flex items-center">
-                      <Ruler className="w-4 h-4 mr-1" /> Size Guide
+                {!selectedSize && (
+                  <div className="mb-3 p-3 bg-red-50 border border-red-200 rounded-xl">
+                    <p className="text-sm text-red-600 font-medium">⚠️ Please select a size to continue</p>
+                  </div>
+                )}
+                <div className="grid grid-cols-4 gap-2">
+                  {sizesForSelectedColor.map((s) => (
+                    <button
+                      key={s.size}
+                      onClick={() => setSelectedSize(s.size)}
+                      disabled={s.stock === 0}
+                      className={`px-3 py-3 rounded-xl border font-medium text-sm ${selectedSize === s.size ? "border-primary bg-primary/10 text-primary" : s.stock === 0 ? "border-gray-200 bg-gray-100 text-gray-400" : "border-gray-300 hover:border-primary"}`}
+                    >
+                      {s.size}
                     </button>
-                  </div>
-                  <div className="grid grid-cols-4 gap-2">
-                    {currentProduct.sizes.map((s) => (
-                      <div key={s.size} className="px-3 py-3 rounded-xl border border-gray-300 bg-gray-50 text-center font-medium text-sm">
-                        {s.size}
-                      </div>
-                    ))}
-                  </div>
-                  <p className="text-xs text-gray-500 mt-2">✓ You will get {currentProduct.bulkConfig?.piecesPerSize || 1} piece(s) of each size per set</p>
+                  ))}
                 </div>
-              )
+                <span className="text-sm py-3 mb-3 font-medium text-gray-600 block">
+                  {selectedSize ? `${getSelectedSizeStock()} available in ${selectedSize}` : "Select a size to see availability"}
+                </span>
+              </div>
             )}
+
+            {/* Bulk sizes display */}
+            {isBulkProduct && sizesForSelectedColor.length > 0 && (
+              <div data-size-section>
+                <div className="flex items-center justify-between mb-3 pt-1">
+                  <h3 className="text-base font-semibold text-gray-800">Sizes Included:</h3>
+                  <button onClick={() => setShowSizeGuide(true)} className="text-sm rounded-xl font-medium text-primary flex items-center">
+                    <Ruler className="w-4 h-4 mr-1" /> Size Guide
+                  </button>
+                </div>
+                <div className="grid grid-cols-4 gap-2">
+                  {sizesForSelectedColor.map((s) => (
+                    <div key={s.size} className="px-3 py-3 rounded-xl border border-gray-300 bg-gray-50 text-center font-medium text-sm">
+                      {s.size}
+                    </div>
+                  ))}
+                </div>
+                <p className="text-xs text-gray-500 mt-2">✓ You will get {currentProduct.bulkConfig?.piecesPerSize || 1} piece(s) of each size per set</p>
+              </div>
+            )}
+
+            {/* Quantity - Mobile */}
             {!isBulkProduct ? (
               <div>
                 <h3 className="text-base font-semibold text-gray-800 mb-3">Quantity</h3>
@@ -725,7 +783,7 @@ const ProductDetailPage = () => {
             </div>
           </div>
 
-          {/* DESKTOP RIGHT COLUMN */}
+          {/* RIGHT COLUMN - DESKTOP */}
           <div className="hidden lg:block space-y-1">
             <div className="flex items-start justify-between">
               <div className="hidden lg:block mb-1">
@@ -768,13 +826,13 @@ const ProductDetailPage = () => {
               </div>
             </div>
 
-            {/* Colors - Desktop */}
+            {/* 🆕 COLORS - Desktop */}
             {!isBulkProduct ? (
-              currentProduct.colors?.length > 0 && (
+              productColors.length > 0 && (
                 <div className="pt-3">
-                  <h3 className="text-lg font-semibold text-gray-800 mb-3">Color: <span className="font-normal">{selectedColor}</span></h3>
+                  <h3 className="text-lg font-semibold text-gray-800 mb-3">Color: <span className="font-normal">{selectedColor || "Select"}</span></h3>
                   <div className="flex flex-wrap gap-2">
-                    {currentProduct.colors.map((color) => (
+                    {productColors.map((color) => (
                       <motion.button
                         key={color.name}
                         whileHover={{ scale: 1.05 }}
@@ -782,7 +840,7 @@ const ProductDetailPage = () => {
                         onClick={() => setSelectedColor(color.name)}
                         className={`flex items-center justify-center w-10 h-10 rounded-full border-2 ${selectedColor === color.name ? "border-primary shadow-md" : "border-gray-200 hover:border-gray-300"}`}
                       >
-                        <div className="w-8 h-8 rounded-full border border-gray-200" style={{ backgroundColor: color.hex || color.name.toLowerCase() }} />
+                        <div className="w-8 h-8 rounded-full border border-gray-200" style={{ backgroundColor: color.code || color.name.toLowerCase() }} />
                       </motion.button>
                     ))}
                   </div>
@@ -793,7 +851,7 @@ const ProductDetailPage = () => {
                 <div className="pt-3">
                   <h3 className="text-lg font-semibold text-gray-800 mb-3">Select Colors <span className="text-sm text-gray-500 font-normal">(Min {minColors} | Max {maxColors})</span></h3>
                   <div className="flex flex-wrap gap-2">
-                    {currentProduct.colors.map((color) => (
+                    {productColors.map((color) => (
                       <motion.button
                         key={color.name}
                         whileHover={{ scale: 1.05 }}
@@ -801,7 +859,7 @@ const ProductDetailPage = () => {
                         onClick={() => handleColorToggle(color.name)}
                         className={`flex items-center justify-center w-10 h-10 rounded-full border-2 ${selectedColors.includes(color.name) ? "border-primary shadow-md" : "border-gray-200 hover:border-gray-300"}`}
                       >
-                        <div className="w-8 h-8 rounded-full border border-gray-200" style={{ backgroundColor: color.hex || color.name.toLowerCase() }} />
+                        <div className="w-8 h-8 rounded-full border border-gray-200" style={{ backgroundColor: color.code || color.name.toLowerCase() }} />
                       </motion.button>
                     ))}
                   </div>
@@ -812,57 +870,56 @@ const ProductDetailPage = () => {
               )
             )}
 
-            {/* Sizes - Desktop */}
-            {!isBulkProduct ? (
-              currentProduct.sizes?.length > 0 && (
-                <div data-size-section>
-                  <div className="flex items-center justify-between mb-3 pt-1">
-                    <h3 className="text-lg font-semibold text-gray-800">Size: <span className={`font-normal rounded-sm ${!selectedSize ? "text-red-500" : ""}`}>{selectedSize || "Please select a size"}</span></h3>
-                    <button onClick={() => setShowSizeGuide(true)} className="text-sm font-medium text-primary hover:text-primary-dark flex items-center">
-                      <Ruler className="w-4 h-4 mr-1" /> Size Guide
-                    </button>
+            {/* 🆕 SIZES - Desktop (for selected color) */}
+            {!isBulkProduct && selectedColor && sizesForSelectedColor.length > 0 && (
+              <div data-size-section>
+                <div className="flex items-center justify-between mb-3 pt-1">
+                  <h3 className="text-lg font-semibold text-gray-800">Size: <span className={`font-normal rounded-sm ${!selectedSize ? "text-red-500" : ""}`}>{selectedSize || "Please select a size"}</span></h3>
+                  <button onClick={() => setShowSizeGuide(true)} className="text-sm font-medium text-primary hover:text-primary-dark flex items-center">
+                    <Ruler className="w-4 h-4 mr-1" /> Size Guide
+                  </button>
+                </div>
+                {!selectedSize && (
+                  <div className="mb-3 p-2 bg-red-50 border border-red-200 rounded-lg">
+                    <p className="text-sm text-red-600 font-medium">⚠️ Please select a size to continue</p>
                   </div>
-                  {!selectedSize && (
-                    <div className="mb-3 p-2 bg-red-50 border border-red-200 rounded-lg">
-                      <p className="text-sm text-red-600 font-medium">⚠️ Please select a size to continue</p>
+                )}
+                <div className="grid grid-cols-4 sm:grid-cols-5 gap-2 p-3 border border-gray-200 rounded-xl">
+                  {sizesForSelectedColor.map((s) => (
+                    <motion.button
+                      key={s.size}
+                      onClick={() => setSelectedSize(s.size)}
+                      disabled={s.stock === 0}
+                      className={`px-4 py-2 border border-gray-300 rounded-xl font-medium text-sm ${selectedSize === s.size ? "border-primary rounded bg-primary/10 text-primary" : s.stock === 0 ? "border-gray-200 bg-gray-100 text-gray-400 cursor-not-allowed" : "border-gray-300 hover:border-primary hover:text-primary"}`}
+                    >
+                      {s.size}
+                    </motion.button>
+                  ))}
+                </div>
+                <span className="text-sm py-3 mb-3 mx-2 font-semibold text-gray-600">
+                  {selectedSize ? `${getSelectedSizeStock()} available in ${selectedSize}` : "Please select a size to see availability"}
+                </span>
+              </div>
+            )}
+
+            {/* Bulk sizes display - Desktop */}
+            {isBulkProduct && sizesForSelectedColor.length > 0 && (
+              <div data-size-section>
+                <div className="flex items-center justify-between mb-3 pt-1">
+                  <h3 className="text-lg font-semibold text-gray-800">Sizes Included:</h3>
+                  <button onClick={() => setShowSizeGuide(true)} className="text-sm font-medium text-primary hover:text-primary-dark flex items-center">
+                    <Ruler className="w-4 h-4 mr-1" /> Size Guide
+                  </button>
+                </div>
+                <div className="grid grid-cols-4 sm:grid-cols-5 gap-2 p-3 border border-gray-200 rounded-xl">
+                  {sizesForSelectedColor.map((s) => (
+                    <div key={s.size} className="px-4 py-2 border border-gray-300 rounded-xl font-medium text-sm bg-gray-50 text-center">
+                      {s.size}
                     </div>
-                  )}
-                  <div className="grid grid-cols-4 sm:grid-cols-5 gap-2 p-3 border border-gray-200 rounded-xl">
-                    {currentProduct.sizes.map((s) => (
-                      <motion.button
-                        key={s.size}
-                        onClick={() => setSelectedSize(s.size)}
-                        disabled={s.stock === 0}
-                        className={`px-4 py-2 border border-gray-300 rounded-xl font-medium text-sm ${selectedSize === s.size ? "border-primary rounded bg-primary/10 text-primary" : s.stock === 0 ? "border-gray-200 bg-gray-100 text-gray-400 cursor-not-allowed" : "border-gray-300 hover:border-primary hover:text-primary"}`}
-                      >
-                        {s.size}
-                      </motion.button>
-                    ))}
-                  </div>
-                  <span className="text-sm py-3 mb-3 mx-2 font-semibold text-gray-600">
-                    {selectedSize ? `${getSelectedSizeStock()} available in ${selectedSize}` : "Please select a size to see availability"}
-                  </span>
+                  ))}
                 </div>
-              )
-            ) : (
-              currentProduct.sizes?.length > 0 && (
-                <div data-size-section>
-                  <div className="flex items-center justify-between mb-3 pt-1">
-                    <h3 className="text-lg font-semibold text-gray-800">Sizes Included:</h3>
-                    <button onClick={() => setShowSizeGuide(true)} className="text-sm font-medium text-primary hover:text-primary-dark flex items-center">
-                      <Ruler className="w-4 h-4 mr-1" /> Size Guide
-                    </button>
-                  </div>
-                  <div className="grid grid-cols-4 sm:grid-cols-5 gap-2 p-3 border border-gray-200 rounded-xl">
-                    {currentProduct.sizes.map((s) => (
-                      <div key={s.size} className="px-4 py-2 border border-gray-300 rounded-xl font-medium text-sm bg-gray-50 text-center">
-                        {s.size}
-                      </div>
-                    ))}
-                  </div>
-                  <p className="text-xs text-gray-500 mt-2">✓ You will get {currentProduct.bulkConfig?.piecesPerSize || 1} piece(s) of each size per set</p>
-                </div>
-              )
+                <p className="text-xs text-gray-500 mt-2">✓ You will get {currentProduct.bulkConfig?.piecesPerSize || 1} piece(s) of each size per set</p>
+              </div>
             )}
 
             {/* Quantity - Desktop */}
@@ -961,7 +1018,7 @@ const ProductDetailPage = () => {
                     : "bg-red-600 text-white hover:bg-red-700"
                     } ${isAddingToCart ? "opacity-50" : ""}`}
                 >
-                  <img src="/buynow1.svg" className="w-8 h-8" />
+                  <img src="/buynow1.svg" className="w-8 h-8" alt="buy now" />
                   BUY NOW
                 </button>
               </div>
@@ -980,7 +1037,7 @@ const ProductDetailPage = () => {
         {/* Static Design Section */}
         <div className="px-4 mt-6">
           <div className="bg-white border border-gray-200 rounded-xl shadow-sm py-4 px-4">
-            <img src="/badge.jpeg" className="w-full h-auto rounded-xl" />
+            <img src="/badge.jpeg" className="w-full h-auto rounded-xl" alt="badge" />
           </div>
         </div>
 
@@ -993,10 +1050,30 @@ const ProductDetailPage = () => {
         </div>
       </div>
 
-      {/* All Modals - unchanged except closures and function names updated */}
+      {/* Mobile Bottom Bar */}
+      <div className="lg:hidden fixed bottom-0 left-0 right-0 bg-white border-t border-gray-200 p-4 z-40 shadow-lg">
+        <div className="flex gap-3">
+          <button onClick={handleAddToCartClick}
+            disabled={isAddingToCart || (!isBulkProduct && selectedSize && getSelectedSizeStock() === 0) || (isBulkProduct && selectedColors.length < minColors)}
+            className={`flex-1 flex items-center justify-center gap-2 px-4 py-3 rounded-xl font-semibold text-sm ${((!isBulkProduct && selectedSize && getSelectedSizeStock() === 0) || (isBulkProduct && selectedColors.length < minColors))
+              ? "bg-gray-100 text-gray-400" : "bg-white border border-gray-300 text-gray-800"}`}>
+            <ShoppingCart className="w-5 h-5" />
+            ADD TO CART
+          </button>
+          <button
+            onClick={handleBuyNowClick}
+            disabled={isAddingToCart || (!isBulkProduct && selectedSize && getSelectedSizeStock() === 0) || (isBulkProduct && selectedColors.length < minColors)}
+            className={`flex-1 flex items-center justify-center gap-2 px-4 py-3 rounded-xl font-semibold text-sm ${((!isBulkProduct && selectedSize && getSelectedSizeStock() === 0) || (isBulkProduct && selectedColors.length < minColors))
+              ? "bg-gray-400 text-gray-200"
+              : "bg-red-600 text-white"}`}>
+            <img src="/buynow1.svg" className="w-6 h-6" alt="buy now" />
+            BUY NOW
+          </button>
+        </div>
+      </div>
 
+      {/* MODALS - Same as before but keep them */}
       {/* Bulk Modal */}
-      {/* All Modals */}
       <AnimatePresence>
         {showBulkModal && isBulkProduct && (
           <motion.div
@@ -1022,7 +1099,7 @@ const ProductDetailPage = () => {
                 </div>
 
                 <div className="flex items-center space-x-3 mb-4">
-                  <img src={currentProduct.images[0]?.url || "/placeholder.svg"} alt={currentProduct.name} className="w-14 h-14 object-cover rounded-lg" />
+                  <img src={imagesForSelectedColor[0]?.url || commonImages[0]?.url || "/placeholder.svg"} alt={currentProduct.name} className="w-14 h-14 object-cover rounded-lg" />
                   <div>
                     <h4 className="font-semibold text-gray-900 text-sm">{currentProduct.name}</h4>
                     <p className="text-lg font-bold text-gray-900">₹{displayPrice?.toLocaleString()}/set</p>
@@ -1030,14 +1107,14 @@ const ProductDetailPage = () => {
                 </div>
 
                 <div className="mb-4">
-                  <p className="text-sm text-gray-600">Sizes: {currentProduct.sizes?.map(s => s.size).join(", ")}</p>
+                  <p className="text-sm text-gray-600">Sizes: {sizesForSelectedColor.map(s => s.size).join(", ")}</p>
                   <p className="text-xs text-gray-500">You will get {currentProduct.bulkConfig?.piecesPerSize || 1} piece(s) of each size per set</p>
                 </div>
 
                 <div className="mb-6">
                   <p className="text-sm font-medium mb-3">Select Colors (Min {minColors}, Max {maxColors})</p>
                   <div className="flex flex-wrap gap-2">
-                    {currentProduct.colors?.map((color) => (
+                    {productColors?.map((color) => (
                       <button
                         key={color.name}
                         onClick={() => handleColorToggle(color.name)}
@@ -1063,7 +1140,8 @@ const ProductDetailPage = () => {
                 <div className="p-4 bg-gray-50 rounded-lg">
                   <div className="flex justify-between mb-2">
                     <span className="text-sm text-gray-600">Total Pieces:</span>
-                    <span className="font-medium">{totalPieces} pcs</span></div>
+                    <span className="font-medium">{totalPieces} pcs</span>
+                  </div>
                   <div className="flex justify-between mb-4">
                     <span className="text-sm text-gray-600">Total Price:</span>
                     <span className="text-xl font-bold text-red-600">₹{totalPrice.toLocaleString()}</span>
@@ -1078,8 +1156,10 @@ const ProductDetailPage = () => {
                 </div>
               </div>
             </motion.div>
-          </motion.div>)}
+          </motion.div>
+        )}
       </AnimatePresence>
+
       {/* Buy Now Size Modal */}
       <AnimatePresence>
         {showBuyNowSizeModal && !isBulkProduct && (
@@ -1104,10 +1184,10 @@ const ProductDetailPage = () => {
                   </button>
                 </div>
                 <div className="flex items-center space-x-3 mb-4">
-                  <img src={currentProduct.images[0]?.url || "/placeholder.svg"} alt={currentProduct.name} className="w-14 h-14 object-cover rounded-lg" />
+                  <img src={imagesForSelectedColor[0]?.url || commonImages[0]?.url || "/placeholder.svg"} alt={currentProduct.name} className="w-14 h-14 object-cover rounded-lg" />
                   <div>
                     <h4 className="font-semibold text-gray-900 text-sm">{currentProduct.name}</h4>
-                    <p className="text-lg font-bold text-gray-900">₹{currentProduct.price.toLocaleString()}</p>
+                    <p className="text-lg font-bold text-gray-900">₹{currentProduct.price?.toLocaleString()}</p>
                   </div>
                 </div>
                 <div className="mb-6">
@@ -1118,7 +1198,7 @@ const ProductDetailPage = () => {
                     </button>
                   </div>
                   <div className="grid grid-cols-4 gap-2 mb-4">
-                    {currentProduct.sizes.map((s) => (
+                    {sizesForSelectedColor.map((s) => (
                       <button
                         key={s.size}
                         onClick={() => setSelectedSize(s.size)}
@@ -1138,8 +1218,11 @@ const ProductDetailPage = () => {
                 </div>
               </div>
             </motion.div>
-          </motion.div>)}
+          </motion.div>
+        )}
       </AnimatePresence>
+
+      {/* Add to Cart Size Modal */}
       <AnimatePresence>
         {showAddToCartSizeModal && !isBulkProduct && (
           <motion.div
@@ -1162,10 +1245,10 @@ const ProductDetailPage = () => {
                   </button>
                 </div>
                 <div className="flex items-center space-x-3 mb-4">
-                  <img src={currentProduct.images[0]?.url || "/placeholder.svg"} alt={currentProduct.name} className="w-14 h-14 object-cover rounded-lg" />
+                  <img src={imagesForSelectedColor[0]?.url || commonImages[0]?.url || "/placeholder.svg"} alt={currentProduct.name} className="w-14 h-14 object-cover rounded-lg" />
                   <div>
                     <h4 className="font-semibold text-gray-900 text-sm">{currentProduct.name}</h4>
-                    <p className="text-lg font-bold text-gray-900">₹{currentProduct.price.toLocaleString()}</p>
+                    <p className="text-lg font-bold text-gray-900">₹{currentProduct.price?.toLocaleString()}</p>
                   </div>
                 </div>
                 <div className="mb-6">
@@ -1176,14 +1259,15 @@ const ProductDetailPage = () => {
                     </button>
                   </div>
                   <div className="grid grid-cols-4 gap-2 mb-4">
-                    {currentProduct.sizes.map((s) => (
+                    {sizesForSelectedColor.map((s) => (
                       <button
                         key={s.size}
                         onClick={() => setSelectedSize(s.size)}
                         disabled={s.stock === 0}
                         className={`px-3 py-3 border rounded-lg font-medium text-sm ${selectedSize === s.size ? "border-red-500 bg-red-50 text-red-600" : s.stock === 0 ? "border-gray-200 bg-gray-100 text-gray-400" : "border-gray-300 hover:border-red-400"}`}>
                         {s.size}
-                      </button>))}
+                      </button>
+                    ))}
                   </div>
                   <div className="text-center">
                     <p className="text-sm text-gray-600">{selectedSize ? `Selected: ${selectedSize} - ${getSelectedSizeStock()} available` : "Please select a size"}</p>
@@ -1195,8 +1279,11 @@ const ProductDetailPage = () => {
                 </div>
               </div>
             </motion.div>
-          </motion.div>)}
+          </motion.div>
+        )}
       </AnimatePresence>
+
+      {/* Image Modal */}
       <AnimatePresence>
         {showImageModal && mediaItems[selectedMediaIndex]?.type === 'image' && (
           <motion.div
@@ -1211,141 +1298,82 @@ const ProductDetailPage = () => {
             <div className="w-full h-full flex items-center justify-center">
               <img src={mediaItems[selectedMediaIndex]?.url} alt={currentProduct.name} className="w-full h-auto max-h-screen object-contain" />
             </div>
-          </motion.div>)}
+          </motion.div>
+        )}
       </AnimatePresence>
-      <AnimatePresence>
-<<<<<<< HEAD
 
-=======
->>>>>>> 5216e08af9f17574dd3b2bf8847b436aeb51de5e
+      {/* Size Guide Modal */}
+      <AnimatePresence>
         {showSizeGuide && (
           <motion.div
-            className="fixed inset-0 bg-black bg-opacity-50 z-50 flex items-center justify-center p-4"
+            className="fixed inset-0 bg-black bg-opacity-80 z-50 flex items-center justify-center p-4"
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
             exit={{ opacity: 0 }}
-            onClick={() => setShowSizeGuide(false)}>
+            onClick={() => setShowSizeGuide(false)}
+          >
             <motion.div
-              className="relative bg-white rounded-xl w-full max-w-4xl max-h-[90vh] overflow-y-auto"
+              className="relative bg-white rounded-2xl w-full max-w-3xl max-h-[90vh] overflow-hidden"
               initial={{ scale: 0.9, y: 20 }}
               animate={{ scale: 1, y: 0 }}
               exit={{ scale: 0.9, y: 20 }}
-              onClick={e => e.stopPropagation()}>
-              <div className="p-6">
-                <div className="flex items-center justify-between mb-4">
-                  <h3 className="text-2xl font-bold text-gray-900">Size Guide</h3>
-                  <button onClick={() => setShowSizeGuide(false)} className="p-2 rounded-full hover:bg-gray-100">
-                    <X className="w-6 h-6 text-gray-700" />
-                  </button>
+              onClick={(e) => e.stopPropagation()}
+            >
+              <div className="sticky top-0 bg-white border-b border-gray-100 px-5 py-3 flex items-center justify-between z-10">
+                <div>
+                  <h3 className="text-lg font-bold text-gray-900">📏 Size Measurement Guide</h3>
+                  <p className="text-xs text-gray-500 mt-0.5">Pinch to zoom | Click to enlarge</p>
                 </div>
-                <img src="/6.webp" alt="Size Guide" className="w-full h-auto rounded-lg" />
+                <button 
+                  onClick={() => setShowSizeGuide(false)} 
+                  className="p-2 rounded-full hover:bg-gray-100 transition-colors"
+                >
+                  <X className="w-5 h-5 text-gray-600" />
+                </button>
+              </div>
+              
+              <div className="p-4 overflow-y-auto max-h-[calc(90vh-80px)]">
+                <div className="relative group">
+                  <img 
+                    src="/6.webp" 
+                    alt="Size Guide - Measurement Chart" 
+                    className="w-full h-auto rounded-lg cursor-zoom-in transition-transform duration-200 hover:scale-[1.02]"
+                    onClick={(e) => {
+                      const modal = document.createElement('div');
+                      modal.className = 'fixed inset-0 bg-black z-[60] flex items-center justify-center p-4 cursor-pointer';
+                      modal.onclick = () => modal.remove();
+                      const img = document.createElement('img');
+                      img.src = '/6.webp';
+                      img.className = 'max-w-full max-h-full object-contain';
+                      modal.appendChild(img);
+                      document.body.appendChild(modal);
+                    }}
+                    onError={(e) => {
+                      e.target.onerror = null;
+                      e.target.src = "https://placehold.co/800x1000/f8f9fa/6c757d?text=Size+Guide+Image+Not+Found";
+                    }}
+                  />
+                  
+                  <div className="absolute bottom-3 right-3 bg-black/60 backdrop-blur-sm rounded-full px-3 py-1.5 text-white text-xs flex items-center gap-1.5 opacity-0 group-hover:opacity-100 transition-opacity">
+                    <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0zM10 7v3m0 0v3m0-3h3m-3 0H7" />
+                    </svg>
+                    <span>Click to enlarge</span>
+                  </div>
+                </div>
+                
+                <div className="mt-4 pt-3 border-t border-gray-100 text-center">
+                  <p className="text-[10px] text-gray-400">
+                    * Measurements are in inches. For best fit, please refer to this guide before ordering.
+                  </p>
+                </div>
               </div>
             </motion.div>
           </motion.div>
         )}
-<<<<<<< HEAD
-       {showSizeGuide && (
-  <motion.div
-    className="fixed inset-0 bg-black bg-opacity-80 z-50 flex items-center justify-center p-4"
-    initial={{ opacity: 0 }}
-    animate={{ opacity: 1 }}
-    exit={{ opacity: 0 }}
-    onClick={() => setShowSizeGuide(false)}
-  >
-    <motion.div
-      className="relative bg-white rounded-2xl w-full max-w-3xl max-h-[90vh] overflow-hidden"
-      initial={{ scale: 0.9, y: 20 }}
-      animate={{ scale: 1, y: 0 }}
-      exit={{ scale: 0.9, y: 20 }}
-      onClick={(e) => e.stopPropagation()}
-    >
-      {/* Better Header with Zoom Hint */}
-      <div className="sticky top-0 bg-white border-b border-gray-100 px-5 py-3 flex items-center justify-between z-10">
-        <div>
-          <h3 className="text-lg font-bold text-gray-900">📏 Size Measurement Guide</h3>
-          <p className="text-xs text-gray-500 mt-0.5">Pinch to zoom | Click to enlarge</p>
-        </div>
-        <button 
-          onClick={() => setShowSizeGuide(false)} 
-          className="p-2 rounded-full hover:bg-gray-100 transition-colors"
-        >
-          <X className="w-5 h-5 text-gray-600" />
-        </button>
-      </div>
-      
-      {/* Scrollable Image Container with Zoom */}
-      <div className="p-4 overflow-y-auto max-h-[calc(90vh-80px)]">
-        <div className="relative group">
-          <img 
-            src="/6.webp" 
-            alt="Size Guide - Measurement Chart" 
-            className="w-full h-auto rounded-lg cursor-zoom-in transition-transform duration-200 hover:scale-[1.02]"
-            onClick={(e) => {
-              // Open fullscreen image on click
-              const modal = document.createElement('div');
-              modal.className = 'fixed inset-0 bg-black z-[60] flex items-center justify-center p-4 cursor-pointer';
-              modal.onclick = () => modal.remove();
-              const img = document.createElement('img');
-              img.src = '/6.webp';
-              img.className = 'max-w-full max-h-full object-contain';
-              modal.appendChild(img);
-              document.body.appendChild(modal);
-            }}
-            onError={(e) => {
-              e.target.onerror = null;
-              e.target.src = "https://placehold.co/800x1000/f8f9fa/6c757d?text=Size+Guide+Image+Not+Found";
-            }}
-          />
-          
-          {/* Zoom Hint Overlay */}
-          <div className="absolute bottom-3 right-3 bg-black/60 backdrop-blur-sm rounded-full px-3 py-1.5 text-white text-xs flex items-center gap-1.5 opacity-0 group-hover:opacity-100 transition-opacity">
-            <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0zM10 7v3m0 0v3m0-3h3m-3 0H7" />
-            </svg>
-            <span>Click to enlarge</span>
-          </div>
-        </div>
-        
-        {/* Additional Info Footer */}
-        <div className="mt-4 pt-3 border-t border-gray-100 text-center">
-          <p className="text-[10px] text-gray-400">
-            * Measurements are in inches. For best fit, please refer to this guide before ordering.
-          </p>
-        </div>
-      </div>
-    </motion.div>
-  </motion.div>
-)}
-
-=======
->>>>>>> 5216e08af9f17574dd3b2bf8847b436aeb51de5e
       </AnimatePresence>
-      <div className="lg:hidden fixed bottom-0 left-0 right-0 bg-white border-t border-gray-200 p-4 z-40 shadow-lg">
-        <div className="flex gap-3">
-          <button onClick={handleAddToCartClick}
-            disabled={isAddingToCart || (!isBulkProduct && selectedSize && getSelectedSizeStock() === 0) || (isBulkProduct && selectedColors.length < minColors)}
-            className={`flex-1 flex items-center justify-center gap-2 px-4 py-3 rounded-xl font-semibold text-sm ${((!isBulkProduct && selectedSize && getSelectedSizeStock() === 0) || (isBulkProduct && selectedColors.length < minColors))
-              ? "bg-gray-100 text-gray-400" : "bg-white border border-gray-300 text-gray-800"}`}>
-            <ShoppingCart className="w-5 h-5" />
-            ADD TO CART
-          </button>
-          <button
-            onClick={handleBuyNowClick}
-            disabled={isAddingToCart || (!isBulkProduct && selectedSize && getSelectedSizeStock() === 0) || (isBulkProduct && selectedColors.length < minColors)}
-            className={`flex-1 flex items-center justify-center gap-2 px-4 py-3 rounded-xl font-semibold text-sm ${((!isBulkProduct && selectedSize && getSelectedSizeStock() === 0) || (isBulkProduct && selectedColors.length < minColors))
-              ? "bg-gray-400 text-gray-200"
-              : "bg-red-600 text-white"}`}>
-            <img src="/buynow1.svg" className="w-6 h-6" />
-            BUY NOW
-          </button>
-        </div>
-      </div>
     </div>
   );
 }
-<<<<<<< HEAD
 
-   
-=======
->>>>>>> 5216e08af9f17574dd3b2bf8847b436aeb51de5e
 export default ProductDetailPage

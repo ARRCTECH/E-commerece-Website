@@ -1,22 +1,94 @@
 "use client";
 
 import { memo, useState, useCallback, useEffect, useRef } from "react";
-
 import { motion, AnimatePresence } from "framer-motion";
-
 import { 
   Heart, Star, Package, ShoppingCart, X, Minus, Plus, 
   AlertCircle, Check, Shield, Truck, Sparkles, Loader2, 
   Layers, Tag, Zap, Cpu, Battery, Wifi, ArrowUpRight
 } from "lucide-react";
-
 import { Link } from "react-router-dom";
-
 import { useDispatch } from "react-redux";
-
 import { addToCart, optimisticAddToCart } from "../store/slices/cartSlice";
-
 import toast from "react-hot-toast";
+
+// ✅ Helper function to get product image (supports new schema)
+const getProductImage = (product) => {
+  if (!product) return "/placeholder.svg";
+  
+  // Check commonImages (new schema)
+  if (product.commonImages && product.commonImages.length > 0) {
+    return product.commonImages[0].url || product.commonImages[0];
+  }
+  
+  // Check first color's images (new schema)
+  if (product.colors && product.colors.length > 0) {
+    const firstColor = product.colors[0];
+    if (firstColor.images && firstColor.images.length > 0) {
+      return firstColor.images[0].url || firstColor.images[0];
+    }
+  }
+  
+  // Fallback to old images array (if exists)
+  if (product.images && product.images.length > 0) {
+    return product.images[0].url || product.images[0];
+  }
+  
+  return "/placeholder.svg";
+};
+
+// ✅ Helper to get stock (supports new schema)
+const getProductStock = (product) => {
+  if (!product) return 0;
+  
+  // For bulk products, return a default value
+  if (product.isBulkProduct) return 999;
+  
+  // Check if product has colors with sizes
+  if (product.colors && product.colors.length > 0) {
+    let totalStock = 0;
+    product.colors.forEach(color => {
+      if (color.sizes && color.sizes.length > 0) {
+        color.sizes.forEach(size => {
+          totalStock += size.stock || 0;
+        });
+      }
+    });
+    if (totalStock > 0) return totalStock;
+  }
+  
+  // Fallback to old stock field
+  return product.stock || 0;
+};
+
+// ✅ Helper to get total sizes count
+const getTotalSizes = (product) => {
+  if (!product) return 0;
+  
+  if (product.sizes && product.sizes.length > 0) {
+    return product.sizes.length;
+  }
+  
+  if (product.colors && product.colors.length > 0) {
+    const sizesSet = new Set();
+    product.colors.forEach(color => {
+      if (color.sizes) {
+        color.sizes.forEach(size => {
+          sizesSet.add(size.size);
+        });
+      }
+    });
+    return sizesSet.size;
+  }
+  
+  return 0;
+};
+
+// ✅ Helper to get total colors count
+const getTotalColors = (product) => {
+  if (!product) return 0;
+  return product.colors?.length || 0;
+};
 
 const getColorStyle = (colorName) => {
   const colorMap = {
@@ -54,18 +126,24 @@ const ProductCard = ({ product, wishlistItems, user, onAddToCart, onWishlist }) 
   const inWishlist = wishlistItems?.some((item) => item._id === product._id) || false;
   const isBulkProduct = product.isBulkProduct === true;
 
+  // ✅ Use helper functions
+  const productImage = getProductImage(product);
+  const totalStock = getProductStock(product);
+  const totalSizes = getTotalSizes(product);
+  const totalColorsCount = getTotalColors(product);
+
   const hasDiscount = product.originalPrice > product.price;
   const discountPercent = hasDiscount
     ? Math.round(((product.originalPrice - product.price) / product.originalPrice) * 100)
     : 0;
 
   const piecesPerSet = isBulkProduct 
-    ? (product.sizes?.length || 0) * (product.bulkConfig?.piecesPerSize || 1)
+    ? (totalSizes) * (product.bulkConfig?.piecesPerSize || 1)
     : 0;
-  const totalColors = isBulkProduct ? product.colors?.length || 0 : 0;
+  
   const minColors = isBulkProduct ? product.bulkConfig?.minColorsToSelect || 1 : 1;
-  const maxColors = isBulkProduct ? product.bulkConfig?.maxColorsToSelect || totalColors : totalColors;
-  const isLowStock = !isBulkProduct && product.stock > 0 && product.stock <= 5;
+  const maxColors = isBulkProduct ? product.bulkConfig?.maxColorsToSelect || totalColorsCount : totalColorsCount;
+  const isLowStock = !isBulkProduct && totalStock > 0 && totalStock <= 5;
 
   const features = product.features || product.highlights || [];
   const defaultFeatures = ["Premium", "Fast Ship", "7 Day Returns"];
@@ -73,8 +151,8 @@ const ProductCard = ({ product, wishlistItems, user, onAddToCart, onWishlist }) 
 
   const avgRating = product.rating?.average || 0;
   const reviewCount = product.rating?.count || 0;
-  const stockStatus = product.stock > 0 ? "In Stock" : "Out of Stock";
-  const stockColor = product.stock > 0 ? "text-green-600" : "text-red-500";
+  const stockStatus = totalStock > 0 ? "In Stock" : "Out of Stock";
+  const stockColor = totalStock > 0 ? "text-green-600" : "text-red-500";
 
   useEffect(() => {
     const handleEsc = (e) => {
@@ -85,11 +163,11 @@ const ProductCard = ({ product, wishlistItems, user, onAddToCart, onWishlist }) 
   }, [showBulkModal]);
 
   useEffect(() => {
-  if (showBulkModal && isBulkProduct && product?.colors?.length > 0) {
-    const allColors = product.colors.map(color => color.name);
-    setSelectedColors(allColors);
-  }
-}, [showBulkModal, isBulkProduct, product?._id]);
+    if (showBulkModal && isBulkProduct && product?.colors?.length > 0) {
+      const allColors = product.colors.map(color => color.name);
+      setSelectedColors(allColors);
+    }
+  }, [showBulkModal, isBulkProduct, product?._id]);
 
   useEffect(() => {
     if (showBulkModal && modalRef.current) {
@@ -116,7 +194,7 @@ const ProductCard = ({ product, wishlistItems, user, onAddToCart, onWishlist }) 
     if (isBulkProduct) {
       setShowBulkModal(true);
     } else if (onAddToCart) {
-      if (product.stock === 0) {
+      if (totalStock === 0) {
         toast.error("Out of stock!");
         return;
       }
@@ -129,7 +207,7 @@ const ProductCard = ({ product, wishlistItems, user, onAddToCart, onWishlist }) 
         setIsAddingToCart(false);
       }
     }
-  }, [isBulkProduct, onAddToCart, product]);
+  }, [isBulkProduct, onAddToCart, product, totalStock]);
 
   const handleAddBulkToCart = async () => {
     if (selectedColors.length < minColors) {
@@ -175,10 +253,6 @@ const ProductCard = ({ product, wishlistItems, user, onAddToCart, onWishlist }) 
     if (onWishlist) onWishlist(product, e);
   }, [onWishlist, product]);
 
-  const productImage = !imageError && product.images?.[0]?.url 
-    ? product.images[0].url 
-    : "/placeholder.svg";
-
   return (
     <>
       <motion.div
@@ -191,7 +265,7 @@ const ProductCard = ({ product, wishlistItems, user, onAddToCart, onWishlist }) 
         <Link to={`/product/${product.slug}`} className="block relative overflow-hidden">
           <div className="relative aspect-[3/4] bg-gradient-to-br from-neutral-100 to-neutral-200">
             <img
-              src={productImage}
+              src={!imageError ? productImage : "/placeholder.svg"}
               alt={product.name}
               className="object-cover w-full h-full transition-transform duration-700 group-hover:scale-110"
               loading="lazy"
@@ -200,7 +274,7 @@ const ProductCard = ({ product, wishlistItems, user, onAddToCart, onWishlist }) 
             <div className="absolute inset-0 bg-gradient-to-t from-neutral-900/30 via-transparent to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-500" />
           </div>
 
-          {/* Badges - Simple like NewArrivals */}
+          {/* Badges */}
           <div className="absolute top-3 left-3 flex flex-col gap-1">
             {isBulkProduct && (
               <span className="flex items-center gap-1 px-2 py-0.5 rounded-full bg-red-600 text-white text-[9px] font-bold shadow-sm">
@@ -214,7 +288,7 @@ const ProductCard = ({ product, wishlistItems, user, onAddToCart, onWishlist }) 
                 {discountPercent}%
               </span>
             )}
-            {!isBulkProduct && product.stock > 0 && product.stock <= 5 && (
+            {!isBulkProduct && totalStock > 0 && totalStock <= 5 && (
               <span className="px-2 py-0.5 rounded-full bg-orange-500 text-white text-[9px] font-semibold shadow-sm">
                 Low stock
               </span>
@@ -230,7 +304,7 @@ const ProductCard = ({ product, wishlistItems, user, onAddToCart, onWishlist }) 
             <Heart className={`w-3.5 h-3.5 transition-all ${inWishlist ? "fill-red-500 text-red-500" : "text-gray-600"}`} />
           </button>
 
-          {/* Quick CTA - Like NewArrivals */}
+          {/* Quick CTA */}
           <div className="absolute bottom-3 left-3 right-3 flex items-center justify-between translate-y-4 opacity-0 group-hover:translate-y-0 group-hover:opacity-100 transition-all duration-500">
             <span className="text-[10px] uppercase tracking-[0.18em] text-white font-medium">
               View Details
@@ -277,20 +351,20 @@ const ProductCard = ({ product, wishlistItems, user, onAddToCart, onWishlist }) 
             )}
           </div>
 
-          {/* Add to Cart Button - Simple like NewArrivals but functional */}
+          {/* Add to Cart Button */}
           {!isBulkProduct && (
             <button
               onClick={handleAddToCartClick}
-              disabled={isAddingToCart || product.stock === 0}
+              disabled={isAddingToCart || totalStock === 0}
               className={`mt-3 w-full py-2 rounded-full text-xs font-semibold transition-all duration-300 ${
-                product.stock === 0
+                totalStock === 0
                   ? "bg-gray-100 text-gray-400 cursor-not-allowed"
                   : "bg-red-700 text-white hover:bg-red-600 hover:scale-[1.02]"
               }`}
             >
               {isAddingToCart ? (
                 <Loader2 className="w-3.5 h-3.5 animate-spin mx-auto" />
-              ) : product.stock === 0 ? (
+              ) : totalStock === 0 ? (
                 "Out of Stock"
               ) : (
                 "Add to Cart"
@@ -309,14 +383,14 @@ const ProductCard = ({ product, wishlistItems, user, onAddToCart, onWishlist }) 
         </div>
       </motion.div>
 
-      {/* Bulk Modal - Same functionality, minimal design */}
+      {/* Bulk Modal */}
       <AnimatePresence>
         {showBulkModal && (
           <motion.div
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
             exit={{ opacity: 0 }}
-            className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-red/70 backdrop-blur-sm"
+            className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/70 backdrop-blur-sm"
             onClick={() => setShowBulkModal(false)}
           >
             <motion.div
@@ -350,8 +424,8 @@ const ProductCard = ({ product, wishlistItems, user, onAddToCart, onWishlist }) 
                 <div className="flex-1">
                   <p className="font-medium text-gray-900 text-sm line-clamp-1">{product.name}</p>
                   <div className="flex flex-wrap gap-1.5 mt-1 text-xs text-gray-500">
-                    <span className="flex items-center gap-0.5"><Shield className="w-3 h-3" /> {product.sizes?.length} sizes</span>
-                    <span className="flex items-center gap-0.5"><Palette className="w-3 h-3" /> {totalColors} colors</span>
+                    <span className="flex items-center gap-0.5"><Shield className="w-3 h-3" /> {totalSizes} sizes</span>
+                    <span className="flex items-center gap-0.5"><Palette className="w-3 h-3" /> {totalColorsCount} colors</span>
                     <span className="flex items-center gap-0.5"><Package className="w-3 h-3" /> {piecesPerSet} pcs/set</span>
                   </div>
                   <div className="mt-1">
@@ -362,7 +436,7 @@ const ProductCard = ({ product, wishlistItems, user, onAddToCart, onWishlist }) 
               </div>
 
               <div className="overflow-y-auto max-h-[50vh]">
-                {totalColors > 0 && (
+                {totalColorsCount > 0 && (
                   <div className="p-4 border-b border-gray-100">
                     <div className="flex justify-between items-center mb-2">
                       <p className="text-sm font-semibold text-gray-800">Select Colors</p>
@@ -435,7 +509,7 @@ const ProductCard = ({ product, wishlistItems, user, onAddToCart, onWishlist }) 
                   disabled={selectedColors.length < minColors}
                   className={`w-full py-2.5 rounded-xl font-semibold text-sm flex items-center justify-center gap-2 transition-all ${
                     selectedColors.length < minColors
-                      ? "bg-red-100 text-gray-400 cursor-not-allowed"
+                      ? "bg-gray-100 text-gray-400 cursor-not-allowed"
                       : "bg-red-700 hover:bg-red-600 text-white"
                   }`}
                 >

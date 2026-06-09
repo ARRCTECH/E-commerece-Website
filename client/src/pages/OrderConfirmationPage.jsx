@@ -23,6 +23,54 @@ import {
 import { fetchOrderDetails } from "../store/slices/orderSlice";
 import LoadingSpinner from "../components/LoadingSpinner";
 
+// ✅ IMPROVED: More robust image URL extraction
+const getProductImageUrl = (item) => {
+  // Try to get image from item directly
+  if (item.image && typeof item.image === 'string' && item.image.startsWith('http')) {
+    return item.image;
+  }
+  
+  // Try product object
+  const product = item.product || item.productId;
+  if (!product) return null;
+  
+  // Check commonImages (new schema)
+  if (product.commonImages && Array.isArray(product.commonImages) && product.commonImages.length > 0) {
+    const img = product.commonImages[0];
+    if (img && typeof img === 'object' && img.url) return img.url;
+    if (img && typeof img === 'string') return img;
+  }
+  
+  // Check colors images (new schema)
+  if (product.colors && Array.isArray(product.colors) && product.colors.length > 0) {
+    const firstColor = product.colors[0];
+    if (firstColor.images && Array.isArray(firstColor.images) && firstColor.images.length > 0) {
+      const img = firstColor.images[0];
+      if (img && typeof img === 'object' && img.url) return img.url;
+      if (img && typeof img === 'string') return img;
+    }
+  }
+  
+  // Check old images array
+  if (product.images && Array.isArray(product.images) && product.images.length > 0) {
+    const img = product.images[0];
+    if (img && typeof img === 'object' && img.url) return img.url;
+    if (img && typeof img === 'string') return img;
+  }
+  
+  return null;
+};
+
+// ✅ Get stable image with fallback (no blinking)
+const getStableImage = (item) => {
+  const url = getProductImageUrl(item);
+  if (url && url.startsWith('http')) {
+    return url;
+  }
+  // Return a consistent placeholder (no blinking)
+  return "https://placehold.co/400x400/f8f9fa/6c757d?text=No+Image";
+};
+
 const OrderConfirmationPage = () => {
   const { orderId } = useParams();
   const navigate = useNavigate();
@@ -216,7 +264,7 @@ const OrderConfirmationPage = () => {
     <div className="min-h-screen bg-white py-6">
       <div className="container mx-auto px-4">
         <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} className="mx-auto max-w-4xl">
-          {/* Success Header - White/Red */}
+          {/* Success Header */}
           <motion.div
             initial={{ scale: 0.95, opacity: 0 }}
             animate={{ scale: 1, opacity: 1 }}
@@ -273,7 +321,7 @@ const OrderConfirmationPage = () => {
             </div>
           </motion.div>
 
-          {/* Order Timeline - Compact */}
+          {/* Order Timeline */}
           <motion.div
             initial={{ opacity: 0, y: 10 }}
             animate={{ opacity: 1, y: 0 }}
@@ -313,7 +361,7 @@ const OrderConfirmationPage = () => {
             </div>
           </motion.div>
 
-          {/* Order Items */}
+          {/* Order Items - UPDATED with stable images */}
           <motion.div
             initial={{ opacity: 0, y: 10 }}
             animate={{ opacity: 1, y: 0 }}
@@ -326,38 +374,36 @@ const OrderConfirmationPage = () => {
             </h3>
             <div className="space-y-3">
               {(currentOrder.items || []).map((item, index) => {
-                const img =
-                  item.image ||
-                  item?.product?.images?.[0]?.url ||
-                  "/placeholder.svg";
+                // ✅ Get stable image URL (no blinking)
+                const imageUrl = getStableImage(item);
+                const productName = item.name || item?.product?.name || item?.productId?.name || "Product";
+                const itemPrice = Number(item.price || 0);
+                const itemQuantity = Number(item.quantity || 0);
+                const itemTotal = item.itemTotal != null ? Number(item.itemTotal) : itemPrice * itemQuantity;
+                
                 return (
                   <div
                     key={index}
                     className="flex flex-col gap-2 rounded-md border border-gray-100 bg-gray-50 p-3 sm:flex-row sm:items-center"
                   >
+                    {/* ✅ Image with no onError blinking - direct stable URL */}
                     <img
-                      src={img}
-                      alt={item.name || item?.product?.name || "Item"}
-                      className="h-14 w-14 rounded-md object-cover"
+                      src={imageUrl}
+                      alt={productName}
+                      className="h-14 w-14 rounded-md object-cover flex-shrink-0"
                     />
                     <div className="flex-1">
-                      <h4 className="text-sm font-medium text-gray-800">
-                        {item.name || item?.product?.name}
-                      </h4>
+                      <h4 className="text-sm font-medium text-gray-800">{productName}</h4>
                       <div className="mt-0.5 flex flex-wrap gap-2 text-xs text-gray-500">
                         {item.size && <span>Size: {item.size}</span>}
                         {item.color && <span>Color: {item.color}</span>}
-                        <span>Qty: {item.quantity}</span>
+                        {item.isBulkProduct && <span className="text-red-500">📦 Bulk Pack</span>}
+                        <span>Qty: {itemQuantity}</span>
                       </div>
                     </div>
                     <div className="text-right">
-                      <p className="text-base font-semibold text-red-600">
-                        ₹
-                        {item.itemTotal != null
-                          ? item.itemTotal
-                          : Number(item.price || 0) * Number(item.quantity || 0)}
-                      </p>
-                      <p className="text-xs text-gray-500">₹{Number(item.price || 0)} each</p>
+                      <p className="text-base font-semibold text-red-600">₹{itemTotal.toLocaleString()}</p>
+                      <p className="text-xs text-gray-500">₹{itemPrice.toLocaleString()} each</p>
                     </div>
                   </div>
                 );
@@ -365,7 +411,7 @@ const OrderConfirmationPage = () => {
             </div>
           </motion.div>
 
-          {/* Two Column Layout for Shipping & Payment - Compact */}
+          {/* Two Column Layout for Shipping & Payment */}
           <div className="mb-4 grid gap-4 md:grid-cols-2">
             {/* Shipping Information */}
             <motion.div

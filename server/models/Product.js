@@ -1,6 +1,28 @@
 const mongoose = require("mongoose");
 const slugify = require("slugify");
 
+// 🆕 Color Size Schema (nested inside color)
+const colorSizeSchema = new mongoose.Schema({
+  size: { type: String, required: true },
+  stock: { type: Number, default: 0, min: 0 },
+  variantId: { type: Number, unique: true, sparse: true }
+});
+
+// 🆕 Color Schema with its own images and sizes
+const colorSchema = new mongoose.Schema({
+  name: { type: String, required: true },
+  code: { type: String, default: "#000000" },
+  images: [
+    {
+      url: { type: String, required: true },
+      publicId: { type: String, required: true },
+      alt: { type: String }
+    }
+  ],
+  sizes: [colorSizeSchema],
+  order: { type: Number, default: 0 }
+});
+
 const productSchema = new mongoose.Schema(
   {
     name: {
@@ -30,15 +52,18 @@ const productSchema = new mongoose.Schema(
     originalPrice: {
       type: Number,
     },
-    images: [
+    // 🆕 Common images (fallback/extra images)
+    commonImages: [
       {
         url: String,
+        publicId: String,
         alt: String,
       },
     ],
     videos: [
       {
         url: String,
+        publicId: String,
         alt: String,
       },
     ],
@@ -51,29 +76,14 @@ const productSchema = new mongoose.Schema(
       type: mongoose.Schema.Types.ObjectId,
       ref: "Category",  
     },
-    sizes: [
-      {
-        size: String,
-        stock: {
-          type: Number,
-          default: 0,
-        },
-        variantId: {
-          type: Number,
-          unique: true,
-          sparse: true
-        }
-      },
-    ],
-    colors: [
-      {
-        name: String,
-        code: String,
-        images: [String],
-      },
-    ],
+    // 🆕 REMOVED: separate sizes array, separate colors array
+    // 🆕 NEW: colors with nested sizes and images
+    colors: [colorSchema],
+    
+    // 🆕 Auto-generated from colors (for filtering)
+    availableSizes: [{ type: String }],
 
-    // ========== 🆕 BULK PRODUCT FIELDS ==========
+    // Bulk Product Fields
     isBulkProduct: {
       type: Boolean,
       default: false,
@@ -104,7 +114,6 @@ const productSchema = new mongoose.Schema(
         min: 0,
       },
     },
-    // ========== BULK FIELDS END ==========
 
     tags: [
       {
@@ -145,10 +154,7 @@ const productSchema = new mongoose.Schema(
       type: Boolean,
       default: true,
     },
-    stock: {
-      type: Number,
-      default: 0,
-    },
+    // 🆕 REMOVED: stock field (now inside color.sizes)
     sku: {
       type: String,
       unique: true,
@@ -202,9 +208,17 @@ const productSchema = new mongoose.Schema(
 
 // ========== VIRTUAL FIELDS ==========
 
+// 🆕 Total stock across all colors and sizes
+productSchema.virtual("totalStock").get(function () {
+  return this.colors.reduce((total, color) => {
+    return total + color.sizes.reduce((sizeTotal, size) => sizeTotal + (size.stock || 0), 0);
+  }, 0);
+});
+
 productSchema.virtual("piecesPerSet").get(function () {
   if (!this.isBulkProduct) return 0;
-  return (this.sizes?.length || 0) * (this.bulkConfig?.piecesPerSize || 1);
+  const totalSizes = this.colors.reduce((sum, color) => sum + (color.sizes?.length || 0), 0);
+  return totalSizes * (this.bulkConfig?.piecesPerSize || 1);
 });
 
 productSchema.virtual("isBulk").get(function () {
@@ -215,11 +229,44 @@ productSchema.virtual("totalColors").get(function () {
   return this.colors?.length || 0;
 });
 
-productSchema.virtual("totalSizes").get(function () {
-  return this.sizes?.length || 0;
+// ========== PRE-SAVE HOOKS ==========
+
+// Auto-generate availableSizes from colors
+productSchema.pre("save", async function (next) {
+  if (this.isModified("colors")) {
+    const sizesSet = new Set();
+    this.colors.forEach(color => {
+      color.sizes.forEach(size => {
+        if (size.size) sizesSet.add(size.size);
+      });
+    });
+    this.availableSizes = Array.from(sizesSet);
+  }
+  next();
 });
 
-// ========== PRE-SAVE HOOKS ==========
+// Generate variant IDs for new sizes
+productSchema.pre("save", async function (next) {
+  const Counter = require("./Counter");
+  
+  const getNextSequence = async (seqName) => {
+    const counter = await Counter.findByIdAndUpdate(
+      seqName,
+      { $inc: { sequence_value: 1 } },
+      { new: true, upsert: true }
+    );
+    return counter.sequence_value;
+  };
+
+  for (const color of this.colors) {
+    for (const size of color.sizes) {
+      if (!size.variantId && size.size) {
+        size.variantId = await getNextSequence('variantId');
+      }
+    }
+  }
+  next();
+});
 
 // Enhanced slug generation
 productSchema.pre("save", async function (next) {
@@ -311,6 +358,8 @@ productSchema.index({ tags: 1 });
 productSchema.index({ createdAt: -1 });
 productSchema.index({ price: 1 });
 productSchema.index({ "rating.average": -1 });
+productSchema.index({ "colors.sizes.variantId": 1 });
+productSchema.index({ availableSizes: 1 });
 
 // Compound indexes
 productSchema.index({ isActive: 1, isBulkProduct: 1 });
@@ -321,24 +370,42 @@ productSchema.index({ name: "text", description: "text" });
 
 // ========== INSTANCE METHODS ==========
 
-productSchema.methods.isInStock = function (quantity = 1) {
-  return this.stock >= quantity;
+// 🆕 Updated: Check stock for specific color and size
+productSchema.methods.isInStock = function (colorName, size, quantity = 1) {
+  const color = this.colors.find(c => c.name === colorName);
+  if (!color) return false;
+  const sizeObj = color.sizes.find(s => s.size === size);
+  if (!sizeObj) return false;
+  return sizeObj.stock >= quantity;
 };
 
-productSchema.methods.decreaseStock = async function (quantity) {
-  this.stock -= quantity;
-  this.totalSold = (this.totalSold || 0) + quantity;
+// 🆕 Updated: Decrease stock for specific color and size
+productSchema.methods.decreaseStock = async function (colorName, size, quantity) {
+  const color = this.colors.find(c => c.name === colorName);
+  if (color) {
+    const sizeObj = color.sizes.find(s => s.size === size);
+    if (sizeObj) {
+      sizeObj.stock -= quantity;
+    }
+  }
   await this.save();
   return this;
 };
 
-productSchema.methods.increaseStock = async function (quantity) {
-  this.stock += quantity;
+// 🆕 Updated: Increase stock for specific color and size
+productSchema.methods.increaseStock = async function (colorName, size, quantity) {
+  const color = this.colors.find(c => c.name === colorName);
+  if (color) {
+    const sizeObj = color.sizes.find(s => s.size === size);
+    if (sizeObj) {
+      sizeObj.stock += quantity;
+    }
+  }
   await this.save();
   return this;
 };
 
-// Calculate bulk price (for bulk products)
+// Calculate bulk price
 productSchema.methods.calculateBulkPrice = function (selectedColorCount, sets = 1) {
   if (!this.isBulkProduct) {
     return {
@@ -351,7 +418,7 @@ productSchema.methods.calculateBulkPrice = function (selectedColorCount, sets = 
 
   const totalSets = selectedColorCount * sets;
   const totalPrice = (this.bulkConfig?.pricePerSet || this.price) * totalSets;
-  const piecesPerSet = (this.sizes?.length || 0) * (this.bulkConfig?.piecesPerSize || 1);
+  const piecesPerSet = this.colors.reduce((sum, color) => sum + (color.sizes?.length || 0), 0) * (this.bulkConfig?.piecesPerSize || 1);
   const totalPieces = piecesPerSet * totalSets;
 
   return {
@@ -364,9 +431,18 @@ productSchema.methods.calculateBulkPrice = function (selectedColorCount, sets = 
   };
 };
 
-// Get available colors (in stock)
+// Get available colors (with stock)
 productSchema.methods.getAvailableColors = function () {
-  return this.colors.filter(color => color.inStock !== false);
+  return this.colors.filter(color => 
+    color.sizes.some(size => size.stock > 0)
+  );
+};
+
+// Get sizes with stock for a specific color
+productSchema.methods.getAvailableSizesForColor = function (colorName) {
+  const color = this.colors.find(c => c.name === colorName);
+  if (!color) return [];
+  return color.sizes.filter(size => size.stock > 0).map(size => size.size);
 };
 
 // ========== STATIC METHODS ==========

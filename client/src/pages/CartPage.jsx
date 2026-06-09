@@ -15,6 +15,56 @@ import {
 import { addToWishlist, optimisticAddToWishlist } from "../store/slices/wishlistSlice"
 import toast from "react-hot-toast"
 
+// ✅ Helper function to get product image (supports new schema)
+const getProductImage = (product, colorName = null) => {
+  if (!product) return "/placeholder.svg"
+  
+  // If color is specified, try to get that color's image
+  if (colorName && product.colors && product.colors.length > 0) {
+    const colorObj = product.colors.find(c => c.name === colorName)
+    if (colorObj && colorObj.images && colorObj.images.length > 0) {
+      return colorObj.images[0].url || colorObj.images[0]
+    }
+  }
+  
+  // Check commonImages (new schema)
+  if (product.commonImages && product.commonImages.length > 0) {
+    return product.commonImages[0].url || product.commonImages[0]
+  }
+  
+  // Check first color's images
+  if (product.colors && product.colors.length > 0) {
+    const firstColor = product.colors[0]
+    if (firstColor.images && firstColor.images.length > 0) {
+      return firstColor.images[0].url || firstColor.images[0]
+    }
+  }
+  
+  // Fallback to old images array (if exists)
+  if (product.images && product.images.length > 0) {
+    return product.images[0].url || product.images[0]
+  }
+  
+  return "/placeholder.svg"
+}
+
+// ✅ Helper function to get color name from cart item
+const getColorName = (item) => {
+  if (item.color) {
+    if (typeof item.color === 'object') return item.color.name || item.color
+    return item.color
+  }
+  if (item.selectedColor) return item.selectedColor
+  return null
+}
+
+// ✅ Helper function to get size from cart item
+const getSizeName = (item) => {
+  if (item.size) return item.size
+  if (item.selectedSize) return item.selectedSize
+  return null
+}
+
 const CartPage = () => {
   const dispatch = useDispatch()
   const navigate = useNavigate()
@@ -95,15 +145,19 @@ const CartPage = () => {
   const getDisplayPrice = (item) => item.isBulkProduct
     ? (item.pricePerSet || item.product?.bulkConfig?.pricePerSet || item.product?.price)
     : (item.product?.price || 0)
+    
   const getOriginalPrice = (item) => item.isBulkProduct
     ? item.product?.bulkConfig?.originalPricePerSet
     : item.product?.originalPrice
+    
   const getDiscountPercent = (item) => {
     const p = getDisplayPrice(item), o = getOriginalPrice(item)
     return o && o > p ? Math.round(((o - p) / o) * 100) : 0
   }
+  
   const getQuantityDisplay = (item) => item.isBulkProduct
     ? (item.totalSets || item.quantity || 1) : (item.quantity || 1)
+    
   const getItemTotal = (item) => item.isBulkProduct
     ? getDisplayPrice(item) * getQuantityDisplay(item)
     : (item.product?.price || 0) * (item.quantity || 1)
@@ -198,6 +252,9 @@ const CartPage = () => {
                   const quantityDisplay = getQuantityDisplay(item)
                   const itemTotal = getItemTotal(item)
                   const isUpdating = updatingItems.has(item._id)
+                  const colorName = getColorName(item)
+                  const sizeName = getSizeName(item)
+                  const productImage = getProductImage(item.product, colorName)
 
                   return (
                     <motion.div
@@ -215,7 +272,7 @@ const CartPage = () => {
                             className="relative flex-shrink-0 w-full sm:w-32 h-40 sm:h-32 rounded-2xl overflow-hidden bg-neutral-100"
                           >
                             <img
-                              src={item.product.images[0]?.url || "/placeholder.svg"}
+                              src={productImage}
                               alt={item.product.name}
                               className="w-full h-full object-cover transition-transform duration-500 group-hover:scale-110"
                             />
@@ -257,8 +314,8 @@ const CartPage = () => {
                               </div>
                             ) : (
                               <div className="flex flex-wrap gap-x-3 gap-y-1 text-xs text-neutral-500 mt-1.5">
-                                {item.size && <span>Size <span className="text-neutral-800 font-medium">{item.size}</span></span>}
-                                {item.color && <span>Colour <span className="text-neutral-800 font-medium">{item.color}</span></span>}
+                                {sizeName && <span>Size <span className="text-neutral-800 font-medium">{sizeName}</span></span>}
+                                {colorName && <span>Colour <span className="text-neutral-800 font-medium">{colorName}</span></span>}
                               </div>
                             )}
 

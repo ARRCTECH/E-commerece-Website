@@ -1,3 +1,5 @@
+// middleware/upload.js
+
 const multer = require("multer");
 
 const storage = multer.memoryStorage();
@@ -16,12 +18,22 @@ const fileFilter = (req, file, cb) => {
   }
 };
 
+// ✅ Create multer instance with all methods
 const upload = multer({
   storage,
   fileFilter,
   limits: {
-    fileSize: 100 * 1024 * 1024, // 100 MB limit (videos can be large)
+    fileSize: 100 * 1024 * 1024, // 100 MB limit
   },
 });
 
+// ✅ Attach productUploadFields as a property
+upload.productUploadFields = upload.fields([
+  { name: 'commonImages', maxCount: 20 },
+  { name: 'videos', maxCount: 10 },
+    { name: 'colorImages', maxCount: 100 },   // ← YEH LINE IMPORTANT HAI
+
+]);
+
+// ✅ Export upload directly (keeps all original methods)
 module.exports = upload;

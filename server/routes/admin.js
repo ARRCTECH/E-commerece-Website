@@ -1,4 +1,30 @@
+// routes/admin.js - COMPLETE WORKING VERSION
+
 const express = require("express");
+const multer = require("multer");
+
+// ✅ Product upload middleware
+const productUpload = multer({ 
+  storage: multer.memoryStorage(),
+  limits: { fileSize: 100 * 1024 * 1024 }
+}).fields([
+  { name: 'commonImages', maxCount: 20 },
+  { name: 'videos', maxCount: 10 },
+  { name: 'colorImages', maxCount: 100 },
+]);
+
+// Category image upload (single)
+const categoryUpload = multer({ 
+  storage: multer.memoryStorage(),
+  limits: { fileSize: 5 * 1024 * 1024 }
+}).single('image');
+
+// Banner image upload (single)
+const bannerUpload = multer({ 
+  storage: multer.memoryStorage(),
+  limits: { fileSize: 5 * 1024 * 1024 }
+}).single('image');
+
 const {
   getDashboardStats,
   getAllUsers,
@@ -37,65 +63,48 @@ const {
   deleteBanner,
 } = require("../controllers/bannerController");
 
-const { protect, adminAuth, digitalMarketerAuth } = require("../middleware/auth");
-const upload = require("../middleware/upload");
+const { protect, adminAuth } = require("../middleware/auth");
 
 const router = express.Router();
 
 // Apply authentication to all admin routes
 router.use(protect);
 
-// Dashboard Stats (Admin only)
+// Dashboard Stats
 router.get("/dashboard/stats", adminAuth, getDashboardStats);
 
-// User Management (Admin only)
+// User Management
 router.get("/users", adminAuth, getAllUsers);
 router.put("/users/:userId/role", adminAuth, updateUserRole);
 router.delete("/users/:userId", adminAuth, deleteUser);
 router.post("/users/referral/delete", adminAuth, deleteSingleReferralDetails);
 router.put("/users/referral/update", adminAuth, updateReferralDetails);
 
-// Order Management (Admin only)
+// Order Management
 router.get("/orders", adminAuth, getAllOrders);
 router.put("/orders/:orderId/status", adminAuth, updateOrderStatus);
 
-// Product Management (Admin only)
+// Product Management - ✅ USING productUpload
 router.get("/products", adminAuth, getProducts);
 router.get("/products/:id", adminAuth, getProduct);
-router.post(
-  "/products",
-  adminAuth,
-  upload.fields([
-    { name: "images", maxCount: 10 },
-    { name: "videos", maxCount: 5 }
-  ]),
-  createProduct
-);
-router.put(
-  "/products/:id",
-  adminAuth,
-  upload.fields([
-    { name: "images", maxCount: 10 },
-    { name: "videos", maxCount: 5 }
-  ]),
-  updateProduct
-);
+router.post("/products", adminAuth, productUpload, createProduct);
+router.put("/products/:id", adminAuth, productUpload, updateProduct);
 router.delete("/products/:id", adminAuth, deleteProduct);
 
-// Category Management (Admin only)
+// Category Management - ✅ USING categoryUpload
 router.get("/categories", adminAuth, getCategories);
 router.get("/categories/:slug", adminAuth, getCategoryBySlug);
-router.post("/categories", adminAuth, upload.single("image"), createCategory);
-router.put("/categories/:id", adminAuth, upload.single("image"), updateCategory);
+router.post("/categories", adminAuth, categoryUpload, createCategory);
+router.put("/categories/:id", adminAuth, categoryUpload, updateCategory);
 router.delete("/categories/:id", adminAuth, deleteCategory);
 
-// Banner Management (Admin & Digital Marketer)
+// Banner Management - ✅ USING bannerUpload
 router.get("/banners", adminAuth, getAllBanners);
-router.post("/banners", adminAuth, upload.single("image"), createBanner);
-router.put("/banners/:id", adminAuth, upload.single("image"), updateBanner);
+router.post("/banners", adminAuth, bannerUpload, createBanner);
+router.put("/banners/:id", adminAuth, bannerUpload, updateBanner);
 router.delete("/banners/:id", adminAuth, deleteBanner);
 
-// Coupon Management (Admin only)
+// Coupon Management
 router.get("/coupons", adminAuth, getAllCoupons);
 router.post("/coupons", adminAuth, createCoupon);
 router.put("/coupons/:couponId", adminAuth, updateCoupon);

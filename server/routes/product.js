@@ -1,5 +1,19 @@
+// routes/product.js
+
 const express = require("express");
 const router = express.Router();
+const multer = require("multer");
+
+// ✅ Create direct upload middleware for products
+const productUploadMiddleware = multer({ 
+  storage: multer.memoryStorage(),
+  limits: { fileSize: 100 * 1024 * 1024 }
+}).fields([
+  { name: 'commonImages', maxCount: 20 },
+  { name: 'videos', maxCount: 10 },
+  { name: 'colorImages', maxCount: 100 },
+]);
+
 const {
   getProducts,
   getProduct,
@@ -14,8 +28,8 @@ const {
   getProductsByCategory,
   getProductsByCategorySlug,
   getProductBySlug,
-  getBulkProducts,        // 🆕 Add this import
-  getRegularProducts,     // 🆕 Add this import
+  getBulkProducts,
+  getRegularProducts,
 } = require("../controllers/productController");
 
 // ===============================
@@ -25,10 +39,10 @@ const {
 // GET all products with filters (regular + bulk both)
 router.get("/", getProducts);
 
-// 🆕 GET only bulk products
+// GET only bulk products
 router.get("/bulk", getBulkProducts);
 
-// 🆕 GET only regular products
+// GET only regular products
 router.get("/regular", getRegularProducts);
 
 // GET searched products
@@ -46,6 +60,9 @@ router.get("/oversized", getOversizedProducts);
 // GET products by category
 router.get("/category/:categoryId", getProductsByCategory);
 
+// GET products by category slug
+router.get("/category/slug/:slug", getProductsByCategorySlug);
+
 // GET single product by ID
 router.get("/:id", getProduct);
 
@@ -53,22 +70,15 @@ router.get("/:id", getProduct);
 router.get("/slug/:slug", getProductBySlug);
 
 // POST create product (Admin only)
-// TODO: add auth and admin middleware when integrating
-router.post("/", createProduct);
+router.post("/", productUploadMiddleware, createProduct);
 
 // PUT update product (Admin only)
-// TODO: add auth and admin middleware when integrating
-router.put("/:id", updateProduct);
+router.put("/:id", productUploadMiddleware, updateProduct);
 
 // DELETE product (Admin only)
-// TODO: add auth and admin middleware when integrating
 router.delete("/:id", deleteProduct);
 
 // POST add product review (Requires auth)
-// TODO: add auth middleware when integrating
 router.post("/:id/review", addReview);
-
-// GET products by category slug
-router.get("/category/slug/:slug", getProductsByCategorySlug);
 
 module.exports = router;

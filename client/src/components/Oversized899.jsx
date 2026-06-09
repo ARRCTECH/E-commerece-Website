@@ -6,6 +6,49 @@ import { useDispatch, useSelector } from "react-redux";
 import { ArrowUpRight, Sparkles } from "lucide-react";
 import { fetchOversizedProducts } from "../store/slices/productSlice";
 
+// ✅ Helper function to get product image (supports new schema)
+const getProductImage = (product) => {
+  if (!product) return "/placeholder.svg";
+  
+  // Check commonImages (new schema)
+  if (product.commonImages && product.commonImages.length > 0) {
+    return product.commonImages[0].url || product.commonImages[0];
+  }
+  
+  // Check first color's images (new schema)
+  if (product.colors && product.colors.length > 0) {
+    const firstColor = product.colors[0];
+    if (firstColor.images && firstColor.images.length > 0) {
+      return firstColor.images[0].url || firstColor.images[0];
+    }
+  }
+  
+  // Fallback to old images array (if exists)
+  if (product.images && product.images.length > 0) {
+    return product.images[0].url || product.images[0];
+  }
+  
+  return "/placeholder.svg";
+};
+
+// ✅ Helper function to get product price (supports bulk products)
+const getProductPrice = (product) => {
+  if (!product) return 0;
+  if (product.isBulkProduct) {
+    return product.bulkConfig?.pricePerSet || product.price || 0;
+  }
+  return product.price || 0;
+};
+
+// ✅ Helper function to get original price
+const getOriginalPrice = (product) => {
+  if (!product) return null;
+  if (product.isBulkProduct) {
+    return product.bulkConfig?.originalPricePerSet || product.originalPrice || null;
+  }
+  return product.originalPrice || null;
+};
+
 export default function Oversized() {
   const dispatch = useDispatch();
   const { oversizedProducts, loading } = useSelector((state) => state.products) || {
@@ -63,10 +106,13 @@ export default function Oversized() {
         {/* Product Grid — Clean cards */}
         <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-4 sm:gap-6">
           {productsToShow.map((product, idx) => {
-            const discountPercentage =
-              product.originalPrice && product.originalPrice > product.price
-                ? Math.round(((product.originalPrice - product.price) / product.originalPrice) * 100)
-                : 0;
+            const productPrice = getProductPrice(product);
+            const originalPrice = getOriginalPrice(product);
+            const discountPercentage = originalPrice && originalPrice > productPrice
+              ? Math.round(((originalPrice - productPrice) / originalPrice) * 100)
+              : 0;
+            const productImage = getProductImage(product);
+            const isBulkProduct = product.isBulkProduct === true;
 
             return (
               <Link
@@ -79,16 +125,28 @@ export default function Oversized() {
                   {/* Image Container */}
                   <div className="relative aspect-[3/4] overflow-hidden bg-neutral-100">
                     <img
-                      src={product.images?.[0]?.url || "/placeholder.svg"}
+                      src={productImage}
                       alt={product.name}
                       className="w-full h-full object-cover transition-all duration-700 ease-out group-hover:scale-105"
+                      onError={(e) => {
+                        e.target.src = "/placeholder.svg";
+                      }}
                     />
 
                     {/* Discount Badge */}
-                    {discountPercentage > 0 && (
+                    {discountPercentage > 0 && !isBulkProduct && (
                       <div className="absolute top-3 left-3 z-10">
                         <span className="text-[10px] font-medium text-white bg-neutral-900 px-2 py-0.5">
                           -{discountPercentage}%
+                        </span>
+                      </div>
+                    )}
+
+                    {/* Bulk Badge */}
+                    {isBulkProduct && (
+                      <div className="absolute top-3 right-3 z-10">
+                        <span className="text-[9px] font-medium text-white bg-red-600 px-2 py-0.5 rounded">
+                          BULK
                         </span>
                       </div>
                     )}
@@ -103,17 +161,29 @@ export default function Oversized() {
                       {/* Price Section */}
                       <div className="flex items-center gap-2 mt-2 transform translate-y-4 group-hover:translate-y-0 transition-all duration-300 delay-150">
                         <span className="text-amber-400 text-lg sm:text-xl md:text-2xl font-bold">
-                          ₹{product.price.toLocaleString()}
+                          ₹{productPrice.toLocaleString()}
                         </span>
-                        {discountPercentage > 0 && (
+                        {isBulkProduct && (
+                          <span className="text-white/50 text-xs">/set</span>
+                        )}
+                        {discountPercentage > 0 && !isBulkProduct && (
                           <span className="text-white/50 text-sm line-through">
-                            ₹{product.originalPrice.toLocaleString()}
+                            ₹{originalPrice.toLocaleString()}
                           </span>
                         )}
                       </div>
 
+                      {/* Bulk Info in Overlay */}
+                      {isBulkProduct && (
+                        <div className="mt-2 transform translate-y-4 group-hover:translate-y-0 transition-all duration-300 delay-200">
+                          <span className="inline-block text-[9px] font-semibold text-amber-400 bg-amber-400/20 px-2 py-0.5 rounded">
+                            📦 Bulk Pack
+                          </span>
+                        </div>
+                      )}
+
                       {/* Discount Badge in Overlay (if any) */}
-                      {discountPercentage > 0 && (
+                      {discountPercentage > 0 && !isBulkProduct && (
                         <div className="mt-2 transform translate-y-4 group-hover:translate-y-0 transition-all duration-300 delay-200">
                           <span className="inline-block text-[10px] font-semibold text-green-400 bg-green-400/20 px-2 py-0.5 rounded">
                             Save {discountPercentage}%
@@ -139,11 +209,14 @@ export default function Oversized() {
                     
                     <div className="flex items-center justify-center gap-2">
                       <span className="text-[14px] font-medium text-neutral-900">
-                        ₹{product.price.toLocaleString()}
+                        ₹{productPrice.toLocaleString()}
                       </span>
-                      {discountPercentage > 0 && (
+                      {isBulkProduct && (
+                        <span className="text-[9px] text-neutral-400">/set</span>
+                      )}
+                      {discountPercentage > 0 && !isBulkProduct && (
                         <span className="text-[11px] text-neutral-400 line-through">
-                          ₹{product.originalPrice.toLocaleString()}
+                          ₹{originalPrice.toLocaleString()}
                         </span>
                       )}
                     </div>
@@ -157,7 +230,7 @@ export default function Oversized() {
         {/* View All Link — Red Gradient Button with Hover Effect */}
         <div className="text-center mt-12">
           <Link
-            to="/products?category=oversized"
+            to="/products?fits=oversized"
             className="group relative inline-flex items-center gap-2 px-6 py-2 rounded-full bg-gradient-to-r from-red-600 to-red-500 text-white text-[10px] font-semibold uppercase tracking-[0.25em] overflow-hidden shadow-lg shadow-red-500/20 active:scale-95 transition-all duration-300"
           >
             <span className="relative z-10">View All Oversized</span>
