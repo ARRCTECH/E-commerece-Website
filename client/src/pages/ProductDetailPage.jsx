@@ -1373,6 +1373,7 @@ const ProductDetailPage = () => {
         )}
       </AnimatePresence>
     </div>
+
   );
 }
 
